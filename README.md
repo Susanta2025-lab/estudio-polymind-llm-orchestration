@@ -8,7 +8,7 @@
 
 ## 🚀 Overview
 
-PolyMind RAG Studio is a production-style local AI platform that combines:
+Estudio PolyMind is a production-style local AI platform that combines:
 
 * ⚡ Open-source LLMs (Mistral, Qwen, Gemma, Phi)
 * 🧠 Retrieval-Augmented Generation (RAG)
@@ -151,8 +151,8 @@ polymind-rag-studio/
 ## 1️⃣ Clone Repository
 
 ```bash
-git clone https://github.com/your-username/polymind-rag-studio.git
-cd polymind-rag-studio
+git clone https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration.git
+cd estudio-polymind-llm-orchestration
 ```
 
 ---
