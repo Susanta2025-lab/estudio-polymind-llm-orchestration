@@ -15,20 +15,25 @@ class QueryRequest(BaseModel):
 
 @app.get("/")
 def health():
-    return {"status": "running", "message": "LLM API is live 🚀"}
-
-
-class QueryRequest(BaseModel):
-    query: str
+    return {
+        "status": "running",
+        "message": "LLM API is live 🚀"
+    }
 
 
 @app.post("/query")
 def query(req: QueryRequest):
 
+    # Retrieve relevant chunks with metadata
     context_docs = retrieve(req.query)
 
-    context = "\n".join(context_docs)
+    # Combine retrieved text into context
+    context = "\n".join([
+        doc["text"]
+        for doc in context_docs
+    ])
 
+    # Prompt template
     prompt = f"""
     Answer the question using the context below.
 
@@ -39,10 +44,11 @@ def query(req: QueryRequest):
     {req.query}
     """
 
+    # Generate response from LLM
     answer = llm.generate(prompt)
 
     return {
         "query": req.query,
-        "retrieved_context": context_docs,
+        "sources": context_docs,
         "response": answer
     }
