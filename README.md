@@ -71,30 +71,56 @@ The project is designed as a modular LLM engineering system that simulates real-
 # 🏗️ System Architecture
 
 ```text
+# 🏗️ System Architecture
+
                  ┌────────────────────┐
-                 │    User Query      │
+                 │     User Query     │
                  └─────────┬──────────┘
                            │
                            ▼
                  ┌────────────────────┐
                  │    FastAPI API     │
+                 │   (api/app.py)     │
                  └─────────┬──────────┘
                            │
                            ▼
                  ┌────────────────────┐
-                 │ LangGraph Workflow │
+                 │   LangGraph Flow   │
+                 │ (Orchestration)    │
                  └─────────┬──────────┘
                            │
           ┌────────────────┼────────────────┐
           ▼                ▼                ▼
    ┌────────────┐   ┌────────────┐   ┌────────────┐
    │ Retriever  │   │ LLM Router │   │ Tool Agent │
+   │  Pipeline  │   │ Multi-LLM  │   │ Extensible │
    └─────┬──────┘   └─────┬──────┘   └─────┬──────┘
+         │                │                │
          ▼                ▼                ▼
- ┌──────────────┐   ┌─────────────────────────────┐
- │  ChromaDB    │   │ Mistral / Qwen / Gemma /  │
- │  Vector DB   │   │ Phi via Ollama or vLLM    │
- └──────────────┘   └─────────────────────────────┘
+ ┌────────────────────────────────────────────────┐
+ │               RAG PIPELINE                     │
+ ├────────────────────────────────────────────────┤
+ │ PDF/TXT Loaders                               │
+ │ Recursive Smart Chunking                      │
+ │ Sentence-Transformer Embeddings               │
+ │ ChromaDB Vector Storage                       │
+ │ Semantic Similarity Retrieval                 │
+ │ Metadata + Source Attribution                 │
+ └────────────────────────────────────────────────┘
+         │
+         ▼
+ ┌────────────────────────────────────────────────┐
+ │        Open-Source LLM Runtime Layer           │
+ ├────────────────────────────────────────────────┤
+ │ Ollama                                         │
+ │ Mistral • Qwen • Gemma • Phi                  │
+ │ Local CPU-Based Inference                      │
+ └────────────────────────────────────────────────┘
+         │
+         ▼
+ ┌────────────────────────────────────────────────┐
+ │            Context-Aware AI Response           │
+ └────────────────────────────────────────────────┘
 ```
 
 ---
@@ -112,6 +138,11 @@ polymind-rag-studio/
 │   └── router.py
 │
 ├── rag/
+│   ├── loaders/
+│   │   ├── pdf_loader.py
+│   │   └── text_loader.py
+│   │
+│   ├── chunking.py
 │   ├── embeddings.py
 │   ├── ingest.py
 │   ├── retriever.py
@@ -122,11 +153,15 @@ polymind-rag-studio/
 │
 ├── data/
 │   └── docs/
+│       ├── ai_notes.txt
+│       ├── transformers.pdf
+│       └── sample_docs/
 │
 ├── chroma_db/
 │
 ├── requirements.txt
-└── README.md
+├── README.md
+└── .gitignore
 ```
 
 ---
