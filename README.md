@@ -71,7 +71,7 @@ The project is designed as a modular LLM engineering system that simulates real-
 # 🏗️ System Architecture
 
 ```text
-# 🏗️ System Architecture
+
 
                  ┌────────────────────┐
                  │     User Query     │
@@ -100,12 +100,12 @@ The project is designed as a modular LLM engineering system that simulates real-
  ┌────────────────────────────────────────────────┐
  │               RAG PIPELINE                     │
  ├────────────────────────────────────────────────┤
- │ PDF/TXT Loaders                               │
- │ Recursive Smart Chunking                      │
- │ Sentence-Transformer Embeddings               │
- │ ChromaDB Vector Storage                       │
- │ Semantic Similarity Retrieval                 │
- │ Metadata + Source Attribution                 │
+ │ PDF/TXT Loaders                                │
+ │ Recursive Smart Chunking                       │
+ │ Sentence-Transformer Embeddings                │
+ │ ChromaDB Vector Storage                        │
+ │ Semantic Similarity Retrieval                  │
+ │ Metadata + Source Attribution                  │
  └────────────────────────────────────────────────┘
          │
          ▼
@@ -113,7 +113,7 @@ The project is designed as a modular LLM engineering system that simulates real-
  │        Open-Source LLM Runtime Layer           │
  ├────────────────────────────────────────────────┤
  │ Ollama                                         │
- │ Mistral • Qwen • Gemma • Phi                  │
+ │ Mistral • Qwen • Gemma • Phi                   │
  │ Local CPU-Based Inference                      │
  └────────────────────────────────────────────────┘
          │
