@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from llm.ollama_client import OllamaClient
 from rag.retriever import retrieve
 
+from graph.langgraph_flow import app_graph
+
 app = FastAPI(title="Local RAG API")
 
 llm = OllamaClient(model="mistral")
@@ -24,31 +26,10 @@ def health():
 @app.post("/query")
 def query(req: QueryRequest):
 
-    # Retrieve relevant chunks with metadata
-    context_docs = retrieve(req.query)
+    result = app_graph.invoke(
+        {
+            "query": req.query
+        }
+    )
 
-    # Combine retrieved text into context
-    context = "\n".join([
-        doc["text"]
-        for doc in context_docs
-    ])
-
-    # Prompt template
-    prompt = f"""
-    Answer the question using the context below.
-
-    Context:
-    {context}
-
-    User Question:
-    {req.query}
-    """
-
-    # Generate response from LLM
-    answer = llm.generate(prompt)
-
-    return {
-        "query": req.query,
-        "sources": context_docs,
-        "response": answer
-    }
+    return result
