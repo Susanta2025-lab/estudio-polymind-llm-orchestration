@@ -191,8 +191,7 @@ polymind-rag-studio/
 │   └── app.py
 │
 ├── llm/
-│   ├── ollama_client.py
-│   └── router.py
+│   └── ollama_client.py
 │
 ├── rag/
 │   ├── loaders/
