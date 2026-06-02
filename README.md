@@ -40,6 +40,9 @@ Current active model:
 
 ```text
 Mistral
+Qwen
+Gemma
+Phi
 ```
 
 Future phases introduce dynamic model routing and specialization.
