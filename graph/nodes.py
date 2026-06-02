@@ -1,4 +1,5 @@
 from llm.ollama_client import OllamaClient
+from llm.router import select_model
 
 from rag.retriever import retrieve
 
@@ -7,10 +8,7 @@ from tools.datetime_tool import current_time
 
 from memory.conversation_memory import add_message
 
-
-llm = OllamaClient(model="mistral")
-
-
+# This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
 
     query = state["query"].lower()
@@ -38,8 +36,23 @@ def router_node(state):
 
     return state
 
+# This node selects the appropriate model based on the query content and adds it to the state.
+def model_router_node(state):
 
+    model = select_model(
+        state["query"]
+    )
+
+    state["model"] = model
+
+    return state
+
+# This node handles direct LLM queries without retrieval, using the selected model.
 def direct_llm_node(state):
+
+    llm = OllamaClient(
+        model=state["model"]
+    )
 
     answer = llm.generate(
         state["query"]
@@ -56,15 +69,17 @@ def direct_llm_node(state):
     )
 
     state["answer"] = answer
-
     state["context"] = ""
-
     state["sources"] = []
 
     return state
 
-
+# This node handles RAG-based queries, retrieving relevant documents and using them as context for the LLM.
 def rag_node(state):
+
+    llm = OllamaClient(
+        model=state["model"]
+    )
 
     docs = retrieve(
         state["query"]
@@ -85,7 +100,9 @@ def rag_node(state):
     {state['query']}
     """
 
-    answer = llm.generate(prompt)
+    answer = llm.generate(
+        prompt
+    )
 
     add_message(
         "user",
@@ -98,14 +115,12 @@ def rag_node(state):
     )
 
     state["context"] = context
-
     state["answer"] = answer
-
     state["sources"] = docs
 
     return state
 
-
+# This node handles simple tool-based queries like time and calculations.
 def tool_node(state):
 
     query = state["query"].lower()
@@ -127,7 +142,9 @@ def tool_node(state):
             .strip()
         )
 
-        answer = calculate(expression)
+        answer = calculate(
+            expression
+        )
 
     else:
 
@@ -144,9 +161,7 @@ def tool_node(state):
     )
 
     state["answer"] = answer
-
     state["context"] = ""
-
     state["sources"] = []
 
     return state

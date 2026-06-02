@@ -7,6 +7,8 @@ class GraphState(TypedDict):
 
     route: str
 
+    model: str
+
     context: str
 
     answer: str
