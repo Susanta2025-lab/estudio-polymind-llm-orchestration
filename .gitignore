@@ -1,0 +1,25 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.venv/
+venv/
+env/
+
+# Vector database (ChromaDB)
+chroma_db/
+
+# Data files (Optional: keep if these are sample docs, remove if they contain sensitive info)
+data/docs/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
