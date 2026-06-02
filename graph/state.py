@@ -10,3 +10,5 @@ class GraphState(TypedDict):
     context: str
 
     answer: str
+
+    sources: list

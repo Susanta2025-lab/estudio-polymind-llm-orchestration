@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph
 from graph.state import GraphState
 
-from graph.nodes import router_node, direct_llm_node, rag_node
+from graph.nodes import router_node, direct_llm_node, rag_node, tool_node
 
 # Initialize the graph builder
 builder = StateGraph(GraphState)
@@ -10,6 +10,7 @@ builder = StateGraph(GraphState)
 builder.add_node("router", router_node)
 builder.add_node("direct", direct_llm_node)
 builder.add_node("rag", rag_node)
+builder.add_node("tool", tool_node)
 
 #define routing logic
 def route_decision(state):
@@ -22,7 +23,8 @@ builder.add_conditional_edges(
     route_decision,
     {
         "rag": "rag",
-        "direct": "direct"
+        "direct": "direct",
+        "tool": "tool"
     }
 )
 
@@ -32,6 +34,7 @@ builder.set_entry_point("router")
 #finish points
 builder.set_finish_point("direct")
 builder.set_finish_point("rag")
+builder.set_finish_point("tool")
 
 #compile
 app_graph = builder.compile()
