@@ -1,401 +1,286 @@
 # 🧠 Estudio PolyMind
 
-### Multi-LLM RAG & AI Orchestration Platform
+### Multi-LLM RAG & Agent Orchestration Platform
 
-> Local-first AI infrastructure for Retrieval-Augmented Generation (RAG), semantic search, intelligent routing, and multi-LLM orchestration using open-source language models.
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green.svg)]()
+[![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-orange.svg)]()
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-purple.svg)]()
+[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
 
 ---
 
 ## 🚀 Overview
 
-**Estudio PolyMind** is a modular LLM engineering platform designed to simulate real-world enterprise GenAI systems.
+Estudio PolyMind is a production-style Multi-LLM Retrieval-Augmented Generation (RAG) platform that orchestrates multiple open-source Large Language Models through LangGraph workflows.
 
-The project combines:
+The platform supports:
 
-- 🤖 Open-source LLMs via Ollama
-- 🧠 Retrieval-Augmented Generation (RAG)
-- 🔍 ChromaDB vector search
-- 📄 PDF/TXT document ingestion
-- ⚡ FastAPI backend services
-- 🔄 LangGraph workflow orchestration
-- 🧩 Intelligent query routing
-- 🖥️ Local AI deployment
+- Multi-LLM routing
+- Retrieval-Augmented Generation (RAG)
+- Persistent conversation memory
+- Tool calling
+- Dynamic workflow orchestration
+- Local-first deployment using Ollama
+- Source-aware document retrieval
 
-Unlike traditional chatbot projects, PolyMind focuses on **LLM orchestration architecture**, where queries are dynamically routed through different execution paths such as direct inference or retrieval-augmented reasoning.
+Built to demonstrate modern AI Engineering and Agentic AI architecture patterns.
 
 ---
 
-# ✨ Core Features
+## ✨ Key Features
 
-## 🤖 Multi-LLM Ready
+### 🧠 Multi-LLM Orchestration
 
-Supports local inference through Ollama with:
+Dynamically routes requests between:
 
 - Mistral
 - Qwen
 - Gemma
 - Phi
 
-Current active model:
-
-```text
-Mistral
-Qwen
-Gemma
-Phi
-```
-
-Future phases introduce dynamic model routing and specialization.
+based on query type and workflow requirements.
 
 ---
 
-## 🧠 Retrieval-Augmented Generation (RAG)
+### 🔍 Retrieval-Augmented Generation (RAG)
 
-- Semantic document retrieval
-- Context-aware generation
-- Source-aware responses
-- Metadata tracking
-- Persistent vector storage
-
----
-
-## 📄 Advanced Document Processing
-
-Supported formats:
-
-- PDF
-- TXT
-
-Pipeline:
-
-```text
-Documents
-    ↓
-Loaders
-    ↓
-Smart Chunking
-    ↓
-Embeddings
-    ↓
-ChromaDB
-    ↓
-Retrieval
-```
-
----
-
-## 🔍 Vector Database Integration
-
-Powered by:
-
-**ChromaDB**
-
-Capabilities:
-
-- Persistent vector storage
-- Similarity search
+- PDF ingestion pipeline
+- Text document ingestion
+- Embedding generation
+- ChromaDB vector storage
 - Semantic retrieval
-- Metadata indexing
+- Source tracking
+- Relevance scoring
 
 ---
 
-## 🔄 LangGraph Orchestration
+### 🔄 LangGraph Workflow Engine
 
-Current workflow:
+Implements graph-based orchestration:
 
 ```text
 User Query
-      ↓
-Router Node
-      ↓
- ┌─────────────┬─────────────┐
- │ Direct LLM  │ RAG Agent   │
- └─────────────┴─────────────┘
-      ↓
+     │
+     ▼
+ Router Node
+     │
+     ▼
+Model Router
+     │
+ ┌───┼────┐
+ │   │    │
+ ▼   ▼    ▼
+RAG Direct Tool
+ │    │    │
+ └────┴────┘
+      │
+      ▼
  Response
 ```
 
-This creates a foundation for:
+---
 
-- Agent workflows
-- Tool calling
-- Multi-step reasoning
-- Model routing
+### 🧾 Persistent Memory
+
+Stores conversation history across sessions.
+
+Features:
+
+- Session-based memory
+- Persistent storage
+- Context continuity
+- Long-running interactions
 
 ---
 
-# 🏗️ System Architecture
+### 🛠 Tool Calling
+
+Current tools include:
+
+- Calculator
+- Date & Time Utility
+
+Extensible architecture for future tools.
+
+---
+
+## 🏗 System Architecture
 
 ```text
-                 ┌────────────────────┐
-                 │     User Query     │
-                 └─────────┬──────────┘
-                           │
-                           ▼
-                 ┌────────────────────┐
-                 │    FastAPI API     │
-                 └─────────┬──────────┘
-                           │
-                           ▼
-                 ┌────────────────────┐
-                 │   LangGraph Flow   │
-                 │ (Query Routing)    │
-                 └─────────┬──────────┘
-                           │
-              ┌────────────┴────────────┐
-              ▼                         ▼
-      ┌──────────────┐          ┌──────────────┐
-      │ Direct LLM   │          │  RAG Agent   │
-      └──────┬───────┘          └──────┬───────┘
-             │                         │
-             │                         ▼
-             │              ┌────────────────────┐
-             │              │ Semantic Retrieval │
-             │              └─────────┬──────────┘
-             │                        │
-             │                        ▼
-             │              ┌────────────────────┐
-             │              │     ChromaDB       │
-             │              │   Vector Store     │
-             │              └─────────┬──────────┘
-             │                        ▲
-             │                        │
-             │              ┌────────────────────┐
-             │              │ Embedding Pipeline │
-             │              └─────────┬──────────┘
-             │                        ▲
-             │                        │
-             │              ┌────────────────────┐
-             │              │ PDF/TXT Loaders    │
-             │              │ Smart Chunking     │
-             │              │ Metadata Tracking  │
-             │              └────────────────────┘
-             │
-             ▼
-      ┌──────────────┐
-      │   Ollama     │
-      │   Mistral    │
-      └──────┬───────┘
-             │
-             ▼
-      ┌──────────────┐
-      │   Response   │
-      └──────────────┘
+                    User Query
+                         │
+                         ▼
+                    FastAPI API
+                         │
+                         ▼
+                    LangGraph
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+              ▼          ▼          ▼
+         Direct LLM     RAG       Tools
+              │          │          │
+              ▼          ▼          ▼
+         Model Router   ChromaDB   Utilities
+              │
+              ▼
+   Mistral / Qwen / Gemma / Phi
+              │
+              ▼
+       Persistent Memory
+              │
+              ▼
+         API Response
 ```
 
 ---
 
-# 📂 Project Structure
+## 📂 Project Structure
 
 ```text
-polymind-rag-studio/
+estudio-polymind-llm-orchestration/
 │
 ├── api/
 │   └── app.py
 │
+├── graph/
+│   ├── langgraph_flow.py
+│   ├── nodes.py
+│   └── state.py
+│
 ├── llm/
-│   └── ollama_client.py
+│   ├── models.py
+│   ├── ollama_client.py
+│   └── router.py
 │
 ├── rag/
-│   ├── loaders/
-│   │   ├── pdf_loader.py
-│   │   └── text_loader.py
-│   │
 │   ├── chunking.py
 │   ├── embeddings.py
 │   ├── ingest.py
 │   ├── retriever.py
-│   └── vectordb.py
-│
-├── graph/
-│   ├── state.py
-│   ├── nodes.py
-│   └── langgraph_flow.py
+│   ├── vectordb.py
+│   └── loaders/
 │
 ├── data/
 │   └── docs/
 │
+├── memory/
+│   ├── memory_store.py
+│   └── chat_history.json
+│
+├── tools/
+│   ├── calculator.py
+│   └── datetime_tool.py
+│
+├── utils/
+│   └── logger.py
+│
 ├── chroma_db/
 │
 ├── requirements.txt
-├── README.md
-└── .gitignore
+└── README.md
 ```
 
 ---
 
-# ⚙️ Technology Stack
+## ⚙️ Technology Stack
 
-| Layer | Technologies |
-|---------|---------|
-| LLM Runtime | Ollama |
-| Models | Mistral, Qwen, Gemma, Phi |
-| Backend | FastAPI |
-| Orchestration | LangGraph |
-| Vector Database | ChromaDB |
-| Embeddings | Sentence Transformers |
-| Document Processing | PyPDF |
-| Chunking | Recursive Text Splitters |
-| Language | Python |
-| Deployment | Docker (Planned) |
+### LLMs
 
----
+- Mistral
+- Qwen
+- Gemma
+- Phi
 
-# ⚡ Quick Start
+### AI Frameworks
 
-## Clone Repository
+- LangGraph
+- Ollama
+- Sentence Transformers
 
-```bash
-git clone https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration.git
+### Backend
 
-cd estudio-polymind-llm-orchestration
-```
+- FastAPI
+- Pydantic
 
-## Install Dependencies
+### Retrieval
 
-```bash
-pip install -r requirements.txt
-```
+- ChromaDB
+- Vector Embeddings
+- Semantic Search
 
-## Pull Model
+### Infrastructure
 
-```bash
-ollama pull mistral
-```
-
-## Add Documents
-
-Place files inside:
-
-```text
-data/docs/
-```
-
-Supported:
-
-```text
-.pdf
-.txt
-```
-
-## Ingest Documents
-
-```bash
-python -m rag.ingest
-```
-
-## Start API
-
-```bash
-uvicorn api.app:app --reload
-```
-
-## Open Swagger Docs
-
-```text
-http://127.0.0.1:8000/docs
-```
+- Local LLM Deployment
+- Persistent Storage
+- Session Memory
 
 ---
 
-# 📈 Development Roadmap
+## 📈 Current Capabilities
 
-## ✅ Phase 1 — Local LLM Infrastructure
+✅ Multi-LLM Routing
 
-- Ollama setup
-- Mistral integration
-- FastAPI backend
-- Local inference
+✅ Local LLM Inference
 
-## ✅ Phase 2 — RAG Pipeline
+✅ RAG Pipeline
 
-- Embeddings generation
-- ChromaDB integration
-- Semantic retrieval
-- Context injection
+✅ ChromaDB Vector Search
 
-## ✅ Phase 2.5 — Production RAG Upgrade
+✅ Source-Aware Retrieval
 
-- PDF ingestion
-- Smart chunking
-- Metadata tracking
-- Source attribution
-- Persistent vector storage
+✅ LangGraph Orchestration
 
-## 🚧 Phase 3 — LangGraph Orchestration
+✅ Persistent Conversation Memory
 
-- Query routing
-- Workflow graph
-- Direct LLM node
-- RAG node
-- Conditional execution
+✅ Tool Calling
 
-## 🔮 Upcoming Phases
+✅ FastAPI Backend
 
-### Multi-Model Routing
-
-```text
-Query
-   ↓
-Model Router
-   ↓
-Mistral / Qwen / Gemma / Phi
-```
-
-### Future Additions
-
-- Tool calling
-- Memory systems
-- Agent workflows
-- Hybrid search
-- Re-ranking
-- Streaming responses
-- Docker deployment
-- Frontend UI
-- vLLM integration
-- Evaluation pipelines
+✅ Session-Based Context
 
 ---
 
-# 🎯 Learning Objectives
+## 🔮 Upcoming Roadmap
+
+### Phase 6
+
+- Hybrid Search (BM25 + Vector Search)
+- Reranking Pipeline
+- Multi-Agent Collaboration
+- Streaming Responses
+- Evaluation Framework
+
+### Phase 7
+
+- vLLM Deployment
+- GPU Inference
+- Distributed Agents
+- MCP Integration
+- Production Monitoring
+
+---
+
+## 🎯 Learning Outcomes
 
 This project demonstrates:
 
-- LLM Engineering
+- Agentic AI Systems
+- Multi-LLM Architectures
 - Retrieval-Augmented Generation
+- Graph-Based Orchestration
 - Vector Databases
-- LangGraph Workflows
-- AI Orchestration
-- FastAPI Development
-- Local AI Infrastructure
-- Open-Source LLM Deployment
-- Semantic Search Systems
-- Production-Style AI Architecture
+- Memory Systems
+- Local AI Deployment
+- Production AI Engineering
 
 ---
 
-# 🏆 Why This Project Matters
+## 👨‍💻 Author
 
-Modern AI systems are no longer single-model chatbots.
+**Susanta Hazra**
 
-They require:
+AI Engineer | Data Scientist | Generative AI Enthusiast
 
-- retrieval systems
-- orchestration engines
-- workflow routing
-- vector databases
-- memory layers
-- model specialization
-
-Estudio PolyMind is designed as a practical implementation of these modern AI engineering patterns using entirely local and open-source infrastructure.
-
----
-
-## ⭐ Support
-
-If you find this project useful:
-
-- ⭐ Star the repository
-- 🍴 Fork the project
-- 🧠 Explore LLM orchestration systems
-- 🚀 Build your own AI agents
+Building production-ready AI systems with LLMs, RAG, Agents, and MLOps.
