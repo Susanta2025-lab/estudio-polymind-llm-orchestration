@@ -1,0 +1,26 @@
+[
+  {
+    "session_id": "user_1",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-03 12:21:53.996443"
+  },
+  {
+    "session_id": "user_1",
+    "role": "assistant",
+    "content": " LangGraph is a language model developed by Mistral AI, a cutting-edge AI company based in Paris. The model is designed to understand and generate human-like text in multiple languages. It's trained on a wide range of texts, allowing it to converse coherently, answer questions, write essays, summarize documents, translate text, and more.\n\nLangGraph is an extension of Mistral AI's previous model, MIST-50, which was one of the top performers in several competitions, including the Conversational AI Competition organized by Facebook and the Wizard of Wikipedia challenge. LangGraph takes this technology a step further by improving its understanding and generation capabilities across a variety of tasks.",
+    "timestamp": "2026-06-03 12:21:53.996967"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "what is RAG?",
+    "timestamp": "2026-06-03 15:22:41.845934"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " RAG is an acronym commonly used in project management, particularly in the UK. It stands for Red, Amber, Green (RAG) status system, which is a visual indicator to represent the performance or health of a project, task, or key risk indicators.\n\n1. Red indicates that there is a significant issue or concern that needs immediate attention and action. This could be due to issues such as cost overruns, schedule delays, or quality problems.\n2. Amber suggests that there are some concerns or potential issues that need to be monitored closely, but they do not currently pose a critical threat to the project's success. This might include factors like budget constraints, schedule pressures, or technical challenges.\n3. Green denotes that everything is on track and proceeding as expected. This indicates that the project is progressing well, within budget, and meeting its targets and milestones.\n\nThe RAG system helps project managers and stakeholders quickly understand the status of a project at a glance, making it easier to prioritize tasks and resources effectively.",
+    "timestamp": "2026-06-03 15:22:41.848661"
+  }
+]

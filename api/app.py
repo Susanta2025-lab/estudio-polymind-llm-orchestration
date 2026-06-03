@@ -12,8 +12,9 @@ from utils.logger import log_request
 
 
 app = FastAPI(
-    title="Estudio PolyMind - Multi-LLM RAG & Orchestration Platform API",
-    version="1.0.0"
+    title="Estudio PolyMind - API",
+    version="1.0.0",
+    description="A platform that orchestrates multiple LLMs and RAG techniques to provide comprehensive and accurate responses. 🚀"
 )
 
 
