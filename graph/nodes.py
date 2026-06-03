@@ -6,7 +6,7 @@ from rag.retriever import retrieve
 from tools.calculator import calculate
 from tools.datetime_tool import current_time
 
-from memory.conversation_memory import add_message
+from memory.memory_store import add_message
 
 # This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
@@ -60,12 +60,14 @@ def direct_llm_node(state):
 
     add_message(
         "user",
-        state["query"]
+        state["query"],
+        state["session_id"]
     )
 
     add_message(
         "assistant",
-        answer
+        answer,
+        state["session_id"]
     )
 
     state["answer"] = answer
@@ -106,12 +108,14 @@ def rag_node(state):
 
     add_message(
         "user",
-        state["query"]
+        state["query"],
+        state["session_id"]
     )
 
     add_message(
         "assistant",
-        answer
+        answer,
+        state["session_id"]
     )
 
     state["context"] = context
@@ -152,12 +156,14 @@ def tool_node(state):
 
     add_message(
         "user",
-        state["query"]
+        state["query"],
+        state["session_id"]
     )
 
     add_message(
         "assistant",
-        answer
+        answer,
+        state["session_id"]
     )
 
     state["answer"] = answer

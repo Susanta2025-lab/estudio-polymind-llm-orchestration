@@ -14,3 +14,5 @@ class GraphState(TypedDict):
     answer: str
 
     sources: list
+
+    session_id: str
