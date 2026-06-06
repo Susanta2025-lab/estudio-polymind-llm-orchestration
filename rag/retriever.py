@@ -8,18 +8,20 @@ def retrieve(query: str, n_results: int = 5):
 
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=n_results
+        n_results=n_results,
+        include=[
+            "documents",
+            "metadatas",
+            "distances"
+        ]
     )
 
     docs = results["documents"][0]
     metadatas = results["metadatas"][0]
-
-    distances = results.get(
-        "distances",
-        [[0.0] * len(docs)]
-    )[0]
+    distances = results["distances"][0]
 
     retrieved_docs = []
+    seen = set()
 
     for doc, metadata, distance in zip(
         docs,
@@ -31,6 +33,19 @@ def retrieve(query: str, n_results: int = 5):
             max(0.0, 1 - distance),
             3
         )
+
+        if score <= 0:
+            continue
+
+        key = (
+            metadata.get("source"),
+            metadata.get("chunk_id")
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
 
         retrieved_docs.append(
             {

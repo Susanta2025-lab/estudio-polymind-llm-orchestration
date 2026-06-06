@@ -27,7 +27,14 @@ def router_node(state):
         "document",
         "pdf",
         "retrieve",
-        "knowledge"
+        "knowledge",
+        "langgraph",
+        "rag",
+        "embedding",
+        "vector",
+        "chromadb",
+        "agent",
+        "memory"
     ]):
         state["route"] = "rag"
 
