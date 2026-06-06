@@ -4,6 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)]()
 [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green.svg)]()
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-red.svg)]()
 [![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-orange.svg)]()
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-purple.svg)]()
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
@@ -60,17 +61,17 @@ based on query type and workflow requirements.
 Implements graph-based orchestration:
 
 ```text
-User Query
-     │
-     ▼
+ User Query
+      │
+      ▼
  Router Node
-     │
-     ▼
-Model Router
-     │
- ┌───┼────┐
- │   │    │
- ▼   ▼    ▼
+      │
+      ▼
+ Model Router
+      │
+ ┌────┼────┐
+ │    │    │
+ ▼    ▼    ▼
 RAG Direct Tool
  │    │    │
  └────┴────┘
@@ -185,6 +186,12 @@ estudio-polymind-llm-orchestration/
 
 ## 📸 Demo
 
+### Streamlit User Interface
+
+Interactive web-based interface for querying and managing RAG pipelines.
+
+![Streamlit UI](media/streamlit_ui.png)
+
 ---
 ### FastAPI API Interface
 
@@ -224,6 +231,10 @@ PolyMind automatically routes requests to the most suitable model.
 - FastAPI
 - Pydantic
 
+### Frontend
+
+- Streamlit
+
 ### Retrieval
 
 - ChromaDB
@@ -257,6 +268,8 @@ PolyMind automatically routes requests to the most suitable model.
 ✅ Tool Calling
 
 ✅ FastAPI Backend
+
+✅ Streamlit UI
 
 ✅ Session-Based Context
 
