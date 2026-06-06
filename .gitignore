@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .python-version
+*.Identifier
 
 # Environment variables
 .env
