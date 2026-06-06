@@ -1,23 +1,3 @@
-## 📸 Demo
-
-### FastAPI API Interface
-
-![Swagger UI](media/swagger_ui.png)
-
-
-### Dynamic Model Selection
-
-PolyMind automatically routes requests to the most suitable model.
-
-![Model Routing](media/model_routing.png)
-
-
-### Source-Aware RAG
-
-![RAG Retrieval](media/rag_query.png)
-
-
-
 # 🧠 Estudio PolyMind
 
 ### Multi-LLM RAG & Agent Orchestration Platform
@@ -201,6 +181,25 @@ estudio-polymind-llm-orchestration/
 ├── requirements.txt
 └── README.md
 ```
+---
+
+## 📸 Demo
+
+### FastAPI API Interface
+
+![Swagger UI](media/swagger_ui.png)
+
+
+### Dynamic Model Selection
+
+PolyMind automatically routes requests to the most suitable model.
+
+![Model Routing](media/model_routing.png)
+
+
+### Source-Aware RAG
+
+![RAG Retrieval](media/rag_query.png)
 
 ---
 
