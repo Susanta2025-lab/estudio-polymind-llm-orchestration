@@ -29,6 +29,63 @@ Built to demonstrate modern AI Engineering and Agentic AI architecture patterns.
 
 ---
 
+## ⚡ Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration.git
+
+cd estudio-polymind-llm-orchestration
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Start Ollama
+
+```bash
+ollama serve
+```
+
+Pull any required models:
+
+```bash
+ollama pull mistral
+ollama pull qwen
+ollama pull gemma
+ollama pull phi
+```
+
+### 4. Ingest Documents
+
+```bash
+make ingest
+```
+
+### 5. Start FastAPI Backend
+
+```bash
+make api
+```
+
+### 6. Launch Streamlit UI
+
+```bash
+make ui
+```
+
+### 7. Open the Application
+
+```text
+http://localhost:8501
+```
+
+---
+
 ## ✨ Key Features
 
 ### 🧠 Multi-LLM Orchestration
@@ -108,31 +165,43 @@ Extensible architecture for future tools.
 
 ## 🏗 System Architecture
 
+## 🏗 System Architecture
+
 ```text
-                    User Query
-                         │
-                         ▼
-                    FastAPI API
-                         │
-                         ▼
-                    LangGraph
-                         │
-              ┌──────────┼──────────┐
-              │          │          │
-              ▼          ▼          ▼
-         Direct LLM     RAG       Tools
-              │          │          │
-              ▼          ▼          ▼
-         Model Router   ChromaDB   Utilities
-              │
-              ▼
-   Mistral / Qwen / Gemma / Phi
-              │
-              ▼
-       Persistent Memory
-              │
-              ▼
-         API Response
+                     User
+                       │
+         ┌─────────────┴─────────────┐
+         │                           │
+         ▼                           ▼
+   Streamlit UI                FastAPI API
+         │                           │
+         └─────────────┬─────────────┘
+                       │
+                       ▼
+                 LangGraph Flow
+                       │
+                Router Node
+                       │
+                       ▼
+                 Model Router
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+          ▼            ▼            ▼
+      Direct LLM      RAG         Tools
+          │            │            │
+          ▼            ▼            ▼
+     Ollama Models   ChromaDB   Utilities
+          │            │
+          ▼            ▼
+   Mistral / Qwen   Vector Search
+   Gemma / Phi
+          │
+          ▼
+   Persistent Memory
+          │
+          ▼
+       Response
 ```
 
 ---
@@ -144,6 +213,11 @@ estudio-polymind-llm-orchestration/
 │
 ├── api/
 │   └── app.py
+│
+├── ui/
+│   ├── app.py
+│   └── assets/
+│       └── susanta.png
 │
 ├── graph/
 │   ├── langgraph_flow.py
@@ -163,11 +237,9 @@ estudio-polymind-llm-orchestration/
 │   ├── vectordb.py
 │   └── loaders/
 │
-├── data/
-│   └── docs/
-│
 ├── memory/
 │   ├── memory_store.py
+│   ├── conversation_memory.py
 │   └── chat_history.json
 │
 ├── tools/
@@ -179,9 +251,11 @@ estudio-polymind-llm-orchestration/
 │
 ├── chroma_db/
 │
+├── Makefile
 ├── requirements.txt
 └── README.md
 ```
+
 ---
 
 ## 📸 Demo
@@ -208,6 +282,61 @@ PolyMind automatically routes requests to the most suitable model.
 ### Source-Aware RAG
 
 ![RAG Retrieval](media/rag_query.png)
+
+---
+## 🔄 Workflow Example
+
+### Example Query
+
+```json
+{
+  "query": "What is LangGraph?",
+  "session_id": "default"
+}
+```
+
+### Workflow Execution
+
+```text
+User Query
+    │
+    ▼
+Router Node
+    │
+    ▼
+Model Router
+    │
+    ▼
+RAG Path
+    │
+    ▼
+Retriever
+    │
+    ▼
+ChromaDB
+    │
+    ▼
+Mistral
+    │
+    ▼
+Response + Sources
+```
+
+### Example Response
+
+```json
+{
+  "route": "rag",
+  "model": "mistral",
+  "response": "LangGraph is a framework for building stateful AI workflows...",
+  "sources": [
+    {
+      "source": "LangGraph_Documentation.pdf",
+      "chunk_id": 0
+    }
+  ]
+}
+```
 
 ---
 
@@ -312,8 +441,22 @@ This project demonstrates:
 
 ## 👨‍💻 Author
 
-**Susanta Hazra**
+### Susanta Hazra
 
-AI Engineer | Data Scientist | Generative AI Enthusiast
+AI Engineer | ML Engineer | Generative AI Enthusiast
 
-Building production-ready AI systems with LLMs, RAG, Agents, and MLOps.
+Specializing in:
+
+- Large Language Models (LLMs)
+- Retrieval-Augmented Generation (RAG)
+- LangGraph & AI Agents
+- FastAPI & MLOps
+- Production AI Systems
+
+GitHub:
+https://github.com/Susanta2025-lab
+
+LinkedIn:
+https://www.linkedin.com/in/susantahazra/
+
+---
