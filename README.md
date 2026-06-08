@@ -165,8 +165,6 @@ Extensible architecture for future tools.
 
 ## 🏗 System Architecture
 
-## 🏗 System Architecture
-
 ```text
                      User
                        │
@@ -234,12 +232,23 @@ estudio-polymind-llm-orchestration/
 │   ├── embeddings.py
 │   ├── ingest.py
 │   ├── retriever.py
+│   ├── test_retriever.py
 │   ├── vectordb.py
 │   └── loaders/
+│       ├── pdf_loader.py
+│       └── text_loader.py
+│
+├── data/
+│   └── docs/
+│       ├── ai_notes.text
+│       ├── LangGraph_Documentation.pdf
+│       ├── original_rag_paper.pdf
+│       ├── rag_survey.pdf
+│       ├── rag_using_llm.pdf
+│       └── information_retrieval_retrieval_augmented_generation.pdf
 │
 ├── memory/
 │   ├── memory_store.py
-│   ├── conversation_memory.py
 │   └── chat_history.json
 │
 ├── tools/
@@ -249,13 +258,18 @@ estudio-polymind-llm-orchestration/
 ├── utils/
 │   └── logger.py
 │
+├── media/
+│   ├── streamlit_ui.png
+│   ├── swagger_ui.png
+│   ├── model_routing.png
+│   └── rag_query.png
+│
 ├── chroma_db/
 │
 ├── Makefile
 ├── requirements.txt
 └── README.md
 ```
-
 ---
 
 ## 📸 Demo
@@ -376,6 +390,12 @@ Response + Sources
 - Persistent Storage
 - Session Memory
 
+### Development
+
+- Makefile
+- Git
+- GitHub
+
 ---
 
 ## 📈 Current Capabilities
@@ -401,6 +421,13 @@ Response + Sources
 ✅ Streamlit UI
 
 ✅ Session-Based Context
+
+✅ PDF & Text Document Ingestion
+
+✅ Dynamic Model Selection
+
+✅ Makefile-Based Development Workflow
+
 
 ---
 
