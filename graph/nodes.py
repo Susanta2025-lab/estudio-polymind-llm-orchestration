@@ -94,6 +94,15 @@ def rag_node(state):
         state["query"]
     )
 
+    print("\n===== FINAL DOCS =====")
+
+    for doc in docs:
+        print(
+            doc["source"],
+            doc["chunk_id"],
+            doc.get("rrf_score")
+        )
+
     context = "\n\n".join(
     doc["text"]
     for doc in docs[:3]
@@ -130,6 +139,7 @@ def rag_node(state):
     state["sources"] = docs
 
     return state
+
 
 # This node handles simple tool-based queries like time and calculations.
 def tool_node(state):
