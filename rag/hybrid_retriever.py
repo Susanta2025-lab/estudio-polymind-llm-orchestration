@@ -31,12 +31,16 @@ def hybrid_retrieve(
             item["chunk_id"]
         )
 
-        fused_scores[key] = {
-            "item": item,
-            "score": 1 / (
-                rrf_k + rank
-            )
-        }
+        if key not in fused_scores:
+
+            fused_scores[key] = {
+                "item": item.copy(),
+                "rrf_score": 0.0
+            }
+
+        fused_scores[key]["rrf_score"] += (
+            1 / (rrf_k + rank)
+        )
 
     # BM25 ranking
     for rank, item in enumerate(
@@ -52,50 +56,57 @@ def hybrid_retrieve(
         if key not in fused_scores:
 
             fused_scores[key] = {
-                "item": item,
-                "score": 0
+                "item": item.copy(),
+                "rrf_score": 0.0
             }
 
-        fused_scores[key]["score"] += (
-            1 / (
-                rrf_k + rank
-            )
+        fused_scores[key]["rrf_score"] += (
+            1 / (rrf_k + rank)
         )
 
     results = []
 
     for value in fused_scores.values():
 
-        item = value["item"].copy()
+        item = value["item"]
 
         item["rrf_score"] = round(
-            value["score"],
+            value["rrf_score"],
             5
         )
 
         results.append(item)
 
-    # Sort by fused score
     results.sort(
         key=lambda x: x["rrf_score"],
         reverse=True
     )
 
-    # Nothing found
-    if not results:
-        return []
+    # Remove near-duplicates
+    unique_results = []
+    seen = set()
 
-    # Keep only highly relevant chunks
-    best_score = results[0]["rrf_score"]
+    for item in results:
 
-    relevance_threshold = (
-        best_score * 0.75
-    )
+        key = (
+            item["source"],
+            item["chunk_id"]
+        )
 
-    filtered_results = [
-        r
-        for r in results
-        if r["rrf_score"] >= relevance_threshold
-    ]
+        if key not in seen:
 
-    return filtered_results[:top_k]
+            unique_results.append(item)
+            seen.add(key)
+
+    # Dynamic relevance filtering
+    if unique_results:
+
+        best_score = unique_results[0]["rrf_score"]
+
+        unique_results = [
+            item
+            for item in unique_results
+            if item["rrf_score"] >= best_score * 0.8
+        ]
+
+    return unique_results[:top_k]
