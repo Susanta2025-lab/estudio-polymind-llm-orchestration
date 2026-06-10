@@ -163,6 +163,17 @@ Extensible architecture for future tools.
 
 ---
 
+### Hybrid Retrieval
+
+PolyMind combines:
+
+- ChromaDB Semantic Search
+- BM25 Keyword Search
+
+to improve retrieval quality and reduce missed document matches.
+
+---
+
 ## 🏗 System Architecture
 
 ```text
