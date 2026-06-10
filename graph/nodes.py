@@ -1,7 +1,7 @@
 from llm.ollama_client import OllamaClient
 from llm.router import select_model
 
-from rag.retriever import retrieve
+from rag.hybrid_retriever import hybrid_retrieve
 
 from tools.calculator import calculate
 from tools.datetime_tool import current_time
@@ -90,14 +90,14 @@ def rag_node(state):
         model=state["model"]
     )
 
-    docs = retrieve(
+    docs = hybrid_retrieve(
         state["query"]
     )
 
-    context = "\n".join(
-        doc["text"]
-        for doc in docs
-    )
+    context = "\n\n".join(
+    doc["text"]
+    for doc in docs[:3]
+)
 
     prompt = f"""
     Answer the question using the context below.

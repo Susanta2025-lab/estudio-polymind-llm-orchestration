@@ -118,5 +118,53 @@
     "role": "assistant",
     "content": " LangGraph is a framework for building stateful AI workflows using graph-based execution. It allows routing, memory, tools, and agentic behavior for various applications. The primary concepts in LangGraph include State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation. The 'State' is the shared object passed between nodes, which may contain fields such as query, route, model, etc.",
     "timestamp": "2026-06-06 02:10:00.623361"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-10 07:59:45.715370"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " LangGraph is a framework for building stateful AI workflows using graph-based execution. It allows for routing, memory, tools, and agentic behavior, enabling the creation of complex AI systems. The primary concepts include State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation.",
+    "timestamp": "2026-06-10 07:59:45.716122"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-10 08:22:12.206071"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " LangGraph is a framework for building stateful AI workflows using graph-based execution. It enables routing, memory, tools, and agentic behavior, with primary concepts including State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation. The system also includes a retrieval-augmented generation (RAG) example implemented using the Gemini API.",
+    "timestamp": "2026-06-10 08:22:12.207983"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-10 08:44:24.013208"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " LangGraph is a framework for building stateful AI workflows using graph-based execution. It enables routing, memory, tools, and agentic behavior.",
+    "timestamp": "2026-06-10 08:44:24.013921"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-10 08:49:06.963506"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " According to the provided context, LangGraph is a framework for building stateful AI workflows using graph-based execution. It enables routing, memory, tools, and agentic behavior. The primary concepts in LangGraph include State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation.",
+    "timestamp": "2026-06-10 08:49:06.964057"
   }
 ]
