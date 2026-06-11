@@ -115,27 +115,34 @@ based on query type and workflow requirements.
 
 ### 🔄 LangGraph Workflow Engine
 
-Implements graph-based orchestration:
+Implements graph-based orchestration with 5 nodes:
 
-```text
- User Query
-      │
-      ▼
- Router Node
-      │
-      ▼
- Model Router
-      │
-  ┌────┼────┐
-  │    │    │
-  ▼    ▼    ▼
- RAG Direct Tool
-  │    │    │
-  └────┴────┘
-      │
-      ▼
- Response
 ```
+Entry Point: router_node
+      │
+      ├─→ Analyzes query for keywords
+      │
+      ▼
+model_router_node
+      │
+      ├─→ Selects optimal LLM model
+      │
+      ▼
+Conditional Router (3 paths):
+      │
+      ├─→ "rag" node → Hybrid retrieval (ChromaDB + BM25) + LLM
+      │
+      ├─→ "direct" node → Direct LLM inference with context
+      │
+      └─→ "tool" node → Calculator or DateTime utilities
+```
+
+**Node Flow:**
+- **Router Node**: Keyword-based intent detection (tool, rag, or direct)
+- **Model Router Node**: Selects best model for the query type
+- **RAG Node**: Document retrieval + context-augmented inference
+- **Direct LLM Node**: Session context + direct model inference
+- **Tool Node**: Calculator, DateTime, or other utility functions
 
 ---
 
@@ -156,8 +163,8 @@ Features:
 
 Current tools include:
 
-- Calculator
-- Date & Time Utility
+- Calculator - Arithmetic operations (+, -, *, /)
+- Date & Time Utility - Current time queries
 
 Extensible architecture for future tools.
 
@@ -167,8 +174,8 @@ Extensible architecture for future tools.
 
 PolyMind combines:
 
-- ChromaDB Semantic Search
-- BM25 Keyword Search
+- ChromaDB Semantic Search - Vector similarity via embeddings
+- BM25 Keyword Search - Keyword-based matching
 
 to improve retrieval quality and reduce missed document matches.
 
@@ -237,23 +244,24 @@ The system is built on a **layered architecture** with the following components:
 ### Execution Paths
 
 **RAG Path (Knowledge-Based Queries):**
-- Parse and embed user query
-- Search ChromaDB with vector embeddings
-- Fallback to BM25 keyword search if needed
-- Rank and deduplicate results
-- Augment prompt with retrieved context
-- Run LLM inference
+- Keyword detection (document, pdf, retrieve, knowledge, langgraph, rag, embedding, vector, chromadb, agent, memory)
+- Hybrid retrieval (ChromaDB + BM25)
+- Document ranking and deduplication
+- Context augmentation with top 3 results
+- LLM inference with augmented prompt
 - Return response with source attribution
 
 **Direct LLM Path (General Conversation):**
+- Keyword detection (no RAG/Tool keywords)
 - Retrieve user session context
 - Build prompt from conversation history
 - Run LLM inference directly
 - Return formatted response
 
 **Tool Path (Utility Queries):**
-- Identify required tool (calculator, datetime)
-- Extract parameters from query
+- Keyword detection (time, calculate, +, -, *, /)
+- Tool identification (DateTime vs Calculator)
+- Parameter extraction from query
 - Execute tool with parameters
 - Format and return results
 
@@ -261,26 +269,123 @@ The system is built on a **layered architecture** with the following components:
 
 ### Component Interactions
 
+**Layer 1: User Interfaces**
+
+| Component | Port | Function |
+|-----------|------|----------|
+| Streamlit UI | 8501 | Interactive chat & document management |
+| FastAPI API | 8000 | REST endpoints for external clients |
+
+**Layer 2: Request Routing**
+
+- Both UIs → Request Router
+- Request Router handles: Session lookup, request validation, context preparation
+
+**Layer 3: Workflow Orchestration (LangGraph)**
+
 ```
-Streamlit UI ←→ FastAPI API
-     ↓              ↓
-     └──→ LangGraph Workflow ←──┘
-            ↓         ↓         ↓
-         Router  Model Router  State
-            ↓
-     ┌──────┼──────┐
-     ↓      ↓      ↓
-   RAG   Direct  Tools
-     ↓      ↓      ↓
-   Query  Prompt  Execute
-     ↓      ↓      ↓
-   ChromaDB LLM  Utilities
-     │      │      │
-     └──────┼──────┘
-            ↓
-        Memory Store
-            ↓
-        Response
+LangGraph State Graph:
+    |
+    +-- router_node (keyword detection)
+    |       |
+    |       +-- state["route"] = "rag" | "direct" | "tool"
+    |
+    +-- model_router_node (model selection)
+    |       |
+    |       +-- state["model"] = selected model
+    |
+    +-- Conditional Edges:
+            |
+            +-- "rag" → rag_node
+            |           |
+            |           +-- Calls: hybrid_retriever() → ChromaDB + BM25
+            |
+            +-- "direct" → direct_llm_node
+            |           |
+            |           +-- Direct LLM inference
+            |
+            +-- "tool" → tool_node
+                        |
+                        +-- Calculator or DateTime execution
+```
+
+**Layer 4: Backend Services**
+
+```
+LLM Integration:
+    |
+    +-- Ollama Client (ollama_client.py)
+    |   |
+    |   +-- model: Mistral, Qwen, Gemma, Phi
+    |   |
+    |   +-- llm.generate(prompt) → LLM response
+    |
+    +-- Model Router (router.py)
+        |
+        +-- select_model(query) → optimal model selection
+
+RAG Pipeline:
+    |
+    +-- Retriever (retriever.py)
+    |   |
+    |   +-- retrieve(query) → documents with scores
+    |
+    +-- Vector DB (vectordb.py)
+    |   |
+    |   +-- ChromaDB Collection Management
+    |
+    +-- Embeddings (embeddings.py)
+    |   |
+    |   +-- get_embedding(text) → vector
+    |
+    +-- Loaders
+        |
+        +-- pdf_loader.py → PDF → chunks
+        +-- text_loader.py → Text → chunks
+
+Memory Management:
+    |
+    +-- Memory Store (memory_store.py)
+    |   |
+    |   +-- add_message(role, content, session_id)
+    |   +-- get_history(session_id)
+    |
+    +-- Persistent Storage
+        |
+        +-- chat_history.json
+
+Tool System:
+    |
+    +-- Calculator Tool (calculator.py)
+    |   |
+    |   +-- calculate(expression) → result
+    |
+    +-- DateTime Tool (datetime_tool.py)
+        |
+        +-- current_time() → timestamp
+```
+
+**Layer 5: Response Pipeline**
+
+```
+Node Output → Post-Processing:
+    |
+    +-- Format normalization
+    +-- Source attribution
+    +-- Metadata enrichment
+    |
+    ▼
+Memory Persistence:
+    |
+    +-- Store user query
+    +-- Store assistant response
+    +-- Update session context
+    |
+    ▼
+Return to Client:
+    |
+    +-- Streamlit UI display
+    +-- FastAPI JSON response
 ```
 
 ---
@@ -443,22 +548,22 @@ PolyMind automatically routes requests to the most suitable model.
 User Query
     │
     ▼
-Router Node
+Router Node (keyword detection: "langgraph")
     │
     ▼
-Model Router
+Model Router (select optimal model)
     │
     ▼
-RAG Path
+RAG Path (document detection keyword)
     │
     ▼
-Retriever
+Hybrid Retriever (ChromaDB + BM25)
     │
     ▼
-ChromaDB
+Context Augmentation (top 3 results)
     │
     ▼
-Mistral
+LLM Inference (Mistral)
     │
     ▼
 Response + Sources
@@ -474,7 +579,8 @@ Response + Sources
   "sources": [
     {
       "source": "LangGraph_Documentation.pdf",
-      "chunk_id": 0
+      "chunk_id": 0,
+      "rrf_score": 0.95
     }
   ]
 }
@@ -538,11 +644,11 @@ Response + Sources
 
 ✅ Source-Aware Retrieval
 
-✅ LangGraph Orchestration
+✅ LangGraph Orchestration (5-node graph)
 
 ✅ Persistent Conversation Memory
 
-✅ Tool Calling
+✅ Tool Calling (Calculator, DateTime)
 
 ✅ FastAPI Backend
 
@@ -554,7 +660,9 @@ Response + Sources
 
 ✅ Dynamic Model Selection
 
-✅ Makefile-Based Development Workflow
+✅ Keyword-Based Intent Detection
+
+✅ Hybrid Search (ChromaDB + BM25)
 
 
 ---
@@ -563,7 +671,7 @@ Response + Sources
 
 ### Phase 6
 
-- Hybrid Search (BM25 + Vector Search)
+- Hybrid Search Optimization (RRF scoring)
 - Reranking Pipeline
 - Multi-Agent Collaboration
 - Streaming Responses
