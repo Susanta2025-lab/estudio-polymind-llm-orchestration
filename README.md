@@ -178,116 +178,114 @@ to improve retrieval quality and reduce missed document matches.
 
 ### High-Level Component Overview
 
+**User Interface Layer:**
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           USER INTERFACE LAYER                          │
-├────────────────────────────────┬────────────────────────────────────────┤
-│                                │                                        │
-│   Streamlit Web UI             │        FastAPI REST API               │
-│   (Port: 8501)                 │        (Port: 8000)                   │
-│  ┌──────────────────────────┐  │   ┌──────────────────────────────┐   │
-│  │ • Query Input            │  │   │ • POST /query                │   │
-│  │ • Document Upload        │  │   │ • GET /memory/{session_id}   │   │
-│  │ • Chat History Display   │  │   │ • GET /                      │   │
-│  │ • Model Selection        │  │   │ • Response Serialization     │   │
-│  │ • Settings Management    │  │   │ • OpenAPI Documentation      │   │
-│  └──────────────────────────┘  │   └──────────────────────────────┘   │
-│                                │                                        │
-└────────────────────────────────┼────────────────────────────────────────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │  REQUEST ROUTER LAYER   │
-                    │                         │
-                    │ • Session Management    │
-                    │ • Request Validation    │
-                    │ • Context Preparation   │
-                    └────────────┬────────────┘
-                                 │
-        ┌────────────────────────▼────────────────────────────┐
-        │      LANGGRAPH ORCHESTRATION ENGINE                 │
-        │                                                     │
-        │  ┌────────────────────────────────────────────┐    │
-        │  │        GRAPH STATE MANAGEMENT              │    │
-        │  │  (GraphState with Messages & Context)      │    │
-        │  └────────────┬───────────────────────────────┘    │
-        │               │                                     │
-        │       ┌───────▼────────┐                           │
-        │       │  ROUTER NODE   │                           │
-        │       │  (Intent       │                           │
-        │       │   Detection)   │                           │
-        │       └───────┬────────┘                           │
-        │               │                                     │
-        │       ┌───────▼──────────────┐                     │
-        │       │ MODEL ROUTER NODE    │                     │
-        │       │ (Route Decision)     │                     │
-        │       └───────┬──────────────┘                     │
-        │               │                                     │
-        │    ┌──────────┼──────────┐                         │
-        │    │          │          │                         │
-        │    ▼          ▼          ▼                         │
-        │  ┌────┐   ┌──────┐   ┌──────┐                      │
-        │  │RAG │   │DIRECT│   │TOOL  │                      │
-        │  │NODE│   │ LLM  │   │NODE  │                      │
-        │  │    │   │ NODE │   │      │                      │
-        │  └────┘   └──────┘   └──────┘                      │
-        └────────────────────────────────────────────────────┘
-         │                    │                      │
-         │                    │                      │
-         ▼                    ▼                      ▼
-    ┌─────────────┐    ┌────────────┐    ┌──────────────────┐
-    │ RAG PIPELINE│    │ OLLAMA LLM │    │ TOOL EXECUTION   │
-    │             │    │ INFERENCE  │    │                  │
-    │ ┌─────────┐ │    │            │    │ • Calculator     │
-    │ │Retriever│ │    │ • Mistral  │    │ • Date/Time      │
-    │ │(Query   │ │    │ • Qwen     │    │ • Extensible     │
-    │ │Parser)  │ │    │ • Gemma    │    │                  │
-    │ └────┬────┘ │    │ • Phi      │    └──────────────────┘
-    │      │      │    │            │           │
-    │ ┌────▼────┐ │    └────────────┘           │
-    │ │Embedding│ │           │                 │
-    │ │Generation│    │                 │
-    │ └────┬────┘ │    │                 │
-    │      │      │    │                 │
-    │ ┌────▼─────────────────────────────┐
-    │ │ ChromaDB + BM25 Retrieval        │
-    │ │  • Vector Search                 │
-    │ │  • Keyword Search (BM25)         │
-    │ │  • Hybrid Combination            │
-    │ │  • Relevance Ranking             │
-    │ └────┬────────────────────────────┘
-    │      │                             │
-    │ ┌────▼──────────────────────┐      │
-    │ │ Retrieved Documents       │      │
-    │ │ with Metadata & Scores    │      │
-    │ └────┬──────────────────────┘      │
-    │      │                             │
-    └──────┴──────────────────────────────┘
-           │              │               │
-           └──────────────┼───────────────┘
-                          │
-                ┌─────────▼──────────┐
-                │ RESPONSE GENERATION│
-                │ (LLM Inference)    │
-                └────────┬───────────┘
-                         │
-            ┌────────────▼────────────┐
-            │ POST-PROCESSING LAYER   │
-            │  • Format Normalization │
-            │  • Source Attribution   │
-            │  • Metadata Enrichment  │
-            └────────┬─────────────────┘
+┌─────────────────────────────────────────┐
+│     STREAMLIT UI (Port 8501)            │
+│  • Query Input & Chat Interface         │
+│  • Document Upload & Management         │
+│  • Session Management                   │
+│  • Conversation History Display         │
+└─────────────────────────────────────────┘
+                    ↕
+┌─────────────────────────────────────────┐
+│     FASTAPI REST API (Port 8000)        │
+│  • POST /query                          │
+│  • GET /memory/{session_id}             │
+│  • GET / (Health Check)                 │
+│  • OpenAPI Documentation                │
+└─────────────────────────────────────────┘
+```
+
+**Request Processing Pipeline:**
+```
+                User Request
+                    │
+                    ▼
+        ┌─────────────────────────┐
+        │  Request Router Layer   │
+        │ • Session Management    │
+        │ • Request Validation    │
+        │ • Context Preparation   │
+        └────────────┬────────────┘
                      │
-         ┌───────────▼────────────┐
-         │  MEMORY PERSISTENCE    │
-         │  • Chat History Store  │
-         │  • Session Context     │
-         │  • JSON Storage        │
-         └───────────┬────────────┘
+                     ▼
+        ┌─────────────────────────────────┐
+        │ LangGraph Orchestration Engine  │
+        │  • Graph State Management       │
+        │  • Node Execution               │
+        │  • Conditional Routing          │
+        └────────────┬────────────────────┘
+```
+
+**LangGraph Workflow Nodes:**
+```
+Entry Point: router_node
+    │
+    ▼
+┌──────────────────────────┐
+│   ROUTER NODE            │
+│ • Intent Detection       │
+│ • Entity Extraction      │
+│ • Context Analysis       │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│   MODEL ROUTER NODE          │
+│ • Route Decision Logic       │
+│ • Conditional Edges          │
+└────┬────────────┬────────────┘
+     │            │            
+     ▼            ▼            ▼
+┌────────┐   ┌──────────┐   ┌────────┐
+│RAG NODE│   │DIRECT LLM│   │TOOL    │
+│        │   │ NODE     │   │ NODE   │
+└────┬───┘   └─────┬────┘   └───┬────┘
+     │             │            │
+     ▼             ▼            ▼
+  Response     Response      Response
+(Exit Point: rag/direct/tool)
+```
+
+**Execution Paths:**
+```
+RAG Path:
+  Query → Embed → Search (ChromaDB + BM25) → Rank → 
+  Context Augmentation → LLM Inference → Response
+
+Direct LLM Path:
+  Query → Session Context → Prompt Construction → 
+  LLM Inference → Response
+
+Tool Path:
+  Query → Tool Detection → Tool Execution → 
+  Result Formatting → Response
+```
+
+**Response Generation:**
+```
+              LLM Output
+                  │
+                  ▼
+        ┌─────────────────────┐
+        │Post-Processing      │
+        │• Format Normalize   │
+        │• Source Attribution │
+        │• Metadata Enrich    │
+        └────────────┬────────┘
                      │
-         ┌───────────▼────────────┐
-         │ RESPONSE TRANSMISSION  │
-         │ (API/UI Output)        │
-         └───────────────────────┘
+                     ▼
+        ┌─────────────────────┐
+        │Memory Persistence   │
+        │• Store History      │
+        │• Update Session     │
+        │• JSON Serialization │
+        └────────────┬────────┘
+                     │
+                     ▼
+              API Response
+             (to UI/Client)
 ```
 
 ### Execution Flow Details
