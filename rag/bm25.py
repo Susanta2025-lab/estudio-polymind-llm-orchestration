@@ -1,10 +1,58 @@
+import re
+
 from rank_bm25 import BM25Okapi
 
 from rag.vectordb import collection
 
+
 bm25_index = None
 documents = []
 metadata = []
+
+
+STOPWORDS = {
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "what",
+    "who",
+    "when",
+    "where",
+    "why",
+    "how",
+    "of",
+    "to",
+    "for",
+    "in",
+    "on",
+    "at",
+    "and",
+    "or",
+    "with",
+    "about"
+}
+
+
+def tokenize(text: str):
+
+    text = text.lower()
+
+    tokens = re.findall(
+        r"\b[a-zA-Z0-9]+\b",
+        text
+    )
+
+    tokens = [
+        token
+        for token in tokens
+        if token not in STOPWORDS
+    ]
+
+    return tokens
 
 
 def build_bm25():
@@ -19,7 +67,7 @@ def build_bm25():
     metadata = data["metadatas"]
 
     tokenized_docs = [
-        doc.lower().split()
+        tokenize(doc)
         for doc in documents
     ]
 
@@ -29,15 +77,19 @@ def build_bm25():
 
 
 def bm25_search(
-    query,
-    top_k=5
+    query: str,
+    top_k: int = 5
 ):
 
     if bm25_index is None:
         build_bm25()
 
+    query_tokens = tokenize(
+        query
+    )
+
     scores = bm25_index.get_scores(
-        query.lower().split()
+        query_tokens
     )
 
     ranked = sorted(
@@ -49,6 +101,8 @@ def bm25_search(
     results = []
 
     for idx, score in ranked[:top_k]:
+        if score <= 0:
+            continue
 
         results.append(
             {
@@ -61,5 +115,9 @@ def bm25_search(
                 )
             }
         )
+
+        if len(results) >= top_k:
+            break
+
 
     return results
