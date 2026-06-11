@@ -176,164 +176,137 @@ to improve retrieval quality and reduce missed document matches.
 
 ## 🏗 System Architecture
 
-### High-Level Component Overview
+### High-Level Overview
+
+The system is built on a **layered architecture** with the following components:
 
 **User Interface Layer:**
-```
-┌─────────────────────────────────────────┐
-│     STREAMLIT UI (Port 8501)            │
-│  • Query Input & Chat Interface         │
-│  • Document Upload & Management         │
-│  • Session Management                   │
-│  • Conversation History Display         │
-└─────────────────────────────────────────┘
-                    ↕
-┌─────────────────────────────────────────┐
-│     FASTAPI REST API (Port 8000)        │
-│  • POST /query                          │
-│  • GET /memory/{session_id}             │
-│  • GET / (Health Check)                 │
-│  • OpenAPI Documentation                │
-└─────────────────────────────────────────┘
-```
+- Streamlit UI (Port 8501) - Interactive web-based chat interface
+- FastAPI REST API (Port 8000) - RESTful endpoints for external integrations
 
-**Request Processing Pipeline:**
-```
-                User Request
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  Request Router Layer   │
-        │ • Session Management    │
-        │ • Request Validation    │
-        │ • Context Preparation   │
-        └────────────┬────────────┘
-                     │
-                     ▼
-        ┌─────────────────────────────────┐
-        │ LangGraph Orchestration Engine  │
-        │  • Graph State Management       │
-        │  • Node Execution               │
-        │  • Conditional Routing          │
-        └────────────┬────────────────────┘
-```
+**Request Processing Layer:**
+- Request Router - Session management and request validation
+- LangGraph Orchestration Engine - Graph-based workflow execution
 
-**LangGraph Workflow Nodes:**
+**Execution Layer:**
+- Router Node - Intent detection and context analysis
+- Model Router Node - Conditional routing logic
+- Three execution paths: RAG, Direct LLM, or Tools
+
+**Backend Services:**
+- LLM Integration - Ollama client and model selection
+- RAG Pipeline - Document retrieval and augmentation
+- Memory Store - Persistent conversation history
+- Tool System - Calculator, DateTime utilities
+
+---
+
+### Request Flow
+
 ```
-Entry Point: router_node
-    │
-    ▼
-┌──────────────────────────┐
-│   ROUTER NODE            │
-│ • Intent Detection       │
-│ • Entity Extraction      │
-│ • Context Analysis       │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────────┐
-│   MODEL ROUTER NODE          │
-│ • Route Decision Logic       │
-│ • Conditional Edges          │
-└────┬────────────┬────────────┘
-     │            │            
-     ▼            ▼            ▼
-┌────────┐   ┌──────────┐   ┌────────┐
-│RAG NODE│   │DIRECT LLM│   │TOOL    │
-│        │   │ NODE     │   │ NODE   │
-└────┬───┘   └─────┬────┘   └───┬────┘
-     │             │            │
-     ▼             ▼            ▼
-  Response     Response      Response
-(Exit Point: rag/direct/tool)
+1. User Input (Streamlit UI or FastAPI Endpoint)
+   |
+   v
+2. Request Validation & Session Loading
+   |
+   v
+3. LangGraph Workflow Execution
+   |
+   v
+4. Router Node: Analyze query intent
+   |
+   v
+5. Model Router Node: Decide execution path
+   |
+   +-> RAG Path: Retrieve documents + LLM inference
+   +-> Direct LLM Path: Session context + LLM inference
+   +-> Tool Path: Execute calculator or datetime tool
+   |
+   v
+6. Response Generation & Formatting
+   |
+   v
+7. Memory Persistence (store conversation)
+   |
+   v
+8. Return Response (to UI or API client)
 ```
 
-**Execution Paths:**
+---
+
+### Execution Paths
+
+**RAG Path (Knowledge-Based Queries):**
+- Parse and embed user query
+- Search ChromaDB with vector embeddings
+- Fallback to BM25 keyword search if needed
+- Rank and deduplicate results
+- Augment prompt with retrieved context
+- Run LLM inference
+- Return response with source attribution
+
+**Direct LLM Path (General Conversation):**
+- Retrieve user session context
+- Build prompt from conversation history
+- Run LLM inference directly
+- Return formatted response
+
+**Tool Path (Utility Queries):**
+- Identify required tool (calculator, datetime)
+- Extract parameters from query
+- Execute tool with parameters
+- Format and return results
+
+---
+
+### Component Interactions
+
 ```
-RAG Path:
-  Query → Embed → Search (ChromaDB + BM25) → Rank → 
-  Context Augmentation → LLM Inference → Response
-
-Direct LLM Path:
-  Query → Session Context → Prompt Construction → 
-  LLM Inference → Response
-
-Tool Path:
-  Query → Tool Detection → Tool Execution → 
-  Result Formatting → Response
+Streamlit UI ←→ FastAPI API
+     ↓              ↓
+     └──→ LangGraph Workflow ←──┘
+            ↓         ↓         ↓
+         Router  Model Router  State
+            ↓
+     ┌──────┼──────┐
+     ↓      ↓      ↓
+   RAG   Direct  Tools
+     ↓      ↓      ↓
+   Query  Prompt  Execute
+     ↓      ↓      ↓
+   ChromaDB LLM  Utilities
+     │      │      │
+     └──────┼──────┘
+            ↓
+        Memory Store
+            ↓
+        Response
 ```
 
-**Response Generation:**
-```
-              LLM Output
-                  │
-                  ▼
-        ┌─────────────────────┐
-        │Post-Processing      │
-        │• Format Normalize   │
-        │• Source Attribution │
-        │• Metadata Enrich    │
-        └────────────┬────────┘
-                     │
-                     ▼
-        ┌─────────────────────┐
-        │Memory Persistence   │
-        │• Store History      │
-        │• Update Session     │
-        │• JSON Serialization │
-        └────────────┬────────┘
-                     │
-                     ▼
-              API Response
-             (to UI/Client)
-```
+---
 
-### Execution Flow Details
+### Technology Stack
 
-#### **1. Request Entry Points**
+**Frontend:**
+- Streamlit - Interactive web UI
 
-- **FastAPI Endpoint**: `POST /query` - Receives query and session_id
-- **Streamlit UI**: Direct graph invocation through web interface
-- **Memory Retrieval**: `GET /memory/{session_id}` - Fetches conversation history
+**Backend:**
+- FastAPI - REST API framework
+- LangGraph - Workflow orchestration
+- Pydantic - Data validation
 
-#### **2. Router Node** 
-- Identifies query intent
-- Extracts entities and context
-- Determines if context is needed
-- Passes intent classification to next node
+**LLMs:**
+- Ollama - Local LLM runtime
+- Mistral, Qwen, Gemma, Phi - Language models
 
-#### **3. Model Router Node** (Conditional Logic)
-Decision tree that determines execution path:
-- **RAG Path**: For knowledge-base dependent queries
-- **Direct LLM Path**: For general conversation and reasoning
-- **Tool Path**: For calculable/utility queries
+**Vector Search:**
+- ChromaDB - Vector database
+- Sentence Transformers - Embedding models
+- BM25 - Keyword search
 
-#### **4. Parallel Processing Paths**
-
-**RAG Path:**
-1. Query parsing and preprocessing
-2. Embedding generation via Sentence Transformers
-3. ChromaDB semantic search + BM25 keyword search
-4. Hybrid ranking and deduplication
-5. Context-augmented prompt generation
-6. LLM inference with retrieved documents
-
-**Direct LLM Path:**
-1. Session context retrieval
-2. Prompt construction from conversation history
-3. Direct model inference
-4. Response formatting
-
-**Tool Path:**
-1. Tool identification and parameter extraction
-2. Tool execution (Calculator, DateTime)
-3. Result formatting and response generation
-
-#### **5. Response Consolidation**
-- Unified response format with metadata
-- Source attribution and scoring
-- Memory persistence
-- Output serialization
+**Data Processing:**
+- PyPDF - PDF parsing
+- LangChain - LLM utilities
 
 ---
 
@@ -342,236 +315,88 @@ Decision tree that determines execution path:
 ```
 estudio-polymind-llm-orchestration/
 │
-├── 📁 api/                              # FastAPI Backend Application
-│   └── app.py                           # Main FastAPI server
-│       ├── Health check endpoint (GET /)
-│       ├── Query processing (POST /query)
-│       ├── Memory retrieval (GET /memory/{session_id})
-│       ├── Request/Response models
-│       ├── Logging integration
-│       └── Performance tracking
+├── api/                                 # FastAPI REST API
+│   └── app.py                          # Main API server with endpoints
 │
-├── 📁 ui/                               # Streamlit User Interface
-│   ├── app.py                           # Streamlit application
-│   │   ├── Chat interface
-│   │   ├── Query input handling
-│   │   ├── Response rendering
-│   │   ├── Document upload/ingestion UI
-│   │   ├── Session management
-│   │   ├── Model selection dropdown
-│   │   └── Conversation history display
+├── ui/                                  # Streamlit Web Interface
+│   ├── app.py                          # Streamlit application
 │   └── assets/
-│       └── susanta.png                  # Author profile image
+│       └── susanta.png                 # Profile image
 │
-├── 📁 graph/                            # LangGraph Workflow Orchestration
-│   ├── langgraph_flow.py               # Graph definition & compilation
-│   │   ├── StateGraph initialization
-│   │   ├── Node registration
-│   │   ├── Edge definitions
-│   │   ├── Conditional routing logic
-│   │   ├── Entry/finish point setup
-│   │   └── Graph compilation
+├── graph/                               # LangGraph Orchestration
+│   ├── langgraph_flow.py              # Graph definition and compilation
 │   ├── nodes.py                        # Node implementations
-│   │   ├── router_node()
-│   │   │   └── Intent detection & context extraction
-│   │   ├── model_router_node()
-│   │   │   └── Route decision (rag/direct/tool)
-│   │   ├── direct_llm_node()
-│   │   │   └── Direct model inference
-│   │   ├── rag_node()
-│   │   │   └── Retrieval-augmented generation
-│   │   └── tool_node()
-│   │       └── Tool execution handler
-│   └── state.py                        # GraphState schema definition
-│       ├── Message history tracking
-│       ├── Route state management
-│       ├── Intermediate results storage
-│       ├── Context variables
-│       └── Source attribution
+│   └── state.py                        # Graph state schema
 │
-├── 📁 llm/                              # LLM Integration & Routing
-│   ├── models.py                       # LLM model definitions
-│   │   ├── Model configurations
-│   │   ├── Capability mappings
-│   │   ├── Parameter settings
-│   │   └── Model metadata
-│   ├── ollama_client.py                # Ollama integration client
-│   │   ├── Connection management
-│   │   ├── Model loading
-│   │   ├── Inference execution
-│   │   ├── Streaming support
-│   │   └── Error handling
-│   └── router.py                       # LLM routing logic
-│       ├── Model selection algorithm
-│       ├── Query-to-model mapping
-│       ├── Load balancing
-│       └── Fallback mechanisms
+├── llm/                                 # LLM Integration
+│   ├── models.py                       # Model configurations
+│   ├── ollama_client.py                # Ollama client wrapper
+│   └── router.py                       # Model routing logic
 │
-├── 📁 rag/                              # Retrieval-Augmented Generation Pipeline
+├── rag/                                 # RAG Pipeline
 │   ├── chunking.py                     # Document chunking strategies
-│   │   ├── Semantic chunking
-│   │   ├── Fixed-size chunking
-│   │   ├── Overlap configuration
-│   │   └── Chunk optimization
-│   ├── embeddings.py                   # Embedding generation layer
-│   │   ├── Sentence Transformers wrapper
-│   │   ├── Batch embedding processing
-│   │   ├── Embedding caching
-│   │   └── Dimension handling
-│   ├── ingest.py                       # Main ingestion orchestrator
-│   │   ├── Multi-format support
-│   │   ├── Document validation
-│   │   ├── Progress tracking
-│   │   ├── Error recovery
-│   │   └── Batch processing
-│   ├── retriever.py                    # Retrieval execution engine
-│   │   ├── Query embedding generation
-│   │   ├── ChromaDB vector search
-│   │   ├── Duplicate deduplication
-│   │   ├── Score calculation (1 - distance)
-│   │   ├── Relevance filtering
-│   │   └── Results ranking
-│   ├── test_retriever.py               # Retriever unit tests
-│   │   ├── Search accuracy validation
-│   │   ├── Score calibration tests
-│   │   └── Edge case handling
-│   ├── vectordb.py                     # ChromaDB wrapper layer
-│   │   ├── Collection management
-│   │   ├── Document storage
-│   │   ├── Query execution
-│   │   ├── Metadata handling
-│   │   └── Persistence management
-│   └── loaders/                        # Document format loaders
-│       ├── pdf_loader.py               # PDF document processing
-│       │   ├── Text extraction
-│       │   ├── Metadata parsing
-│       │   ├── Multi-page handling
-│       │   └── OCR support (optional)
-│       └── text_loader.py              # Text file processing
-│           ├── Plain text ingestion
-│           ├── Encoding detection
-│           └── Format normalization
+│   ├── embeddings.py                   # Embedding generation
+│   ├── ingest.py                       # Document ingestion orchestrator
+│   ├── retriever.py                    # Retrieval engine
+│   ├── test_retriever.py               # Retriever tests
+│   ├── vectordb.py                     # ChromaDB wrapper
+│   └── loaders/
+│       ├── pdf_loader.py               # PDF document loading
+│       └── text_loader.py              # Text document loading
 │
-├── 📁 data/                             # Sample & Training Data
-│   └── docs/                            # Reference documents for RAG
-│       ├── ai_notes.text                # AI concepts reference
-│       ├── LangGraph_Documentation.pdf  # Framework documentation
-│       ├── original_rag_paper.pdf       # Foundational RAG research
-│       ├── rag_survey.pdf               # RAG techniques survey
-│       ├── rag_using_llm.pdf            # RAG implementation guide
-│       └── information_retrieval_...    # Information retrieval fundamentals
+├── data/                                # Sample Data
+│   └── docs/                            # Reference documents
+│       ├── ai_notes.text
+│       ├── LangGraph_Documentation.pdf
+│       ├── original_rag_paper.pdf
+│       ├── rag_survey.pdf
+│       ├── rag_using_llm.pdf
+│       └── information_retrieval_*.pdf
 │
-├── 📁 memory/                           # Conversation Memory Management
-│   ├── memory_store.py                 # Memory store implementation
-│   │   ├── Session-based storage
-│   │   ├── History persistence
-│   │   ├── Context retrieval
-│   │   ├── Cleanup policies
-│   │   ├── JSON serialization
-│   │   └── Multi-session support
-│   └── chat_history.json               # Persistent storage file
-│       ├── JSON-based conversation history
-│       ├── Multi-session organization
-│       └── Metadata tracking
+├── memory/                              # Conversation Memory
+│   ├── memory_store.py                 # Memory management
+│   └── chat_history.json               # Persistent storage
 │
-├── 📁 tools/                            # Extensible Tool System
-│   ├── calculator.py                   # Mathematical calculator tool
-│   │   ├── Arithmetic operations
-│   │   ├── Expression parsing
-│   │   ├── Error handling
-│   │   └── Result formatting
+├── tools/                               # Extensible Tools
+│   ├── calculator.py                   # Math calculator tool
 │   └── datetime_tool.py                # Date/time utility tool
-│       ├── Current date/time retrieval
-│       ├── Timezone handling
-│       ├── Date arithmetic operations
-│       └── Format conversion
 │
-├── 📁 utils/                            # Utility Modules
-│   └── logger.py                       # Centralized logging configuration
-│       ├── Log level configuration
-│       ├── Output formatting
-│       ├── File logging
-│       ├── Console output
-│       ├── Request logging
-│       └── Performance metrics
+├── utils/                               # Utilities
+│   └── logger.py                       # Logging configuration
 │
-├── 📁 experiments/                      # Experimental Testing & Prototyping
-│   ├── test_bm25.py                    # BM25 keyword search testing
-│   ├── test_hybrid.py                  # Hybrid retrieval testing
-│   ├── test_langgraph_chunks.py        # LangGraph chunking experiments
-│   ├── test_pdf.py                     # PDF ingestion testing
+├── experiments/                         # Research & Testing
+│   ├── test_bm25.py                    # BM25 search experiments
+│   ├── test_hybrid.py                  # Hybrid retrieval tests
+│   ├── test_langgraph_chunks.py        # LangGraph chunking tests
+│   ├── test_pdf.py                     # PDF ingestion tests
 │   └── test_retriever.py               # Retriever evaluation
 │
-├── 📁 media/                            # Screenshots & Visualizations
-│   ├── streamlit_ui.png                # Streamlit interface screenshot
-│   ├── swagger_ui.png                  # FastAPI Swagger documentation
-│   ├── model_routing.png               # Model selection visualization
-│   └── rag_query.png                   # RAG query results example
+├── media/                               # Visualizations
+│   ├── streamlit_ui.png
+│   ├── swagger_ui.png
+│   ├── model_routing.png
+│   └── rag_query.png
 │
-├── 📁 chroma_db/                        # ChromaDB Vector Storage (auto-created)
-│   │                                    # Runtime-generated directory
-│   └── [Collection data files]         # Persisted embeddings & metadata
+├── chroma_db/                           # Vector Store (auto-created)
 │
-├── .gitignore                           # Git ignore patterns
-├── Makefile                             # Development automation commands
-│   ├── make api              → Start FastAPI server
-│   ├── make ui               → Launch Streamlit UI
-│   ├── make ingest           → Run document ingestion
-│   ├── make test             → Execute test suite
-│   └── Other development targets
-│
-├── requirements.txt                    # Python dependencies
-│   ├── Core Frameworks
-│   │   ├── fastapi==0.x.x              # Web framework
-│   │   ├── streamlit==1.x.x            # UI framework
-│   │   ├── langgraph==0.x.x            # Graph orchestration
-│   │   └── langchain==0.x.x            # LLM utilities
-│   ├── LLM Integration
-│   │   ├── ollama==0.x.x               # Ollama client
-│   │   ├── transformers==4.x.x         # HuggingFace models
-│   │   └── sentence-transformers==2.x.x # Embedding models
-│   ├── Vector Database
-│   │   └── chromadb==0.x.x             # Vector storage
-│   ├── Data Processing
-│   │   ├── pydantic==2.x.x             # Data validation
-│   │   ├── pypdf==3.x.x                # PDF parsing
-│   │   └── python-dotenv==1.x.x        # Environment variables
-│   └── Utilities
-│       ├── numpy==1.x.x                # Numerical computing
-│       ├── scipy==1.x.x                # Scientific computing
-│       └── python-dateutil==2.x.x      # Date utilities
-│
-└── README.md                            # Project documentation (this file)
+├── .gitignore
+├── Makefile                             # Development commands
+├── requirements.txt                     # Python dependencies
+└── README.md                            # Documentation
 ```
 
-### Directory Usage Guide
+### Directory Descriptions
 
-#### **api/** - FastAPI REST Server
-Entry point for external integrations. Manages HTTP request/response lifecycle, validation, and integration with the LangGraph orchestrator.
-
-#### **ui/** - Streamlit Web Application
-Interactive user interface for chat, document management, and configuration. Directly invokes the LangGraph workflow without HTTP overhead.
-
-#### **graph/** - LangGraph Orchestration Core
-The heart of the system - defines the workflow DAG with multiple execution paths. Manages state transitions and conditional routing.
-
-#### **llm/** - LLM Integration Layer
-Abstracts Ollama interaction and model selection logic. Ensures consistent inference interface across different models.
-
-#### **rag/** - Retrieval-Augmented Generation Pipeline
-Complete implementation of the RAG lifecycle from document ingestion through retrieval and ranking. Includes hybrid search combining vector similarity and keyword matching.
-
-#### **memory/** - Persistent Conversation State
-Maintains user sessions and conversation history. Enables multi-turn interactions with context continuity.
-
-#### **tools/** - Extensible Tool System
-Plugin architecture for adding new capabilities (Calculator, DateTime, etc.). Easy to extend with custom tools.
-
-#### **experiments/** - Research & Development
-Isolated testing ground for new features like BM25 search, hybrid retrieval optimization, and LangGraph workflow variations.
-
-#### **media/** - Demonstration Assets
-Visual documentation of system capabilities and user interface examples.
+- **api/** - FastAPI backend with REST endpoints for query processing and memory retrieval
+- **ui/** - Streamlit web application with chat interface and document management
+- **graph/** - LangGraph workflow definition with nodes and state management
+- **llm/** - Ollama integration and LLM model routing logic
+- **rag/** - Complete RAG pipeline with document ingestion, embedding, and retrieval
+- **data/docs/** - Reference documents for RAG demonstrations
+- **memory/** - Persistent conversation history and session management
+- **tools/** - Extensible tool system (calculator, datetime utilities)
+- **experiments/** - Experimental features and optimization tests
+- **media/** - Screenshots and system visualizations
 
 ---
 
