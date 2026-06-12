@@ -3,20 +3,7 @@
 # Multi-LLM RAG & Agent Orchestration Platform
 # ==========================================
 
-.PHONY: \
-	install \
-	api \
-	ui \
-	ingest \
-	test \
-	test-retriever \
-	test-bm25 \
-	test-hybrid \
-	validate \
-	clean \
-	rebuild \
-	dev \
-	help
+.PHONY: install api ui dev ingest rebuild clean test validate help
 
 # ------------------------------------------
 # Install dependencies
@@ -25,99 +12,95 @@ install:
 	pip install -r requirements.txt
 
 # ------------------------------------------
-# Start FastAPI Backend
+# FastAPI backend
 # ------------------------------------------
 api:
 	uvicorn api.app:app --reload --port 8001
 
 # ------------------------------------------
-# Start Streamlit UI
+# Streamlit UI
 # ------------------------------------------
 ui:
 	streamlit run ui/app.py
 
 # ------------------------------------------
-# Ingest documents into ChromaDB
-# ------------------------------------------
-ingest:
-	python rag/ingest.py
-
-# ------------------------------------------
-# Vector Retrieval Test
-# ------------------------------------------
-test-retriever:
-	python rag/test_retriever.py
-
-# ------------------------------------------
-# BM25 Retrieval Test
-# ------------------------------------------
-test-bm25:
-	python rag/test_bm25.py
-
-# ------------------------------------------
-# Hybrid Retrieval Test
-# ------------------------------------------
-test-hybrid:
-	python rag/test_hybrid.py
-
-# ------------------------------------------
-# Legacy Test Alias
-# ------------------------------------------
-test:
-	python rag/test_retriever.py
-
-# ------------------------------------------
-# Run all retrieval validations
-# ------------------------------------------
-validate:
-	python rag/test_retriever.py
-	python rag/test_bm25.py
-	python rag/test_hybrid.py
-
-# ------------------------------------------
-# Remove vector database
-# ------------------------------------------
-clean:
-	rm -rf chroma_db
-
-# ------------------------------------------
-# Rebuild vector database
-# ------------------------------------------
-rebuild:
-	rm -rf chroma_db
-	python rag/ingest.py
-
-# ------------------------------------------
-# Run API + UI together
-# Linux/macOS
+# Run full system (API + UI)
 # ------------------------------------------
 dev:
 	uvicorn api.app:app --reload --port 8001 & \
 	streamlit run ui/app.py
 
-# ------------------------------------------
-# Help Menu
-# ------------------------------------------
+# ==========================================
+# RAG PIPELINE
+# ==========================================
+
+# Ingest documents into ChromaDB
+ingest:
+	python rag/ingest.py
+
+# Rebuild vector database
+rebuild:
+	rm -rf chroma_db
+	python rag/ingest.py
+
+# Clean vector database
+clean:
+	rm -rf chroma_db
+
+# ==========================================
+# EXPERIMENTS / TESTS
+# (aligned with your actual structure)
+# ==========================================
+
+test-retriever:
+	python experiments/test_retriever.py
+
+test-bm25:
+	python experiments/test_bm25.py
+
+test-hybrid:
+	python experiments/test_hybrid.py
+
+test-router:
+	python experiments/test_router.py
+
+test-langgraph:
+	python experiments/test_langgraph_chunks.py
+
+test-pdf:
+	python experiments/test_pdf.py
+
+test:
+	python experiments/test_retriever.py
+
+# Run all validation tests
+validate:
+	python experiments/test_retriever.py && \
+	python experiments/test_bm25.py && \
+	python experiments/test_hybrid.py && \
+	python experiments/test_router.py && \
+	python experiments/test_langgraph_chunks.py && \
+	python experiments/test_pdf.py
+
+# ==========================================
+# HELP
+# ==========================================
 help:
 	@echo ""
 	@echo "Estudio PolyMind Commands"
 	@echo "========================="
 	@echo ""
-	@echo "make install         Install dependencies"
-	@echo "make api             Start FastAPI backend"
-	@echo "make ui              Start Streamlit UI"
-	@echo "make ingest          Ingest documents"
-	@echo "make rebuild         Rebuild ChromaDB"
-	@echo "make clean           Remove ChromaDB"
+	@echo "Core:"
+	@echo "  make install     Install dependencies"
+	@echo "  make api         Start FastAPI backend"
+	@echo "  make ui          Start Streamlit UI"
+	@echo "  make dev         Run full system"
 	@echo ""
-	@echo "Testing"
-	@echo "-------"
-	@echo "make test-retriever  Test vector search"
-	@echo "make test-bm25       Test BM25 search"
-	@echo "make test-hybrid     Test hybrid search"
-	@echo "make validate        Run all retrieval tests"
+	@echo "RAG:"
+	@echo "  make ingest      Build ChromaDB"
+	@echo "  make rebuild     Rebuild ChromaDB"
+	@echo "  make clean       Delete ChromaDB"
 	@echo ""
-	@echo "Development"
-	@echo "-----------"
-	@echo "make dev             Start API + Streamlit"
-	@echo ""
+	@echo "Experiments:"
+	@echo "  make test-*      Run individual tests"
+	@echo "  make validate    Run all tests"
