@@ -5,41 +5,16 @@ from rag.hybrid_retriever import hybrid_retrieve
 
 from tools.calculator import calculate
 from tools.datetime_tool import current_time
+from graph.semantic_router import semantic_route
 
 from memory.memory_store import add_message
 
 # This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
 
-    query = state["query"].lower()
-
-    if any(word in query for word in [
-        "time",
-        "calculate",
-        "+",
-        "-",
-        "*",
-        "/"
-    ]):
-        state["route"] = "tool"
-
-    elif any(word in query for word in [
-        "document",
-        "pdf",
-        "retrieve",
-        "knowledge",
-        "langgraph",
-        "rag",
-        "embedding",
-        "vector",
-        "chromadb",
-        "agent",
-        "memory"
-    ]):
-        state["route"] = "rag"
-
-    else:
-        state["route"] = "direct"
+    state["route"] = semantic_route(
+        state["query"]
+    )
 
     return state
 

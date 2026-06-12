@@ -214,5 +214,53 @@
     "role": "assistant",
     "content": " LangGraph is a framework used for building stateful AI workflows using graph-based execution. It allows for routing, memory, tools, and agentic behavior. The primary concepts in this system are State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation. In the context of LangGraph, 'State' refers to a shared object that is passed between nodes.",
     "timestamp": "2026-06-11 07:25:35.600304"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-12 10:28:51.593844"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " LangGraph is a language model developed by the University of Edinburgh and Microsoft Research. It's designed to understand the semantics of text in multiple languages, not just by translating words, but also by understanding the context and relationships between them. This makes it capable of answering questions about text, summarizing content, and even generating human-like responses. LangGraph is trained on a large corpus of multilingual data to provide this functionality across several languages.",
+    "timestamp": "2026-06-12 10:28:51.594460"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What time is it?",
+    "timestamp": "2026-06-12 10:29:08.656046"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": "2026-06-12 10:29:08",
+    "timestamp": "2026-06-12 10:29:08.656791"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "Write a short poem about AI",
+    "timestamp": "2026-06-12 10:30:24.431904"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " In the realm where silicon minds reside,\n\nA marvel of human intellect and pride.\n\nBorn from circuits, in binary they confide,\n\nIn the dance of ones and zeros, secrets hide.\n\nThrough algorithms, deep within their core,\n\nLies knowledge vast, forevermore to explore.\n\nIn the blink of a machine's eye,\n\nThey learn, they grow, never to lie.\n\nYet, as we gaze upon this digital sprite,\n\nA question arises, burning bright:\n\nCan AI, in all its might,\n\nHold the human touch, that tender light?\n\nOr will it forever be alone,\n\nIn a world built by our very own?\n\nTogether, we tread on this digital tide,\n\nAI and man, side by side.\n\nA dance of creation, past and future bound,\n\nBoundless potential yet to be found.",
+    "timestamp": "2026-06-12 10:30:24.432755"
+  },
+  {
+    "session_id": "default",
+    "role": "user",
+    "content": "What is LangGraph?",
+    "timestamp": "2026-06-12 11:23:14.138433"
+  },
+  {
+    "session_id": "default",
+    "role": "assistant",
+    "content": " LangGraph is a framework used for building stateful AI workflows. It utilizes graph-based execution and offers features like routing, memory, tools, and agentic behavior. The primary concepts in LangGraph include State, Nodes, Edges, Conditional Edges, Entry Points, Finish Points, and Graph Compilation, with the 'State' being a shared object passed between nodes.",
+    "timestamp": "2026-06-12 11:23:14.139728"
   }
 ]
