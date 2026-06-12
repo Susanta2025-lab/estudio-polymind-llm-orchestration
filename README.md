@@ -671,7 +671,6 @@ Response + Sources
 
 ### Phase 6
 
-- Hybrid Search Optimization (RRF scoring)
 - Reranking Pipeline
 - Multi-Agent Collaboration
 - Streaming Responses
@@ -723,3 +722,5 @@ LinkedIn:
 https://www.linkedin.com/in/susantahazra/
 
 ---
+
+⭐ If you found this project interesting, consider giving it a star!
