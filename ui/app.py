@@ -6,6 +6,7 @@ import streamlit as st
 # =====================================================
 
 API_URL = "http://127.0.0.1:8001/query"
+STREAM_URL = "http://127.0.0.1:8001/query/stream"
 
 st.set_page_config(
     page_title="Estudio PolyMind",
@@ -32,7 +33,7 @@ with st.sidebar:
         </h3>
 
         <p style='text-align:center; color:gray;'>
-        AI Engineer • LLM Specialist • Machine Learning Enthusiast
+        AI Engineer | ML Engineer | Generative AI Enthusiast
         </p>
         """,
         unsafe_allow_html=True
@@ -181,7 +182,34 @@ if prompt:
 
         with st.chat_message("assistant"):
 
-            st.markdown(answer)
+
+            placeholder = st.empty()
+
+            streamed_text = ""
+
+            stream_response = requests.post(
+                STREAM_URL,
+                json=payload,
+                stream=True,
+                timeout=120
+            )
+
+            for chunk in stream_response.iter_content(
+                chunk_size=None,
+                decode_unicode=True
+            ):
+
+                if chunk:
+
+                    streamed_text += chunk
+
+                    placeholder.markdown(
+                        streamed_text + "▌"
+                    )
+
+            placeholder.markdown(
+                streamed_text
+            )
 
             st.divider()
 

@@ -2,12 +2,13 @@ from llm.ollama_client import OllamaClient
 from llm.router import select_model
 
 from rag.hybrid_retriever import hybrid_retrieve
+from rag.reranker import rerank
 
 from tools.calculator import calculate
 from tools.datetime_tool import current_time
 from graph.semantic_router import semantic_route
 
-from memory.memory_store import add_message
+from memory.memory_store import add_message, get_history
 
 # This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
@@ -36,8 +37,30 @@ def direct_llm_node(state):
         model=state["model"]
     )
 
+    history = get_history(
+        state["session_id"]
+    )
+
+    conversation = ""
+
+    for msg in history[-6:]:
+
+        conversation += (
+            f"{msg['role']}: "
+            f"{msg['content']}\n"
+        )
+
+    prompt = f"""
+    Conversation History:
+
+    {conversation}
+
+    User:
+    {state["query"]}
+    """
+
     answer = llm.generate(
-        state["query"]
+        prompt
     )
 
     add_message(
@@ -69,13 +92,22 @@ def rag_node(state):
         state["query"]
     )
 
+    docs = rerank(
+        state["query"],
+        docs,
+        top_k=3
+    )
+
     print("\n===== FINAL DOCS =====")
 
     for doc in docs:
         print(
             doc["source"],
             doc["chunk_id"],
-            doc.get("rrf_score")
+            round(
+                doc["rerank_score"],
+                3
+            )
         )
 
     context = "\n\n".join(
@@ -83,15 +115,35 @@ def rag_node(state):
     for doc in docs[:3]
 )
 
+
+
+    history = get_history(
+        state["session_id"]
+    )
+
+    conversation = ""
+
+    for msg in history[-6:]:
+
+        conversation += (
+            f"{msg['role']}: "
+            f"{msg['content']}\n"
+        )
+
     prompt = f"""
-    Answer the question using the context below.
+    Conversation History:
+    {conversation}
 
     Context:
     {context}
 
     Question:
     {state['query']}
+
+    Answer using the context and
+    conversation history.
     """
+
 
     answer = llm.generate(
         prompt
