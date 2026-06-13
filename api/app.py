@@ -10,6 +10,11 @@ from memory.memory_store import (
 
 from utils.logger import log_request
 
+from fastapi.responses import StreamingResponse
+
+from graph.streaming import stream_rag_response
+
+
 
 app = FastAPI(
     title="Estudio PolyMind - API",
@@ -22,6 +27,13 @@ class QueryRequest(BaseModel):
     query: str
     session_id: str = "default"
 
+
+def stream_response(query):
+
+    for token in stream_rag_response(
+        query
+    ):
+        yield token
 
 @app.get("/")
 def health():
@@ -68,6 +80,18 @@ def query(req: QueryRequest):
             for doc in result.get("sources", [])
         ]
     }
+
+@app.post("/query/stream")
+def query_stream(
+    req: QueryRequest
+):
+
+    return StreamingResponse(
+        stream_response(
+            req.query
+        ),
+        media_type="text/plain"
+    )
 
 
 @app.get("/memory/{session_id}")

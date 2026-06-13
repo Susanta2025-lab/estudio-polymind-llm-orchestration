@@ -1,0 +1,24 @@
+[
+  {
+    "query": "What is LangGraph?",
+    "expected_route": "rag",
+    "expected_source": "LangGraph_Documentation.pdf"
+  },
+  {
+    "query": "What time is it?",
+    "expected_route": "tool"
+  },
+  {
+    "query": "Calculate 45 * 78",
+    "expected_route": "tool"
+  },
+  {
+    "query": "Explain embeddings",
+    "expected_route": "rag",
+    "expected_source": "information_retrieval_augmented_generation.pdf"
+  },
+  {
+    "query": "Tell me a joke",
+    "expected_route": "direct"
+  }
+]
