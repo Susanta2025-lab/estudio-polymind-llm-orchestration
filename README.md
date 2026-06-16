@@ -494,14 +494,17 @@ Conversation Memory
 
 ![UI](media/streamlit_ui.png)
 
+---
 ### Swagger API
 
 ![Swagger](media/swagger_ui.png)
 
+---
 ### Model Routing
 
 ![Routing](media/model_routing.png)
 
+---
 ### RAG Query
 
 ![RAG](media/rag_query.png)
