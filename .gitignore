@@ -1,5 +1,7 @@
 # Python bytecode
 __pycache__/
+*.pyc
+.pytest_cache/
 *.py[cod]
 *$py.class
 .python-version
@@ -7,6 +9,7 @@ __pycache__/
 
 # Environment variables
 .env
+.env.*
 .venv/
 venv/
 env/
@@ -14,14 +17,19 @@ env/
 # Vector database (ChromaDB)
 chroma_db/
 
-# Data files (Optional: keep if these are sample docs, remove if they contain sensitive info)
-data/docs/
-
 # IDE files
 .vscode/
 .idea/
 .DS_Store
 
 # Logs and temporary files
+logs/
 *.log
 *.tmp
+
+# Results (Optional: keep if these are sample results, remove if they contain sensitive info)
+results/*.png
+results/*.csv
+
+# Memory files (Optional: keep if these are sample memory files, remove if they contain sensitive info)
+memory/chat_history.json

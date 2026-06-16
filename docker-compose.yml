@@ -1,0 +1,54 @@
+services:
+
+  api:
+    build: .
+
+    working_dir: /app
+
+    container_name: polymind-api
+
+    environment:
+
+      PYTHONPATH: /app
+
+      API_HOST: 0.0.0.0
+
+      API_PORT: 8001
+
+      OLLAMA_URL: http://host.docker.internal:11434/api/chat
+
+    ports:
+      - "8001:8001"
+
+    volumes:
+      - ./data/docs:/app/data/docs
+      - ./chroma_db:/app/chroma_db
+      - ./memory:/app/memory
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped
+
+  ui:
+    build: .
+    working_dir: /app
+    container_name: polymind-ui
+
+    environment:
+      - PYTHONPATH=/app
+
+      # IMPORTANT: UI must talk to API container, not localhost
+      - API_URL=http://api:8001/query
+      - STREAM_URL=http://api:8001/query/stream
+
+    command: >
+      streamlit run ui/app.py --server.address 0.0.0.0 --server.port 8501
+
+    ports:
+      - "8501:8501"
+
+    depends_on:
+      - api
+
+    restart: unless-stopped

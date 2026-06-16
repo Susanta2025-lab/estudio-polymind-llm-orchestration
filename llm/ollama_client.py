@@ -1,3 +1,4 @@
+from config.settings import settings
 import requests
 
 
@@ -9,9 +10,7 @@ class OllamaClient:
     ):
 
         self.model = model
-        self.url = (
-            "http://localhost:11434/api/chat"
-        )
+        self.url = settings.OLLAMA_URL
 
     def generate(
         self,

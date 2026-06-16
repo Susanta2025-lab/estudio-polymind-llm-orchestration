@@ -14,6 +14,8 @@ from fastapi.responses import StreamingResponse
 
 from graph.streaming import stream_rag_response
 
+from config.settings import settings
+
 
 
 app = FastAPI(
@@ -40,8 +42,11 @@ def health():
 
     return {
         "status": "running",
+
         "project": "Estudio PolyMind",
+
         "version": "1.0.0",
+
         "message": "Multi-LLM RAG & Orchestration Platform 🚀"
     }
 
@@ -62,6 +67,7 @@ def query(req: QueryRequest):
         query=req.query,
         route=result.get("route"),
         model=result.get("model"),
+        session_id=req.session_id,
         start_time=start_time
     )
 
