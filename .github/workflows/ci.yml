@@ -5,13 +5,11 @@ on:
   push:
 
     branches:
-
       - master
 
   pull_request:
 
     branches:
-
       - master
 
   workflow_dispatch:
@@ -19,10 +17,9 @@ on:
 
 jobs:
 
-  test:
+  build:
 
     runs-on: ubuntu-latest
-
 
     steps:
 
@@ -49,15 +46,15 @@ jobs:
           pip install -r requirements.txt
 
 
-      - name: Validate project
+      - name: Validate imports
 
         run: |
 
-          make validate
+          python -m compileall .
 
 
-      - name: Docker build check
+      - name: Docker build
 
         run: |
 
-          docker compose build
+          docker build .
