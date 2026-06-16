@@ -9,9 +9,59 @@
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-purple.svg)]()
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
 
-A production-style AI platform that combines **Multi-LLM orchestration**, **Retrieval-Augmented Generation (RAG)**, **semantic routing**, **hybrid retrieval**, **cross-encoder reranking**, **conversation memory**, and **local LLM inference** using Ollama.
+A production-style AI Engineering platform that combines **Multi-LLM orchestration**, **Retrieval-Augmented Generation (RAG)**, **semantic routing**, **hybrid retrieval**, **cross-encoder reranking**, **conversation memory**, and **local LLM inference** using Ollama.
 
-Built to demonstrate modern AI Engineering practices including agent orchestration, retrieval pipelines, semantic search, model routing, and local-first deployment.
+Built to demonstrate modern AI Engineering practices including:
+
+- Multi-LLM orchestration
+- Retrieval pipelines
+- Semantic search
+- Agent workflows
+- Model routing
+- Local-first deployment
+
+---
+
+# 🎯 System Overview
+
+Estudio PolyMind orchestrates multiple local LLMs through LangGraph workflows.
+
+```text
+User Query
+
+↓
+
+Semantic Router
+
+↓
+
+Model Router
+
+↓
+
+RAG / Tool / Direct LLM
+
+↓
+
+Conversation Memory
+
+↓
+
+Selected LLM
+
+↓
+
+Final Response
+```
+
+Core capabilities:
+
+- Multi-LLM orchestration
+- Semantic query routing
+- Hybrid retrieval
+- Cross-encoder reranking
+- Persistent conversation memory
+- Local AI inference
 
 ---
 
@@ -26,10 +76,10 @@ Supports multiple local LLMs through Ollama:
 - Gemma 2
 - Phi-3 Mini
 
-Dynamic model selection based on query type:
+Dynamic model selection:
 
 | Task | Model |
-|--------|--------|
+|------|------|
 | General reasoning | Mistral |
 | Coding | Qwen 2.5 |
 | Summarization | Gemma 2 |
@@ -50,7 +100,7 @@ Routes queries into:
 Example:
 
 | Query | Route |
-|---------|---------|
+|------|------|
 | What is LangGraph? | RAG |
 | What time is it? | Tool |
 | Tell me a joke | Direct |
@@ -71,8 +121,6 @@ Supports:
 Documents are split into semantic chunks before indexing.
 
 ### Embeddings
-
-Uses:
 
 ```text
 sentence-transformers/all-MiniLM-L6-v2
@@ -145,7 +193,7 @@ memory/chat_history.json
 
 ## Tool Calling
 
-Integrated utility tools:
+Integrated utility tools.
 
 ### Calculator
 
@@ -170,7 +218,7 @@ REST API for:
 - Multi-LLM orchestration
 - RAG execution
 
-Swagger Documentation:
+Swagger documentation:
 
 ```text
 http://localhost:8001/docs
@@ -190,7 +238,7 @@ Interactive chat interface featuring:
 
 ---
 
-# 🏗 System Architecture
+# 🏗️ System Architecture
 
 ```text
                     User Query
@@ -246,53 +294,71 @@ Interactive chat interface featuring:
 
 ---
 
+# 📊 Multi-LLM Benchmark
+
+The platform benchmarks local LLMs to drive evidence-based routing decisions.
+
+| Model | Role | Strength | Typical Usage |
+|------|------|----------|--------------|
+| Phi3 Mini | Fast inference | Lowest latency | Quick responses |
+| Gemma 2 | Summarization | Detailed summaries | Document summarization |
+| Qwen 2.5 | Coding | Strong code generation | Programming tasks |
+| Mistral | General reasoning | Balanced performance | Default assistant |
+
+Benchmark metrics:
+
+- Response latency
+- Response length
+- Task specialization
+- Overall efficiency
+
+### Latency Comparison
+
+![Latency Benchmark](results/benchmark_latency.png)
+
+### Response Length Comparison
+
+![Response Length Benchmark](results/benchmark_words.png)
+
+These benchmarks justify the dynamic model router implemented in Estudio PolyMind.
+
+---
+
 # 📂 Project Structure
 
 ```text
 estudio-polymind-llm-orchestration
 │
 ├── api/
-│   └── app.py
-│
+├── config/
 ├── graph/
-│   ├── langgraph_flow.py
-│   ├── nodes.py
-│   ├── semantic_router.py
-│   └── state.py
-│
 ├── llm/
-│   ├── models.py
-│   ├── ollama_client.py
-│   └── router.py
-│
 ├── memory/
-│   ├── chat_history.json
-│   └── memory_store.py
-│
 ├── rag/
-│   ├── bm25.py
-│   ├── chunking.py
-│   ├── embeddings.py
-│   ├── hybrid_retriever.py
-│   ├── retriever.py
-│   ├── reranker.py
-│   ├── ingest.py
-│   └── vectordb.py
-│
 ├── tools/
-│   ├── calculator.py
-│   └── datetime_tool.py
-│
 ├── ui/
-│   └── app.py
-│
 ├── experiments/
-│
-├── data/
-│   └── docs/
-│
+├── results/
+├── data/docs/
 └── chroma_db/
 ```
+
+---
+
+# 🛠️ Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Language | Python |
+| Backend | FastAPI |
+| Frontend | Streamlit |
+| Workflow Engine | LangGraph |
+| Vector Database | ChromaDB |
+| Embeddings | Sentence Transformers |
+| Reranker | Cross Encoder |
+| Retrieval | BM25 + RRF |
+| LLM Runtime | Ollama |
+| Models | Mistral, Qwen2.5, Gemma2, Phi3 |
 
 ---
 
@@ -300,50 +366,25 @@ estudio-polymind-llm-orchestration
 
 Implemented evaluation workflows for:
 
-### Retrieval
-
 ```bash
-python experiments/test_retrieval_eval.py
-```
-
-Metrics:
-
-- Recall
-- Source retrieval accuracy
-
-### Router
-
-```bash
-python experiments/test_router.py
-```
-
-Metrics:
-
-- Intent classification accuracy
-
-### Hybrid Search
-
-```bash
-python experiments/test_hybrid.py
-```
-
-### BM25
-
-```bash
+python experiments/test_retriever.py
 python experiments/test_bm25.py
-```
-
-### Reranker
-
-```bash
-python experiments/test_reranker.py
-```
-
-### Chunking
-
-```bash
+python experiments/test_hybrid.py
+python experiments/test_router.py
 python experiments/test_langgraph_chunks.py
+python experiments/test_reranker.py
+python experiments/test_retrieval_eval.py
+python experiments/test_streaming.py
+python experiments/test_pdf.py
 ```
+
+Metrics:
+
+- Retrieval recall
+- Source accuracy
+- Router accuracy
+- Hybrid retrieval performance
+- Reranking quality
 
 ---
 
@@ -403,22 +444,28 @@ make dev
 
 # 🔬 Phase Roadmap
 
-## Phase 1
-- Multi-LLM Setup
+## Phase 1 ✅
 
-## Phase 2
-- ChromaDB Integration
+Multi-LLM Setup
 
-## Phase 3
-- RAG Pipeline
+## Phase 2 ✅
 
-## Phase 4
-- LangGraph Orchestration
+ChromaDB Integration
 
-## Phase 5
-- Conversational Memory
+## Phase 3 ✅
+
+RAG Pipeline
+
+## Phase 4 ✅
+
+LangGraph Orchestration
+
+## Phase 5 ✅
+
+Conversation Memory
 
 ## Phase 6 ✅
+
 - Semantic Router
 - Hybrid Retrieval
 - BM25 Search
@@ -427,6 +474,16 @@ make dev
 - Retrieval Evaluation
 - Streaming Generation
 - FastAPI + Streamlit Integration
+
+## Phase 7 🚧
+
+- Configuration Management
+- Environment Variables
+- Observability
+- Multi-Session Support
+- Multi-LLM Benchmarking
+- Dockerization (next)
+- GitHub Actions CI (next)
 
 ---
 
@@ -464,18 +521,51 @@ Specializing in:
 - FastAPI & MLOps
 - Production AI Systems
 
-- GitHub: https://github.com/Susanta2025-lab
-- LinkedIn: https://www.linkedin.com/in/susantahazra/
+GitHub:
+
+https://github.com/Susanta2025-lab
+
+LinkedIn:
+
+https://www.linkedin.com/in/susantahazra/
 
 ---
 
 # ⭐ Project Status
 
-**Version:** v0.6.0
+Version: v0.7.0-dev
 
-**Status:** Stable
+Status: Active Development
 
-**Focus Areas:**
+Completed:
+
+✅ Multi-LLM Orchestration
+
+✅ RAG Pipeline
+
+✅ LangGraph Workflows
+
+✅ Semantic Routing
+
+✅ Hybrid Retrieval
+
+✅ BM25 + RRF Fusion
+
+✅ Cross-Encoder Reranking
+
+✅ Session Memory
+
+✅ FastAPI + Streamlit
+
+✅ Multi-LLM Benchmarking
+
+In Progress:
+
+🚧 Dockerization
+
+🚧 GitHub Actions CI
+
+Focus Areas:
 
 - Multi-LLM Orchestration
 - Agentic AI

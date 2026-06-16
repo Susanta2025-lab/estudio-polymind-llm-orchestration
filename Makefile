@@ -8,6 +8,7 @@
 	api \
 	ui \
 	dev \
+	ci \
 	ingest \
 	rebuild \
 	clean \
@@ -35,16 +36,27 @@ install:
 
 # FastAPI backend
 api:
-	uvicorn api.app:app --reload --port 8001
+	uvicorn api.app:app \
+	--reload \
+	--host 0.0.0.0 \
+	--port 8001
 
 # Streamlit UI
 ui:
-	streamlit run ui/app.py
+	streamlit run ui/app.py \
+	--server.address 0.0.0.0 \
+	--server.port 8501
 
 # Run API + UI together
 dev:
-	uvicorn api.app:app --reload --port 8001 & \
-	streamlit run ui/app.py
+	uvicorn api.app:app \
+	--reload \
+	--host 0.0.0.0 \
+	--port 8001 & \
+	streamlit run ui/app.py \
+	--server.address 0.0.0.0 \
+	--server.port 8501
+
 
 # ==========================================
 # RAG PIPELINE
@@ -120,6 +132,32 @@ validate:
 	python experiments/test_pdf.py
 
 # ==========================================
+# DOCKER
+# ==========================================
+
+docker-build:
+	docker compose build
+
+docker-up:
+	docker compose up
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f
+
+#=========================================
+# GitHub Actions CI/CD
+#=========================================
+
+ci:
+
+	make validate && \
+
+	docker compose build
+
+# ==========================================
 # HELP
 # ==========================================
 
@@ -157,4 +195,7 @@ help:
 	@echo "Validation:"
 	@echo "  make test             Run default test"
 	@echo "  make validate         Run all tests"
+	@echo ""
+	@echo "CI:"
+	@echo "  make ci								Run local CI pipeline"
 	@echo ""

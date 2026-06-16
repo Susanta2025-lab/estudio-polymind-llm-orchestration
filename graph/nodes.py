@@ -9,6 +9,11 @@ from tools.datetime_tool import current_time
 from graph.semantic_router import semantic_route
 
 from memory.memory_store import add_message, get_history
+from config.settings import settings
+
+from prompts.direct_prompt import build_direct_prompt
+from prompts.rag_prompt import build_rag_prompt
+
 
 # This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
@@ -43,21 +48,22 @@ def direct_llm_node(state):
 
     conversation = ""
 
-    for msg in history[-6:]:
+    for msg in history[
+    -settings.MEMORY_HISTORY:
+        ]:
 
         conversation += (
             f"{msg['role']}: "
             f"{msg['content']}\n"
         )
 
-    prompt = f"""
-    Conversation History:
+    prompt = build_direct_prompt(
 
-    {conversation}
+        conversation,
 
-    User:
-    {state["query"]}
-    """
+        state["query"]
+    )
+
 
     answer = llm.generate(
         prompt
@@ -95,8 +101,9 @@ def rag_node(state):
     docs = rerank(
         state["query"],
         docs,
-        top_k=3
+        top_k=settings.RERANK_TOP_K
     )
+
 
     print("\n===== FINAL DOCS =====")
 
@@ -123,26 +130,23 @@ def rag_node(state):
 
     conversation = ""
 
-    for msg in history[-6:]:
+    for msg in history[
+    -settings.MEMORY_HISTORY:
+        ]:
 
         conversation += (
             f"{msg['role']}: "
             f"{msg['content']}\n"
         )
 
-    prompt = f"""
-    Conversation History:
-    {conversation}
+    prompt = build_rag_prompt(
 
-    Context:
-    {context}
+        conversation,
 
-    Question:
-    {state['query']}
+        context,
 
-    Answer using the context and
-    conversation history.
-    """
+        state["query"]
+    )
 
 
     answer = llm.generate(

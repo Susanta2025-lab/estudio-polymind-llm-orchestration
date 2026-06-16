@@ -1,12 +1,13 @@
 import requests
 import streamlit as st
+from config.settings import settings
 
 # =====================================================
 # CONFIGURATION
 # =====================================================
 
-API_URL = "http://127.0.0.1:8001/query"
-STREAM_URL = "http://127.0.0.1:8001/query/stream"
+API_URL = settings.API_URL
+STREAM_URL = settings.STREAM_URL
 
 st.set_page_config(
     page_title="Estudio PolyMind",
