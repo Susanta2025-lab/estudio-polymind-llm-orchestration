@@ -8,6 +8,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-orange.svg)]()
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-purple.svg)]()
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
+[![CI](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/workflows/ci.yml/badge.svg)]()
 
 A production-style AI Engineering platform that combines **Multi-LLM orchestration**, **Retrieval-Augmented Generation (RAG)**, **semantic routing**, **hybrid retrieval**, **cross-encoder reranking**, **conversation memory**, and **local LLM inference** using Ollama.
 
