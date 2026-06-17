@@ -27,9 +27,5 @@ logs/
 *.log
 *.tmp
 
-# Results (Optional: keep if these are sample results, remove if they contain sensitive info)
-results/*.png
-results/*.csv
-
 # Memory files (Optional: keep if these are sample memory files, remove if they contain sensitive info)
 memory/chat_history.json
