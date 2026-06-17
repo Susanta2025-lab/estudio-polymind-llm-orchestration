@@ -313,13 +313,17 @@ Benchmark metrics:
 - Task specialization
 - Overall efficiency
 
-### Latency Comparison
+## Latency Comparison
 
-![Latency Benchmark](results/benchmark_latency.png)
+<p align="center">
+  <img src="./results/benchmark_latency.png" width="850">
+</p>
 
-### Response Length Comparison
+## Response Length Comparison
 
-![Response Length Benchmark](results/benchmark_words.png)
+<p align="center">
+  <img src="./results/benchmark_words.png" width="850">
+</p>
 
 These benchmarks justify the dynamic model router implemented in Estudio PolyMind.
 
@@ -447,27 +451,27 @@ make dev
 
 ## Phase 1 ✅
 
-Multi-LLM Setup
+- Multi-LLM Setup
 
 ## Phase 2 ✅
 
-ChromaDB Integration
+- ChromaDB Integration
 
 ## Phase 3 ✅
 
-RAG Pipeline
+- RAG Pipeline
 
 ## Phase 4 ✅
 
-LangGraph Orchestration
+- LangGraph Orchestration
 
 ## Phase 5 ✅
 
-Conversation Memory
+- Conversational Memory
 
 ## Phase 6 ✅
 
-- Semantic Router
+- Semantic Routing
 - Hybrid Retrieval
 - BM25 Search
 - RRF Fusion
@@ -494,17 +498,14 @@ Conversation Memory
 
 ![UI](media/streamlit_ui.png)
 
----
 ### Swagger API
 
 ![Swagger](media/swagger_ui.png)
 
----
 ### Model Routing
 
 ![Routing](media/model_routing.png)
 
----
 ### RAG Query
 
 ![RAG](media/rag_query.png)
@@ -537,11 +538,11 @@ https://www.linkedin.com/in/susantahazra/
 
 # ⭐ Project Status
 
-Version: v1.0.0
+**Version:** v1.0.0
 
-Status: Complete
+**Status:** Production-Ready Portfolio Project
 
-Process Included:
+## Implemented Components
 
 ✅ Multi-LLM Orchestration
 
@@ -557,7 +558,7 @@ Process Included:
 
 ✅ Cross-Encoder Reranking
 
-✅ Session Memory
+✅ Conversational Memory
 
 ✅ FastAPI + Streamlit
 
@@ -565,10 +566,9 @@ Process Included:
 
 ✅ Dockerization
 
-✅ GitHub Actions CI ("passing").
+✅ GitHub Actions CI
 
-
-Focus Areas:
+## Focus Areas
 
 - Multi-LLM Orchestration
 - Agentic AI

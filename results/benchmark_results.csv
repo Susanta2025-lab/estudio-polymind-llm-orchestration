@@ -1,0 +1,17 @@
+model,task,query,latency_sec,word_count,char_count
+phi3:mini,general,Tell me a joke,7.344,12,78
+phi3:mini,rag,What is LangGraph?,55.877,302,2105
+phi3:mini,summarization,Summarize retrieval augmented generation,16.754,92,685
+phi3:mini,coding,Write a Python function to compute factorial,18.171,68,442
+gemma2:2b,general,Tell me a joke,8.239,22,125
+gemma2:2b,rag,What is LangGraph?,55.767,340,2573
+gemma2:2b,summarization,Summarize retrieval augmented generation,51.653,323,2322
+gemma2:2b,coding,Write a Python function to compute factorial,69.88,309,1786
+qwen2.5:3b,general,Tell me a joke,7.906,17,91
+qwen2.5:3b,rag,What is LangGraph?,8.513,66,406
+qwen2.5:3b,summarization,Summarize retrieval augmented generation,36.489,263,1911
+qwen2.5:3b,coding,Write a Python function to compute factorial,52.71,314,1975
+mistral,general,Tell me a joke,20.443,44,250
+mistral,rag,What is LangGraph?,22.538,72,499
+mistral,summarization,Summarize retrieval augmented generation,41.027,136,973
+mistral,coding,Write a Python function to compute factorial,28.48,82,509
