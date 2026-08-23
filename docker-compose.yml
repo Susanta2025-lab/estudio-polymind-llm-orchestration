@@ -15,7 +15,19 @@ services:
 
       API_PORT: 8001
 
+      INFERENCE_PROVIDER: ${INFERENCE_PROVIDER:-ollama}
+
       OLLAMA_URL: http://host.docker.internal:11434/api/chat
+
+      # Optional pass-through settings for an external OpenAI-compatible server.
+      # Leave unset while using Ollama; configure them in the host environment
+      # when INFERENCE_PROVIDER=openai_compatible.
+      OPENAI_COMPATIBLE_BASE_URL:
+      OPENAI_COMPATIBLE_API_KEY:
+      OPENAI_COMPATIBLE_CONNECT_TIMEOUT:
+      OPENAI_COMPATIBLE_READ_TIMEOUT:
+      OPENAI_COMPATIBLE_MODEL_MAP:
+      OPENAI_COMPATIBLE_GENERATION_PARAMETERS:
 
     ports:
       - "8001:8001"

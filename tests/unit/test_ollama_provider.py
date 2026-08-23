@@ -3,7 +3,12 @@ import json
 import pytest
 import requests
 
-from llm.inference import InferenceConnectionError, InferenceResponseError, ModelRole
+from llm.inference import (
+    InferenceConnectionError,
+    InferenceResponseError,
+    InferenceTimeoutError,
+    ModelRole,
+)
 from llm.ollama_client import OllamaClient
 
 
@@ -83,7 +88,14 @@ def test_malformed_stream_chunk_is_reported():
 
 
 def test_streaming_upstream_failure_is_normalized():
-    client = provider(FakeResponse(error=requests.Timeout("upstream details")))
+    client = provider(FakeResponse(error=requests.ConnectionError("upstream details")))
 
     with pytest.raises(InferenceConnectionError, match="provider request failed"):
         list(client.generate_stream("prompt", ModelRole.GENERAL))
+
+
+def test_timeout_is_distinguished_from_other_connection_failures():
+    client = provider(FakeResponse(error=requests.Timeout("upstream details")))
+
+    with pytest.raises(InferenceTimeoutError, match="request timed out"):
+        client.generate("prompt", ModelRole.GENERAL)

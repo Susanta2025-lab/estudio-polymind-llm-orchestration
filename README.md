@@ -10,7 +10,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
 [![CI](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/workflows/ci.yml/badge.svg)]()
 
-A production-style AI Engineering platform that combines **Multi-LLM orchestration**, **Retrieval-Augmented Generation (RAG)**, **semantic routing**, **hybrid retrieval**, **cross-encoder reranking**, **conversation memory**, and **local LLM inference** using Ollama.
+A production-style AI Engineering platform that combines **Multi-LLM orchestration**, **Retrieval-Augmented Generation (RAG)**, **semantic routing**, **hybrid retrieval**, **cross-encoder reranking**, **conversation memory**, and provider-neutral LLM inference using Ollama or an external OpenAI-compatible service.
 
 Built to demonstrate modern AI Engineering practices including:
 
@@ -25,8 +25,9 @@ Built to demonstrate modern AI Engineering practices including:
 
 # 🎯 System Overview
 
-Estudio PolyMind orchestrates multiple local LLMs through LangGraph workflows and
-a provider-neutral inference contract. Ollama is the currently implemented adapter.
+Estudio PolyMind orchestrates LLMs through LangGraph workflows and a
+provider-neutral inference contract. The current adapters are Ollama and an
+OpenAI-compatible HTTP adapter intended for a separately deployed vLLM server.
 
 ```text
 User Query
@@ -53,7 +54,11 @@ Inference Provider Contract
 
 ↓
 
-Ollama Adapter / Selected Served Model
+Ollama or OpenAI-Compatible Adapter
+
+↓
+
+Selected Served Model
 
 ↓
 
@@ -67,7 +72,7 @@ Core capabilities:
 - Hybrid retrieval
 - Cross-encoder reranking
 - Persistent conversation memory
-- Local AI inference
+- Local or separately hosted AI inference
 
 ---
 
@@ -75,7 +80,8 @@ Core capabilities:
 
 ## Multi-LLM Orchestration
 
-Supports multiple local LLMs through Ollama:
+Supports logical model routing independently of the selected inference provider.
+The default Ollama mapping uses:
 
 - Mistral
 - Qwen 2.5
@@ -92,8 +98,9 @@ Dynamic model selection:
 | Fast responses | Phi-3 Mini |
 
 Application routing uses logical roles (`general`, `coding`, `summarization`, and
-`fast`). The Ollama adapter maps those roles to the served model identifiers above,
-so LangGraph nodes do not depend on Ollama model tags or HTTP details.
+`fast`). Each adapter owns an independent mapping from those roles to its served
+model identifiers, so LangGraph nodes do not depend on Ollama tags, vLLM model IDs,
+or provider HTTP details. Multiple roles may intentionally map to one served model.
 
 ---
 
@@ -312,26 +319,46 @@ Interactive chat interface featuring:
  └────────┬────────┘
           │
           ▼
- ┌─────────────────┐
- │ Ollama Adapter  │
- └────────┬────────┘
-          │
-          ▼
-      Final Answer
+       ┌───────────────┴───────────────┐
+       ▼                               ▼
+┌─────────────────┐          ┌─────────────────────┐
+│ Ollama Adapter  │          │ OpenAI-Compatible   │
+│                 │          │ Adapter             │
+└────────┬────────┘          └──────────┬──────────┘
+         │                              │
+         ▼                              ▼
+ Local Ollama runtime          External vLLM service
+         │                              │
+         └───────────────┬──────────────┘
+                         ▼
+                    Final Answer
 ```
+
+The OpenAI-compatible path is a control-plane/data-plane boundary: PolyMind owns
+routing, RAG, tools, memory, and its application API, while vLLM runs separately
+and is contacted over the network. This repository does not bundle or install
+vLLM, download `gpt-oss-20b`, or configure GPU infrastructure.
 
 ## Inference Configuration
 
-Defaults preserve local Ollama operation. Pydantic settings validate the provider,
-positive timeout values, and the presence of every logical model role.
+Defaults preserve local Ollama operation. Set `INFERENCE_PROVIDER` explicitly to
+select the external adapter; invalid values fail during settings initialization and
+there is no automatic fallback. Pydantic validates positive timeout values and all
+logical roles for the selected provider.
 
 | Environment variable | Default | Purpose |
 |---|---|---|
-| `INFERENCE_PROVIDER` | `ollama` | Active inference adapter; Ollama is the only Phase 8A implementation |
+| `INFERENCE_PROVIDER` | `ollama` | `ollama` or `openai_compatible` |
 | `OLLAMA_URL` | `http://localhost:11434/api/chat` | Ollama chat endpoint |
 | `INFERENCE_CONNECT_TIMEOUT` | `5` | HTTP connection timeout in seconds |
 | `INFERENCE_READ_TIMEOUT` | `120` | HTTP read/inactivity timeout in seconds, including streaming reads |
 | `OLLAMA_MODEL_MAP` | built-in role mapping | JSON object mapping logical roles to Ollama model tags |
+| `OPENAI_COMPATIBLE_BASE_URL` | `http://localhost:8000/v1` | Base URL whose `/chat/completions` endpoint implements the OpenAI-compatible protocol |
+| `OPENAI_COMPATIBLE_API_KEY` | unset | Optional Bearer credential; no authorization header is sent when unset or blank |
+| `OPENAI_COMPATIBLE_CONNECT_TIMEOUT` | `5` | External provider connection timeout in seconds |
+| `OPENAI_COMPATIBLE_READ_TIMEOUT` | `120` | External provider read/inactivity timeout in seconds, including SSE reads |
+| `OPENAI_COMPATIBLE_MODEL_MAP` | all roles map to `gpt-oss-20b` | JSON object mapping logical roles to server-visible model IDs; this is configuration only, not a deployment claim |
+| `OPENAI_COMPATIBLE_GENERATION_PARAMETERS` | `{}` | Optional JSON object of chat generation parameters such as `temperature`; `model`, `messages`, and `stream` are reserved |
 
 Example model-map override:
 
@@ -340,7 +367,35 @@ export OLLAMA_MODEL_MAP='{"general":"mistral","coding":"qwen2.5:3b","summarizati
 ```
 
 In Docker Compose, `OLLAMA_URL` continues to point at Ollama on the host through
-`host.docker.internal`; no inference service or GPU requirement is added.
+`host.docker.internal`. To use an external vLLM deployment instead, provide the
+OpenAI-compatible variables to Compose; no inference container or GPU requirement
+is added to this stack.
+
+Example external vLLM configuration (replace the endpoint, model IDs, and optional
+credential with values from the actual deployment):
+
+```bash
+export INFERENCE_PROVIDER=openai_compatible
+export OPENAI_COMPATIBLE_BASE_URL='https://vllm.example/v1'
+export OPENAI_COMPATIBLE_API_KEY='replace-with-runtime-secret'
+export OPENAI_COMPATIBLE_CONNECT_TIMEOUT=5
+export OPENAI_COMPATIBLE_READ_TIMEOUT=120
+export OPENAI_COMPATIBLE_MODEL_MAP='{"general":"gpt-oss-20b","coding":"gpt-oss-20b","summarization":"gpt-oss-20b","fast":"gpt-oss-20b"}'
+export OPENAI_COMPATIBLE_GENERATION_PARAMETERS='{"temperature":0.2}'
+```
+
+The adapter sends non-streaming and streaming chat requests to
+`/v1/chat/completions`. Upstream streaming uses SSE (`data: {...}` followed by
+`data: [DONE]`); the adapter converts that into provider-neutral text chunks.
+This matches the [vLLM OpenAI-compatible server API](https://docs.vllm.ai/en/latest/serving/online_serving/openai_compatible_server/).
+PolyMind continues to expose its own NDJSON event contract from `/query/stream` and
+does not proxy vLLM SSE to clients. HTTP connections are pooled, connect/read
+timeouts are explicit, responses are closed, and public errors do not contain
+upstream bodies or credentials.
+
+The root endpoint reports that the API process is alive. Provider reachability and
+model usability are not yet part of that response; a narrow readiness contract is
+deliberately deferred to Phase 8C rather than expanding Phase 8B's provider API.
 
 ---
 
@@ -411,7 +466,7 @@ estudio-polymind-llm-orchestration
 | Embeddings | Sentence Transformers |
 | Reranker | Cross Encoder |
 | Retrieval | BM25 + RRF |
-| LLM Runtime | Ollama |
+| LLM Runtime | Ollama or external OpenAI-compatible service (target: vLLM) |
 | Models | Mistral, Qwen2.5, Gemma2, Phi3 |
 
 ---
@@ -557,6 +612,14 @@ make dev
 - Explicit inference timeouts and normalized provider errors
 - Single-request streaming with metadata and session preservation
 - Automated unit tests in CI
+
+## Phase 8B ✅
+
+- OpenAI-compatible chat-completions adapter for an external vLLM service
+- Configurable optional Bearer authentication, model mappings, generation parameters, and timeouts
+- OpenAI-compatible SSE parsing with explicit `[DONE]` termination
+- Shared provider contracts and mocked protocol tests that require no live inference server or GPU
+- Preserved PolyMind NDJSON streaming and Ollama behavior
 
 ---
 

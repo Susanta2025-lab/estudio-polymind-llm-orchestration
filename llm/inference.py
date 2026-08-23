@@ -17,6 +17,10 @@ class InferenceConnectionError(InferenceError):
     """The configured provider could not complete an HTTP request."""
 
 
+class InferenceTimeoutError(InferenceConnectionError):
+    """The configured provider exceeded an HTTP timeout."""
+
+
 class InferenceResponseError(InferenceError):
     """The provider returned an invalid response."""
 

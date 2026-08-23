@@ -1,4 +1,4 @@
-from typing import Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,18 +7,35 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
 
     # =========================
-    # LLM (Ollama)
+    # Inference providers
     # =========================
-    INFERENCE_PROVIDER: Literal["ollama"] = "ollama"
+    INFERENCE_PROVIDER: Literal["ollama", "openai_compatible"] = "ollama"
     OLLAMA_URL: str = "http://localhost:11434/api/chat"
     INFERENCE_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
     INFERENCE_READ_TIMEOUT: float = Field(default=120.0, gt=0)
-    OLLAMA_MODEL_MAP: Dict[str, str] = {
-        "general": "mistral",
-        "coding": "qwen2.5:3b",
-        "summarization": "gemma2:2b",
-        "fast": "phi3:mini",
-    }
+    OLLAMA_MODEL_MAP: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "general": "mistral",
+            "coding": "qwen2.5:3b",
+            "summarization": "gemma2:2b",
+            "fast": "phi3:mini",
+        }
+    )
+    OPENAI_COMPATIBLE_BASE_URL: str = "http://localhost:8000/v1"
+    OPENAI_COMPATIBLE_API_KEY: Optional[str] = None
+    OPENAI_COMPATIBLE_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
+    OPENAI_COMPATIBLE_READ_TIMEOUT: float = Field(default=120.0, gt=0)
+    OPENAI_COMPATIBLE_MODEL_MAP: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "general": "gpt-oss-20b",
+            "coding": "gpt-oss-20b",
+            "summarization": "gpt-oss-20b",
+            "fast": "gpt-oss-20b",
+        }
+    )
+    OPENAI_COMPATIBLE_GENERATION_PARAMETERS: Dict[str, Any] = Field(
+        default_factory=dict
+    )
 
     # =========================
     # FastAPI Server
@@ -55,13 +72,41 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
-    def validate_model_map(self):
+    def validate_inference_configuration(self):
         required = {"general", "coding", "summarization", "fast"}
-        missing = required.difference(self.OLLAMA_MODEL_MAP)
-        empty = {key for key, value in self.OLLAMA_MODEL_MAP.items() if not value.strip()}
+        name, model_map = (
+            ("OLLAMA_MODEL_MAP", self.OLLAMA_MODEL_MAP)
+            if self.INFERENCE_PROVIDER == "ollama"
+            else ("OPENAI_COMPATIBLE_MODEL_MAP", self.OPENAI_COMPATIBLE_MODEL_MAP)
+        )
+        missing = required.difference(model_map)
+        empty = {
+            key
+            for key, value in model_map.items()
+            if not isinstance(value, str) or not value.strip()
+        }
         if missing or empty:
             details = sorted(missing | empty)
-            raise ValueError(f"OLLAMA_MODEL_MAP has missing or empty roles: {details}")
+            raise ValueError(f"{name} has missing or empty roles: {details}")
+
+        if (
+            self.INFERENCE_PROVIDER == "openai_compatible"
+            and not self.OPENAI_COMPATIBLE_BASE_URL.strip()
+        ):
+            raise ValueError("OPENAI_COMPATIBLE_BASE_URL must not be empty")
+
+        reserved = (
+            {"model", "messages", "stream"}.intersection(
+                self.OPENAI_COMPATIBLE_GENERATION_PARAMETERS
+            )
+            if self.INFERENCE_PROVIDER == "openai_compatible"
+            else set()
+        )
+        if reserved:
+            raise ValueError(
+                "OPENAI_COMPATIBLE_GENERATION_PARAMETERS contains reserved keys: "
+                f"{sorted(reserved)}"
+            )
         return self
 
 

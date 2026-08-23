@@ -8,6 +8,7 @@ from config.settings import settings
 from llm.inference import (
     InferenceConnectionError,
     InferenceResponseError,
+    InferenceTimeoutError,
     ModelRole,
 )
 
@@ -59,6 +60,7 @@ class OllamaClient:
         role: ModelRole = ModelRole.GENERAL,
     ) -> str:
         response = None
+        model = self.model_id(role)
         try:
             response = self.http_client.post(
                 self.url,
@@ -66,15 +68,35 @@ class OllamaClient:
                 timeout=self.timeout,
             )
             response.raise_for_status()
+        except requests.Timeout as exc:
+            logger.warning(
+                "Inference timed out provider=%s role=%s model=%s stream=false",
+                self.name,
+                role.value,
+                model,
+            )
+            raise InferenceTimeoutError("Inference provider request timed out.") from exc
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
-            logger.exception("Ollama request failed (status=%s)", status)
+            logger.warning(
+                "Inference failed provider=%s role=%s model=%s stream=false status=%s",
+                self.name,
+                role.value,
+                model,
+                status,
+            )
             raise InferenceConnectionError("Inference provider request failed.") from exc
         else:
             try:
                 content = response.json()["message"]["content"]
                 if not isinstance(content, str):
                     raise TypeError("message.content is not text")
+                logger.info(
+                    "Inference succeeded provider=%s role=%s model=%s stream=false",
+                    self.name,
+                    role.value,
+                    model,
+                )
                 return content
             except (ValueError, KeyError, TypeError) as exc:
                 logger.exception("Ollama returned an invalid non-streaming response")
@@ -89,6 +111,7 @@ class OllamaClient:
         role: ModelRole = ModelRole.GENERAL,
     ) -> Iterator[str]:
         response = None
+        model = self.model_id(role)
         try:
             response = self.http_client.post(
                 self.url,
@@ -112,9 +135,29 @@ class OllamaClient:
                     ) from exc
                 if content:
                     yield content
+            logger.info(
+                "Inference succeeded provider=%s role=%s model=%s stream=true",
+                self.name,
+                role.value,
+                model,
+            )
+        except requests.Timeout as exc:
+            logger.warning(
+                "Inference timed out provider=%s role=%s model=%s stream=true",
+                self.name,
+                role.value,
+                model,
+            )
+            raise InferenceTimeoutError("Inference provider request timed out.") from exc
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
-            logger.exception("Ollama streaming request failed (status=%s)", status)
+            logger.warning(
+                "Inference failed provider=%s role=%s model=%s stream=true status=%s",
+                self.name,
+                role.value,
+                model,
+                status,
+            )
             raise InferenceConnectionError("Inference provider request failed.") from exc
         finally:
             if response is not None and hasattr(response, "close"):
