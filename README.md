@@ -25,7 +25,8 @@ Built to demonstrate modern AI Engineering practices including:
 
 # 🎯 System Overview
 
-Estudio PolyMind orchestrates multiple local LLMs through LangGraph workflows.
+Estudio PolyMind orchestrates multiple local LLMs through LangGraph workflows and
+a provider-neutral inference contract. Ollama is the currently implemented adapter.
 
 ```text
 User Query
@@ -48,7 +49,11 @@ Conversation Memory
 
 ↓
 
-Selected LLM
+Inference Provider Contract
+
+↓
+
+Ollama Adapter / Selected Served Model
 
 ↓
 
@@ -85,6 +90,10 @@ Dynamic model selection:
 | Coding | Qwen 2.5 |
 | Summarization | Gemma 2 |
 | Fast responses | Phi-3 Mini |
+
+Application routing uses logical roles (`general`, `coding`, `summarization`, and
+`fast`). The Ollama adapter maps those roles to the served model identifiers above,
+so LangGraph nodes do not depend on Ollama model tags or HTTP details.
 
 ---
 
@@ -219,6 +228,18 @@ REST API for:
 - Multi-LLM orchestration
 - RAG execution
 
+`POST /query` provides a non-streaming response. `POST /query/stream` provides one
+newline-delimited JSON (`application/x-ndjson`) event stream for each request:
+
+- `metadata`: session ID, route, logical model role, served model, and sources
+- `chunk`: generated text
+- `done`: the completed answer
+- `error`: a sanitized failure message
+
+The Streamlit UI uses only the streaming endpoint for a prompt, avoiding duplicate
+orchestration and inference runs. Both paths use the same prompt construction,
+retrieval, routing, session-history, and successful memory-persistence semantics.
+
 Swagger documentation:
 
 ```text
@@ -286,12 +307,40 @@ Interactive chat interface featuring:
           │
           ▼
  ┌─────────────────┐
- │ Selected LLM    │
+ │ Inference       │
+ │ Provider        │
+ └────────┬────────┘
+          │
+          ▼
+ ┌─────────────────┐
+ │ Ollama Adapter  │
  └────────┬────────┘
           │
           ▼
       Final Answer
 ```
+
+## Inference Configuration
+
+Defaults preserve local Ollama operation. Pydantic settings validate the provider,
+positive timeout values, and the presence of every logical model role.
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `INFERENCE_PROVIDER` | `ollama` | Active inference adapter; Ollama is the only Phase 8A implementation |
+| `OLLAMA_URL` | `http://localhost:11434/api/chat` | Ollama chat endpoint |
+| `INFERENCE_CONNECT_TIMEOUT` | `5` | HTTP connection timeout in seconds |
+| `INFERENCE_READ_TIMEOUT` | `120` | HTTP read/inactivity timeout in seconds, including streaming reads |
+| `OLLAMA_MODEL_MAP` | built-in role mapping | JSON object mapping logical roles to Ollama model tags |
+
+Example model-map override:
+
+```bash
+export OLLAMA_MODEL_MAP='{"general":"mistral","coding":"qwen2.5:3b","summarization":"gemma2:2b","fast":"phi3:mini"}'
+```
+
+In Docker Compose, `OLLAMA_URL` continues to point at Ollama on the host through
+`host.docker.internal`; no inference service or GPU requirement is added.
 
 ---
 
@@ -391,6 +440,17 @@ Metrics:
 - Hybrid retrieval performance
 - Reranking quality
 
+The automated unit suite is separate from experiments and does not require Ollama,
+model downloads, a vector database, or a GPU:
+
+```bash
+python -m pytest
+# or
+make test
+```
+
+GitHub Actions runs this suite after compile validation and before the Docker build.
+
 ---
 
 # ⚙️ Installation
@@ -489,6 +549,14 @@ make dev
 - Multi-LLM Benchmarking
 - Dockerization
 - GitHub Actions CI
+
+## Phase 8A ✅
+
+- Provider-neutral inference contract
+- Ollama inference adapter and logical model-role mapping
+- Explicit inference timeouts and normalized provider errors
+- Single-request streaming with metadata and session preservation
+- Automated unit tests in CI
 
 ---
 

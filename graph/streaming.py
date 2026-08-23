@@ -1,120 +1,80 @@
-from llm.ollama_client import OllamaClient
-from llm.router import select_model
+import logging
+from typing import Callable, Dict, Iterator, Optional
 
-from rag.hybrid_retriever import hybrid_retrieve
-from rag.reranker import rerank
+from graph.generation import (
+    direct_prompt,
+    persist_exchange,
+    public_sources,
+    rag_prompt_and_sources,
+    tool_answer,
+)
+from llm.inference import InferenceError, InferenceProvider
+from llm.provider_factory import create_inference_provider
+from llm.router import select_model_role
 
-from graph.semantic_router import semantic_route
-
-from tools.datetime_tool import current_time
-from tools.calculator import calculate
+logger = logging.getLogger(__name__)
 
 
-def stream_rag_response(query: str):
+def stream_rag_response(
+    query: str,
+    session_id: str = "default",
+    provider: Optional[InferenceProvider] = None,
+    route_query: Optional[Callable[[str], str]] = None,
+) -> Iterator[Dict]:
+    """Run one request and yield structured events from that same execution."""
+    route = "unknown"
+    try:
+        provider = provider or create_inference_provider()
+        if route_query is None:
+            from graph.semantic_router import semantic_route
 
-    route = semantic_route(query)
+            route_query = semantic_route
+        route = route_query(query)
+        role = select_model_role(query)
+        model = provider.model_id(role)
+        sources = []
+        if route == "tool":
+            answer = tool_answer(query)
+            yield {
+                "type": "metadata",
+                "session_id": session_id,
+                "route": route,
+                "model_role": role.value,
+                "model": model,
+                "sources": sources,
+            }
+            yield {"type": "chunk", "content": answer}
+        else:
+            if route == "rag":
+                prompt, _, documents = rag_prompt_and_sources(query, session_id)
+                sources = public_sources(documents)
+            else:
+                prompt = direct_prompt(query, session_id)
 
-    # -----------------
-    # TOOL ROUTE
-    # -----------------
+            yield {
+                "type": "metadata",
+                "session_id": session_id,
+                "route": route,
+                "model_role": role.value,
+                "model": model,
+                "sources": sources,
+            }
+            chunks = []
+            for chunk in provider.generate_stream(prompt, role):
+                chunks.append(chunk)
+                yield {"type": "chunk", "content": chunk}
+            answer = "".join(chunks)
 
-    if route == "tool":
-
-        query_lower = query.lower()
-
-        if "time" in query_lower:
-
-            yield current_time()
-
-            return
-
-        elif any(
-            op in query_lower
-            for op in [
-                "+",
-                "-",
-                "*",
-                "/"
-            ]
-        ):
-
-            expression = (
-                query_lower
-                .replace(
-                    "calculate",
-                    ""
-                )
-                .strip()
-            )
-
-            yield calculate(
-                expression
-            )
-
-            return
-
-        yield "Tool unavailable."
-
-        return
-
-    # -----------------
-    # DIRECT ROUTE
-    # -----------------
-
-    model = select_model(
-        query
-    )
-
-    llm = OllamaClient(
-        model=model
-    )
-
-    if route == "direct":
-
-        for token in llm.generate_stream(
-            query
-        ):
-
-            yield token
-
-        return
-
-    # -----------------
-    # RAG ROUTE
-    # -----------------
-
-    docs = hybrid_retrieve(
-        query
-    )
-
-    docs = rerank(
-        query,
-        docs
-    )
-
-    context = "\n\n".join(
-
-        doc["text"]
-
-        for doc in docs[:3]
-
-    )
-
-    prompt = f"""
-Answer the question using
-the context below.
-
-Context:
-
-{context}
-
-Question:
-
-{query}
-"""
-
-    for token in llm.generate_stream(
-        prompt
-    ):
-
-        yield token
+        persist_exchange(query, answer, session_id)
+        yield {"type": "done", "response": answer}
+    except InferenceError:
+        logger.exception(
+            "Inference failed for session=%s route=%s provider=%s",
+            session_id,
+            route,
+            getattr(provider, "name", "unknown"),
+        )
+        yield {"type": "error", "message": "Inference service is unavailable."}
+    except Exception:
+        logger.exception("Streaming request failed for session=%s route=%s", session_id, route)
+        yield {"type": "error", "message": "Request processing failed."}

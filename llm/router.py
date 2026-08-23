@@ -1,7 +1,8 @@
+from llm.inference import ModelRole
 from llm.models import AVAILABLE_MODELS
 
 # This function selects the appropriate model based on the query content.
-def select_model(query: str):
+def select_model_role(query: str) -> ModelRole:
 
     query = query.lower()
 
@@ -26,14 +27,19 @@ def select_model(query: str):
 
     if any(word in query for word in coding_keywords):
 
-        return AVAILABLE_MODELS["coding"]
+        return ModelRole.CODING
 
     if any(word in query for word in summarize_keywords):
 
-        return AVAILABLE_MODELS["summarization"]
+        return ModelRole.SUMMARIZATION
 
     if any(word in query for word in fast_keywords):
 
-        return AVAILABLE_MODELS["fast"]
+        return ModelRole.FAST
 
-    return AVAILABLE_MODELS["general"]
+    return ModelRole.GENERAL
+
+
+def select_model(query: str) -> str:
+    """Backward-compatible Ollama model lookup for experiment consumers."""
+    return AVAILABLE_MODELS[select_model_role(query).value]

@@ -1,221 +1,50 @@
-from llm.ollama_client import OllamaClient
-from llm.router import select_model
+from typing import Callable
 
-from rag.hybrid_retriever import hybrid_retrieve
-from rag.reranker import rerank
-
-from tools.calculator import calculate
-from tools.datetime_tool import current_time
+from graph.generation import direct_prompt, persist_exchange, rag_prompt_and_sources, tool_answer
 from graph.semantic_router import semantic_route
-
-from memory.memory_store import add_message, get_history
-from config.settings import settings
-
-from prompts.direct_prompt import build_direct_prompt
-from prompts.rag_prompt import build_rag_prompt
+from llm.inference import InferenceProvider, ModelRole
+from llm.router import select_model_role
 
 
-# This node routes the query to the appropriate processing path (direct LLM, RAG, or tool) based on simple keyword matching.
 def router_node(state):
-
-    state["route"] = semantic_route(
-        state["query"]
-    )
-
-    return state
-
-# This node selects the appropriate model based on the query content and adds it to the state.
-def model_router_node(state):
-
-    model = select_model(
-        state["query"]
-    )
-
-    state["model"] = model
-
-    return state
-
-# This node handles direct LLM queries without retrieval, using the selected model.
-def direct_llm_node(state):
-
-    llm = OllamaClient(
-        model=state["model"]
-    )
-
-    history = get_history(
-        state["session_id"]
-    )
-
-    conversation = ""
-
-    for msg in history[
-    -settings.MEMORY_HISTORY:
-        ]:
-
-        conversation += (
-            f"{msg['role']}: "
-            f"{msg['content']}\n"
-        )
-
-    prompt = build_direct_prompt(
-
-        conversation,
-
-        state["query"]
-    )
-
-
-    answer = llm.generate(
-        prompt
-    )
-
-    add_message(
-        "user",
-        state["query"],
-        state["session_id"]
-    )
-
-    add_message(
-        "assistant",
-        answer,
-        state["session_id"]
-    )
-
-    state["answer"] = answer
-    state["context"] = ""
-    state["sources"] = []
-
-    return state
-
-# This node handles RAG-based queries, retrieving relevant documents and using them as context for the LLM.
-def rag_node(state):
-
-    llm = OllamaClient(
-        model=state["model"]
-    )
-
-    docs = hybrid_retrieve(
-        state["query"]
-    )
-
-    docs = rerank(
-        state["query"],
-        docs,
-        top_k=settings.RERANK_TOP_K
-    )
-
-
-    print("\n===== FINAL DOCS =====")
-
-    for doc in docs:
-        print(
-            doc["source"],
-            doc["chunk_id"],
-            round(
-                doc["rerank_score"],
-                3
-            )
-        )
-
-    context = "\n\n".join(
-    doc["text"]
-    for doc in docs[:3]
-)
-
-
-
-    history = get_history(
-        state["session_id"]
-    )
-
-    conversation = ""
-
-    for msg in history[
-    -settings.MEMORY_HISTORY:
-        ]:
-
-        conversation += (
-            f"{msg['role']}: "
-            f"{msg['content']}\n"
-        )
-
-    prompt = build_rag_prompt(
-
-        conversation,
-
-        context,
-
-        state["query"]
-    )
-
-
-    answer = llm.generate(
-        prompt
-    )
-
-    add_message(
-        "user",
-        state["query"],
-        state["session_id"]
-    )
-
-    add_message(
-        "assistant",
-        answer,
-        state["session_id"]
-    )
-
-    state["context"] = context
-    state["answer"] = answer
-    state["sources"] = docs
-
+    state["route"] = semantic_route(state["query"])
     return state
 
 
-# This node handles simple tool-based queries like time and calculations.
+def create_model_router_node(provider: InferenceProvider) -> Callable:
+    def model_router_node(state):
+        role = select_model_role(state["query"])
+        state["model_role"] = role.value
+        state["model"] = provider.model_id(role)
+        return state
+
+    return model_router_node
+
+
+def create_direct_llm_node(provider: InferenceProvider) -> Callable:
+    def direct_llm_node(state):
+        role = ModelRole(state["model_role"])
+        answer = provider.generate(direct_prompt(state["query"], state["session_id"]), role)
+        persist_exchange(state["query"], answer, state["session_id"])
+        state.update(answer=answer, context="", sources=[])
+        return state
+
+    return direct_llm_node
+
+
+def create_rag_node(provider: InferenceProvider) -> Callable:
+    def rag_node(state):
+        prompt, context, documents = rag_prompt_and_sources(state["query"], state["session_id"])
+        answer = provider.generate(prompt, ModelRole(state["model_role"]))
+        persist_exchange(state["query"], answer, state["session_id"])
+        state.update(context=context, answer=answer, sources=documents)
+        return state
+
+    return rag_node
+
+
 def tool_node(state):
-
-    query = state["query"].lower()
-
-    if "time" in query:
-
-        answer = current_time()
-
-    elif any(op in query for op in [
-        "+",
-        "-",
-        "*",
-        "/"
-    ]):
-
-        expression = (
-            query
-            .replace("calculate", "")
-            .strip()
-        )
-
-        answer = calculate(
-            expression
-        )
-
-    else:
-
-        answer = "Tool unavailable."
-
-    add_message(
-        "user",
-        state["query"],
-        state["session_id"]
-    )
-
-    add_message(
-        "assistant",
-        answer,
-        state["session_id"]
-    )
-
-    state["answer"] = answer
-    state["context"] = ""
-    state["sources"] = []
-
+    answer = tool_answer(state["query"])
+    persist_exchange(state["query"], answer, state["session_id"])
+    state.update(answer=answer, context="", sources=[])
     return state

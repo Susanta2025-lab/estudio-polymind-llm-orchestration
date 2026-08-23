@@ -53,6 +53,13 @@ jobs:
           python -m compileall .
 
 
+      - name: Run automated tests
+
+        run: |
+
+          python -m pytest
+
+
       - name: Docker build
 
         run: |

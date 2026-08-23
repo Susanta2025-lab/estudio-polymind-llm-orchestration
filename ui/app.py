@@ -1,12 +1,11 @@
-import requests
 import streamlit as st
 from config.settings import settings
+from ui.api_client import APIStreamError, stream_query
 
 # =====================================================
 # CONFIGURATION
 # =====================================================
 
-API_URL = settings.API_URL
 STREAM_URL = settings.STREAM_URL
 
 st.set_page_config(
@@ -148,65 +147,33 @@ if prompt:
 
     try:
 
-        payload = {
-            "query": prompt,
-            "session_id": session_id
-        }
-
-        response = requests.post(
-            API_URL,
-            json=payload,
-            timeout=120
-        )
-
-        result = response.json()
-
-        answer = result.get(
-            "response",
-            "No response generated."
-        )
-
-        route = result.get(
-            "route",
-            "unknown"
-        )
-
-        model = result.get(
-            "model",
-            "unknown"
-        )
-
-        sources = result.get(
-            "sources",
-            []
-        )
-
         with st.chat_message("assistant"):
-
-
             placeholder = st.empty()
-
             streamed_text = ""
+            route = "unknown"
+            model = "unknown"
+            sources = []
 
-            stream_response = requests.post(
+            for event in stream_query(
                 STREAM_URL,
-                json=payload,
-                stream=True,
-                timeout=120
-            )
-
-            for chunk in stream_response.iter_content(
-                chunk_size=None,
-                decode_unicode=True
+                prompt,
+                session_id,
+                settings.REQUEST_TIMEOUT,
             ):
-
-                if chunk:
-
-                    streamed_text += chunk
-
+                event_type = event["type"]
+                if event_type == "metadata":
+                    route = event.get("route", "unknown")
+                    model = event.get("model", "unknown")
+                    sources = event.get("sources", [])
+                elif event_type == "chunk":
+                    streamed_text += event.get("content", "")
                     placeholder.markdown(
                         streamed_text + "▌"
                     )
+                elif event_type == "done":
+                    streamed_text = event.get("response", streamed_text)
+                elif event_type == "error":
+                    raise APIStreamError(event.get("message", "Request failed."))
 
             placeholder.markdown(
                 streamed_text
@@ -259,14 +226,14 @@ if prompt:
         st.session_state.messages.append(
             {
                 "role": "assistant",
-                "content": answer
+                "content": streamed_text
             }
         )
 
-    except Exception as e:
+    except APIStreamError as error:
 
         st.error(
-            f"Error connecting to API: {e}"
+            str(error)
         )
 
 # =====================================================

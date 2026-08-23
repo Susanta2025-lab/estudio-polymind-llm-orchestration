@@ -116,9 +116,9 @@ test-eval:
 test-retrieval-eval:
 	python experiments/test_retrieval_eval.py
 
-# Default test
+# Automated test suite (does not require Ollama)
 test:
-	python experiments/test_retriever.py
+	python -m pytest
 
 # Run all validation tests
 validate:

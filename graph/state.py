@@ -1,11 +1,13 @@
-from typing import TypedDict
+from typing import List, TypedDict
 
 
-class GraphState(TypedDict):
+class GraphState(TypedDict, total=False):
 
     query: str
 
     route: str
+
+    model_role: str
 
     model: str
 
@@ -13,6 +15,6 @@ class GraphState(TypedDict):
 
     answer: str
 
-    sources: list
+    sources: List[dict]
 
     session_id: str
