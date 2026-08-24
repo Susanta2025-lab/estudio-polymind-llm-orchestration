@@ -23,10 +23,17 @@ generation.public_sources = lambda sources: sources
 flow = ModuleType("graph.langgraph_flow")
 flow.app_graph = type("Graph", (), {"invoke": lambda self, state: {}})()
 flow.inference_provider = Provider()
+flow.memory_store = type("Memory", (), {
+    "provider": "file",
+    "check_readiness": lambda self: type("Result", (), {"ready": True, "status": "ready", "provider": "file"})(),
+    "get_history": lambda self, session: [],
+})()
 streaming = ModuleType("graph.streaming")
 streaming.stream_rag_response = lambda *args: iter(())
 memory = ModuleType("memory.memory_store")
-memory.get_history = lambda session: []
+memory.MemoryError = type("MemoryError", (RuntimeError,), {"category": "memory_failure"})
+memory_provider = ModuleType("memory.provider_factory")
+memory_provider.close_memory_store = lambda: None
 logging_utils = ModuleType("utils.logger")
 logging_utils.log_request = lambda **kwargs: None
 _stubs = {
@@ -34,6 +41,7 @@ _stubs = {
     "graph.langgraph_flow": flow,
     "graph.streaming": streaming,
     "memory.memory_store": memory,
+    "memory.provider_factory": memory_provider,
     "utils.logger": logging_utils,
 }
 _previous = {name: sys.modules.get(name) for name in _stubs}
@@ -54,6 +62,17 @@ def result(status):
 
 def test_health_is_independent_of_provider(monkeypatch):
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: (_ for _ in ()).throw(AssertionError()))
+    assert api_module.liveness() == {"status": "alive"}
+
+
+def test_memory_unavailable_makes_readiness_fail_but_not_liveness(monkeypatch):
+    monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
+    unavailable = type("MemoryResult", (), {"ready": False, "status": "memory_unreachable", "provider": "redis"})()
+    monkeypatch.setattr(api_module.memory_store, "check_readiness", lambda: unavailable)
+    response = api_module.readiness()
+    assert response.status_code == 503
+    assert b'"inference":{"status":"ready"' in response.body
+    assert b'"memory":{"status":"memory_unreachable","provider":"redis"}' in response.body
     assert api_module.liveness() == {"status": "alive"}
 
 
@@ -85,7 +104,7 @@ def test_ready_returns_sanitized_200_or_503(monkeypatch):
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.AUTHENTICATION_FAILURE))
     unavailable = api_module.readiness()
     assert ready.status_code == 200
-    assert ready.body == b'{"status":"ready","provider":"fake","models":{"general":"served"}}'
+    assert ready.body == b'{"status":"ready","provider":"fake","inference":{"status":"ready","provider":"fake"},"memory":{"status":"ready","provider":"file"},"models":{"general":"served"}}'
     assert unavailable.status_code == 503
     assert b'"status":"authentication_failure"' in unavailable.body
 

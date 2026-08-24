@@ -1,6 +1,6 @@
-from memory.memory_store import get_history
+from memory.provider_factory import get_memory_store
 
-history = get_history(
+history = get_memory_store().get_history(
     "default"
 )
 

@@ -194,17 +194,37 @@ Benefits:
 
 ## Conversational Memory
 
-Persistent session-based memory:
+Graph and API code use a narrow provider-neutral contract for ordered history
+reads, atomic exchange appends, session clearing, and readiness checks.
 
-- User history tracking
-- Context-aware conversations
-- Session persistence
+- `file` (default) preserves `memory/chat_history.json` for local development.
+  It uses process/file locks and atomic replacement, but remains a single-host
+  backend and is not shared replica storage.
+- `redis` stores each session in a shared Redis list. Each user/assistant exchange
+  is appended, trimmed, and optionally given a TTL in one transaction, preventing
+  concurrent replicas from overwriting one another's history.
 
-Storage:
+Redis keys contain a fixed namespace plus a SHA-256 digest of the bounded session
+ID. `MEMORY_HISTORY` limits retained messages; `MEMORY_TTL=0` disables expiry and
+a positive value is an idle-session TTL refreshed by successful exchanges. Failed
+inference, incomplete streams, and failed transactions do not persist partial
+exchanges.
 
-```text
-memory/chat_history.json
-```
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `MEMORY_PROVIDER` | `file` | `file` or `redis`; no runtime fallback |
+| `MEMORY_FILE` | `memory/chat_history.json` | Local file-provider path |
+| `MEMORY_HISTORY` | `6` | Positive retained-message limit per session |
+| `REDIS_URL` | `redis://localhost:6379/0` | Shared Redis endpoint |
+| `MEMORY_CONNECT_TIMEOUT` | `2` | Connection timeout in seconds |
+| `MEMORY_OPERATION_TIMEOUT` | `2` | Socket/operation timeout in seconds |
+| `MEMORY_TTL` | `0` | Idle-session expiry seconds; zero disables it |
+
+For local Redis development, run `MEMORY_PROVIDER=redis docker compose --profile
+redis up`. The optional Compose service is not a production deployment model.
+Production replicas must use the same external Redis service with suitable
+authentication, encryption, network policy, persistence, and availability
+controls. Connection URLs and credentials are never returned or logged.
 
 ---
 
@@ -400,9 +420,11 @@ upstream bodies or credentials.
 
 `GET /health` reports only that the PolyMind API process is alive. The existing
 `GET /` response is preserved for compatibility. `GET /ready` performs lightweight
-model discovery against the selected provider: OpenAI-compatible providers use
+inference and memory checks. OpenAI-compatible providers use
 `GET /v1/models`, while Ollama uses `GET /api/tags`. It returns HTTP 200 with
-`status: ready` only when every configured logical-role model is advertised;
+`status: ready` only when every configured logical-role model is advertised and
+memory is available. Redis uses `PING`; the file backend checks local path access.
+The response includes sanitized `inference` and `memory` component states;
 unreachable, timeout, authentication, overload, missing-model, malformed-protocol,
 and other upstream states return a sanitized HTTP 503 response.
 
@@ -413,6 +435,9 @@ additional attempts with bounded linear backoff. Generation and streaming are no
 automatically retried because the provider may already have accepted the request;
 restarting could duplicate work or user-visible tokens. A stream failure emits the
 existing sanitized NDJSON `error` event and incomplete output is not persisted.
+Memory connectivity, timeout, malformed-data, read, and write failures are also
+normalized. If Redis is selected, failure stays visible and never triggers a
+file fallback, avoiding split-brain state between replicas.
 
 Every API response includes `X-Request-ID`. A caller-provided ID is accepted only
 when it is 1–64 characters from a bounded safe character set; otherwise PolyMind
@@ -425,7 +450,8 @@ category without prompts, credentials, authorization headers, or upstream bodies
 format. Scraping it performs no provider, readiness, retrieval, or inference call.
 The instrumentation covers inference outcomes and latency, normalized errors,
 stream lifetime, time to first token (TTFT), exact provider-reported token usage,
-bounded semantic-route behavior, and readiness outcomes/latency.
+bounded semantic-route behavior, readiness outcomes/latency, and bounded memory
+operation/readiness outcomes, latency, and normalized errors.
 
 TTFT is the time until the first non-empty generated content chunk; SSE comments,
 role deltas, empty deltas, and usage-only chunks do not count. OpenAI-compatible
@@ -442,10 +468,27 @@ excluded. Request IDs remain in operational logs for individual diagnosis while
 metrics describe aggregate behavior.
 
 This is instrumentation only; Prometheus, Grafana, dashboards, alerts, and tracing
-are not deployed. Current Uvicorn commands use one worker. A future multi-worker
-deployment must configure multiprocess collection or per-worker scraping. In a
+are not deployed. Metrics registries remain process-local: scrape every worker or
+replica independently and aggregate in the monitoring system, or configure a
+supported Prometheus multiprocess deployment. Redis is application state and is
+not used as a metrics registry. In a
 production deployment, `/metrics` should be network-restricted or protected by
 infrastructure because the application has no endpoint authentication layer.
+
+## Multi-replica deployment constraints
+
+Conversation memory is replica-safe when all workers use `MEMORY_PROVIDER=redis`
+and the same external service. Inference adapters are stateless, configuration is
+immutable after startup, and request correlation uses request-local context.
+
+RAG is not yet horizontally replica-safe as deployed here. `rag/vectordb.py`
+creates a module-level Chroma `PersistentClient` at local `./chroma_db` (and does
+not currently consume `CHROMA_PATH`). Sharing that filesystem path between
+independent replicas is not a supported distributed vector-store architecture.
+Identical read-only local indexes may be usable only where their update and
+consistency model permits it. A shared/server-mode vector-store migration and the
+module-level client lifecycle are deferred, as are the single-node ingestion and
+reset workflows.
 
 ---
 

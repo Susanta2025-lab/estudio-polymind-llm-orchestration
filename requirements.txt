@@ -118,6 +118,7 @@ regex==2026.5.9
 requests==2.34.2
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
+redis==6.4.0
 rich==15.0.0
 rpds-py==0.30.0
 safetensors==0.7.0

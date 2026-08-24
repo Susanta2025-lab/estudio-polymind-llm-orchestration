@@ -29,6 +29,14 @@ services:
       OPENAI_COMPATIBLE_MODEL_MAP:
       OPENAI_COMPATIBLE_GENERATION_PARAMETERS:
 
+      MEMORY_PROVIDER: ${MEMORY_PROVIDER:-file}
+      MEMORY_FILE: ${MEMORY_FILE:-memory/chat_history.json}
+      MEMORY_HISTORY: ${MEMORY_HISTORY:-6}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      MEMORY_CONNECT_TIMEOUT: ${MEMORY_CONNECT_TIMEOUT:-2}
+      MEMORY_OPERATION_TIMEOUT: ${MEMORY_OPERATION_TIMEOUT:-2}
+      MEMORY_TTL: ${MEMORY_TTL:-0}
+
     ports:
       - "8001:8001"
 
@@ -40,6 +48,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["redis"]
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-memory:/data
     restart: unless-stopped
 
   ui:
@@ -64,3 +85,6 @@ services:
       - api
 
     restart: unless-stopped
+
+volumes:
+  redis-memory:

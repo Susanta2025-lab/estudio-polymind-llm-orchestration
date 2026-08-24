@@ -26,7 +26,7 @@ class FakeProvider:
 
 def test_direct_stream_preserves_session_metadata_and_persists_once(monkeypatch):
     persisted = []
-    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session: f"{session}:{query}")
+    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session, memory=None: f"{session}:{query}")
     monkeypatch.setattr(streaming, "persist_exchange", lambda *args: persisted.append(args))
     provider = FakeProvider(["hello", " world"])
 
@@ -41,14 +41,15 @@ def test_direct_stream_preserves_session_metadata_and_persists_once(monkeypatch)
     assert events[0]["session_id"] == "session-42"
     assert events[0]["route"] == "direct"
     assert events[-1] == {"type": "done", "response": "hello world"}
-    assert persisted == [("question", "hello world", "session-42")]
+    assert len(persisted) == 1
+    assert persisted[0][:3] == ("question", "hello world", "session-42")
 
 
 def test_rag_stream_propagates_sources_and_uses_same_request(monkeypatch):
     monkeypatch.setattr(
         streaming,
         "rag_prompt_and_sources",
-        lambda query, session: (
+        lambda query, session, memory_store=None: (
             f"rag-history:{session}\nquery:{query}",
             "context",
             [{"source": "doc.pdf", "chunk_id": 3, "rerank_score": 0.9}],
@@ -84,7 +85,7 @@ def test_tool_route_does_not_invoke_inference(monkeypatch):
 
 
 def test_upstream_failure_is_a_sanitized_visible_event(monkeypatch):
-    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session: query)
+    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session, memory=None: query)
     provider = FakeProvider(error=InferenceConnectionError("private diagnostics"))
 
     events = list(
@@ -99,7 +100,7 @@ def test_upstream_failure_is_a_sanitized_visible_event(monkeypatch):
 
 def test_partial_stream_failure_is_not_retried_or_persisted(monkeypatch):
     persisted = []
-    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session: query)
+    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session, memory=None: query)
     monkeypatch.setattr(streaming, "persist_exchange", lambda *args: persisted.append(args))
 
     class PartialProvider(FakeProvider):

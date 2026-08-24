@@ -60,6 +60,26 @@ class Metrics:
             "readiness_check_duration_seconds", "Provider readiness check duration.",
             ("provider", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
         )
+        self.memory_operations = Counter(
+            "memory_operations_total", "Completed conversation-memory operations.",
+            ("provider", "operation", "outcome"), registry=self.registry,
+        )
+        self.memory_duration = Histogram(
+            "memory_operation_duration_seconds", "Conversation-memory operation duration.",
+            ("provider", "operation", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
+        )
+        self.memory_errors = Counter(
+            "memory_errors_total", "Normalized conversation-memory failures.",
+            ("provider", "operation", "error_category"), registry=self.registry,
+        )
+        self.memory_readiness = Counter(
+            "memory_readiness_checks_total", "Conversation-memory readiness outcomes.",
+            ("provider", "outcome"), registry=self.registry,
+        )
+        self.memory_readiness_duration = Histogram(
+            "memory_readiness_check_duration_seconds", "Conversation-memory readiness duration.",
+            ("provider", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
+        )
 
     def inference(self, provider: str, role: ModelRole, model: str, operation: str):
         return InferenceObservation(self, provider, role.value, model, operation)
@@ -74,6 +94,14 @@ class Metrics:
         labels = (safe_route, operation, outcome)
         self.application_requests.labels(*labels).inc()
         self.application_duration.labels(*labels).observe(duration)
+
+    def memory(self, provider: str, operation: str):
+        return MemoryObservation(self, provider, operation)
+
+    def observe_memory_readiness(self, result, duration: float) -> None:
+        labels = (result.provider, result.status)
+        self.memory_readiness.labels(*labels).inc()
+        self.memory_readiness_duration.labels(*labels).observe(duration)
 
     def render(self) -> bytes:
         return generate_latest(self.registry)
@@ -128,6 +156,28 @@ class InferenceObservation:
                 self.provider, self.operation, error.category
             ).inc()
         return duration
+
+
+@dataclass
+class MemoryObservation:
+    metrics: Metrics
+    provider: str
+    operation: str
+
+    def __enter__(self):
+        self.started = time.perf_counter()
+        return self
+
+    def __exit__(self, error_type, error, traceback):
+        duration = time.perf_counter() - self.started
+        outcome = "error" if error is not None else "success"
+        labels = (self.provider, self.operation, outcome)
+        self.metrics.memory_operations.labels(*labels).inc()
+        self.metrics.memory_duration.labels(*labels).observe(duration)
+        if error is not None:
+            category = getattr(error, "category", "memory_failure")
+            self.metrics.memory_errors.labels(self.provider, self.operation, category).inc()
+        return False
 
 
 metrics = Metrics()

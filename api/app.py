@@ -1,13 +1,14 @@
 import json
 import logging
 import time
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Path, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from graph.generation import public_sources
-from graph.langgraph_flow import app_graph, inference_provider
+from graph.langgraph_flow import app_graph, inference_provider, memory_store
 from graph.streaming import stream_rag_response
 from llm.inference import InferenceError
 from llm.metrics import CONTENT_TYPE_LATEST, metrics
@@ -18,21 +19,29 @@ from llm.operational import (
     reset_request_id,
     set_request_id,
 )
-from memory.memory_store import get_history
+from memory.memory_store import MemoryError
+from memory.provider_factory import close_memory_store
 from utils.logger import log_request
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    close_memory_store()
 
 app = FastAPI(
     title="Estudio PolyMind - API",
     version="1.0.0",
     description="A platform that orchestrates multiple LLMs and RAG techniques.",
+    lifespan=lifespan,
 )
 
 
 class QueryRequest(BaseModel):
     query: str
-    session_id: str = "default"
+    session_id: str = Field(default="default", min_length=1, max_length=256)
 
 
 @app.middleware("http")
@@ -61,6 +70,12 @@ async def inference_error_handler(_request: Request, exc: InferenceError):
     )
 
 
+@app.exception_handler(MemoryError)
+async def memory_error_handler(request: Request, exc: MemoryError):
+    logger.warning("Memory request failed request_id=%s category=%s", request.state.request_id, exc.category)
+    return JSONResponse(status_code=503, content={"detail": "Conversation memory is unavailable."})
+
+
 @app.get("/")
 def health():
     return {
@@ -80,20 +95,27 @@ def liveness():
 def readiness():
     started = time.perf_counter()
     result = inference_provider.check_readiness()
+    memory_result = memory_store.check_readiness()
     duration = time.perf_counter() - started
     metrics.observe_readiness(result, duration)
     logger.info(
-        "Readiness probe request_id=%s provider=%s outcome=%s",
+        "Readiness probe request_id=%s inference_provider=%s inference_outcome=%s memory_provider=%s memory_outcome=%s",
         request_id(),
         result.provider,
         result.status.value,
+        memory_result.provider,
+        memory_result.status,
     )
+    ready = result.ready and memory_result.ready
+    overall_status = "ready" if ready else (result.status.value if not result.ready else memory_result.status)
     content = {
-        "status": result.status.value,
+        "status": overall_status,
         "provider": result.provider,
+        "inference": {"status": result.status.value, "provider": result.provider},
+        "memory": {"status": memory_result.status, "provider": memory_result.provider},
         "models": dict(result.models),
     }
-    return JSONResponse(status_code=200 if result.ready else 503, content=content)
+    return JSONResponse(status_code=200 if ready else 503, content=content)
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -136,7 +158,7 @@ def query_stream(req: QueryRequest):
         metadata = {}
         outcome = "error"
         try:
-            for event in stream_rag_response(req.query, req.session_id, inference_provider):
+            for event in stream_rag_response(req.query, req.session_id, inference_provider, memory_store=memory_store):
                 if event["type"] == "metadata":
                     metadata = event
                 elif event["type"] == "done":
@@ -153,5 +175,5 @@ def query_stream(req: QueryRequest):
 
 
 @app.get("/memory/{session_id}")
-def memory(session_id: str):
-    return {"session_id": session_id, "history": get_history(session_id)}
+def memory(session_id: str = Path(min_length=1, max_length=256)):
+    return {"session_id": session_id, "history": memory_store.get_history(session_id)}

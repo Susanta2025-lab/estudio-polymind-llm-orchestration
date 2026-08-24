@@ -1,23 +1,25 @@
 from typing import Callable, Dict, List, Tuple
 
 from config.settings import settings
-from memory.memory_store import add_message, get_history
+from memory.memory_store import ConversationMemoryStore
+from memory.provider_factory import get_memory_store
 from prompts.direct_prompt import build_direct_prompt
 from prompts.rag_prompt import build_rag_prompt
 from tools.calculator import calculate
 from tools.datetime_tool import current_time
 
 
-def conversation_history(session_id: str) -> str:
-    history = get_history(session_id)
+def conversation_history(session_id: str, memory_store: ConversationMemoryStore = None) -> str:
+    store = memory_store or get_memory_store()
+    history = store.get_history(session_id)
     return "".join(
         f"{message['role']}: {message['content']}\n"
         for message in history[-settings.MEMORY_HISTORY :]
     )
 
 
-def direct_prompt(query: str, session_id: str) -> str:
-    return build_direct_prompt(conversation_history(session_id), query)
+def direct_prompt(query: str, session_id: str, memory_store: ConversationMemoryStore = None) -> str:
+    return build_direct_prompt(conversation_history(session_id, memory_store), query)
 
 
 def rag_prompt_and_sources(
@@ -25,6 +27,7 @@ def rag_prompt_and_sources(
     session_id: str,
     retrieve: Callable = None,
     rerank_documents: Callable = None,
+    memory_store: ConversationMemoryStore = None,
 ) -> Tuple[str, str, List[Dict]]:
     if retrieve is None:
         from rag.hybrid_retriever import hybrid_retrieve
@@ -37,7 +40,7 @@ def rag_prompt_and_sources(
     documents = retrieve(query)
     documents = rerank_documents(query, documents, top_k=settings.RERANK_TOP_K)
     context = "\n\n".join(document["text"] for document in documents[:3])
-    prompt = build_rag_prompt(conversation_history(session_id), context, query)
+    prompt = build_rag_prompt(conversation_history(session_id, memory_store), context, query)
     return prompt, context, documents
 
 
@@ -50,9 +53,8 @@ def tool_answer(query: str) -> str:
     return "Tool unavailable."
 
 
-def persist_exchange(query: str, answer: str, session_id: str) -> None:
-    add_message("user", query, session_id)
-    add_message("assistant", answer, session_id)
+def persist_exchange(query: str, answer: str, session_id: str, memory_store: ConversationMemoryStore = None) -> None:
+    (memory_store or get_memory_store()).append_exchange(session_id, query, answer)
 
 
 def public_sources(documents: List[Dict]) -> List[Dict]:

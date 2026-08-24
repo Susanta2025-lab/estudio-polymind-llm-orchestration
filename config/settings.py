@@ -60,7 +60,13 @@ class Settings(BaseSettings):
     # =========================
     # Memory
     # =========================
-    MEMORY_HISTORY: int = 6
+    MEMORY_PROVIDER: Literal["file", "redis"] = "file"
+    MEMORY_FILE: str = "memory/chat_history.json"
+    MEMORY_HISTORY: int = Field(default=6, gt=0)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    MEMORY_CONNECT_TIMEOUT: float = Field(default=2.0, gt=0)
+    MEMORY_OPERATION_TIMEOUT: float = Field(default=2.0, gt=0)
+    MEMORY_TTL: int = Field(default=0, ge=0)
 
     # =========================
     # API (IMPORTANT FIX)
@@ -110,6 +116,8 @@ class Settings(BaseSettings):
                 "OPENAI_COMPATIBLE_GENERATION_PARAMETERS contains reserved keys: "
                 f"{sorted(reserved)}"
             )
+        if self.MEMORY_PROVIDER == "redis" and not self.REDIS_URL.strip():
+            raise ValueError("REDIS_URL must not be empty when MEMORY_PROVIDER=redis")
         return self
 
 
