@@ -9,6 +9,8 @@ from llm.inference import (
     ReadinessStatus,
 )
 from llm.operational import application_status, normalize_request_id
+from llm.metrics import Metrics
+from prometheus_client import CollectorRegistry
 
 
 class Provider:
@@ -53,6 +55,28 @@ def result(status):
 def test_health_is_independent_of_provider(monkeypatch):
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: (_ for _ in ()).throw(AssertionError()))
     assert api_module.liveness() == {"status": "alive"}
+
+
+def test_metrics_scrape_is_prometheus_text_and_provider_independent(monkeypatch):
+    monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: (_ for _ in ()).throw(AssertionError()))
+    response = api_module.application_metrics()
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert b"inference_requests" in response.body
+
+
+def test_tool_only_query_records_route_but_not_inference(monkeypatch):
+    store = Metrics(CollectorRegistry())
+    monkeypatch.setattr(api_module, "metrics", store)
+    monkeypatch.setattr(api_module.app_graph, "invoke", lambda state: {
+        "route": "tool", "model_role": "general", "model": "configured-model",
+        "answer": "tool answer", "sources": [],
+    })
+    response = api_module.query(api_module.QueryRequest(query="what time is it"))
+    output = store.render().decode()
+    assert response["route"] == "tool"
+    assert 'application_requests_total{operation="query",outcome="success",route="tool"} 1.0' in output
+    assert 'inference_requests_total{' not in output
 
 
 def test_ready_returns_sanitized_200_or_503(monkeypatch):

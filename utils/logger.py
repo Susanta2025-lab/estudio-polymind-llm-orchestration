@@ -1,115 +1,15 @@
-from pathlib import Path
-from datetime import datetime
-import time
+import logging
+
+from llm.operational import request_id
 
 
-LOG_DIR = Path("logs")
-
-LOG_FILE = LOG_DIR / "app.log"
+logger = logging.getLogger(__name__)
 
 
-def log_request(
-    query,
-    route,
-    model,
-    session_id,
-    start_time
-):
-
-    latency = round(
-
-        time.time() - start_time,
-
-        3
-
+def log_request(route: str, operation: str, outcome: str, duration: float) -> None:
+    """Log bounded operational fields without prompts or session content."""
+    logger.info(
+        "Application request completed request_id=%s route=%s operation=%s "
+        "outcome=%s duration_seconds=%.6f",
+        request_id(), route, operation, outcome, duration,
     )
-
-    timestamp = datetime.now().strftime(
-
-        "%Y-%m-%d %H:%M:%S"
-
-    )
-
-    LOG_DIR.mkdir(
-
-        exist_ok=True
-
-    )
-
-    log_text = f"""
-{timestamp}
-
-Session: {session_id}
-
-Query: {query}
-
-Route: {route}
-
-Model: {model}
-
-Latency: {latency} sec
-
-----------------------------------------
-"""
-
-    # Console
-
-    print(
-
-        "\n===== REQUEST LOG ====="
-
-    )
-
-    print(
-
-        f"Session: {session_id}"
-
-    )
-
-    print(
-
-        f"Query: {query}"
-
-    )
-
-    print(
-
-        f"Route: {route}"
-
-    )
-
-    print(
-
-        f"Model: {model}"
-
-    )
-
-    print(
-
-        f"Latency: {latency} sec"
-
-    )
-
-    print(
-
-        "======================"
-
-    )
-
-    # File
-
-    with open(
-
-        LOG_FILE,
-
-        "a",
-
-        encoding="utf-8"
-
-    ) as file:
-
-        file.write(
-
-            log_text
-
-        )

@@ -10,10 +10,12 @@ from llm.inference import (
     InferenceConnectionError,
     InferenceResponseError,
     InferenceTimeoutError,
+    InferenceUsage,
     ModelRole,
     ReadinessResult,
     ReadinessStatus,
 )
+from llm.metrics import Metrics, metrics
 from llm.operational import error_for_status, request_id
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,7 @@ class OllamaClient:
         readiness_retries: int = 1,
         readiness_backoff: float = 0.1,
         http_client=requests,
+        metric_store: Optional[Metrics] = None,
     ):
         self.model = model
         self.url = url or settings.OLLAMA_URL
@@ -45,6 +48,7 @@ class OllamaClient:
         self.readiness_retries = readiness_retries
         self.readiness_backoff = readiness_backoff
         self.tags_url = self.url.split("/api/", 1)[0].rstrip("/") + "/api/tags"
+        self.metrics = metric_store or metrics
 
     @property
     def name(self) -> str:
@@ -110,6 +114,8 @@ class OllamaClient:
     ) -> str:
         response = None
         model = self.model_id(role)
+        observation = self.metrics.inference(self.name, role, model, "generate")
+        error = None
         try:
             response = self.http_client.post(
                 self.url,
@@ -125,7 +131,8 @@ class OllamaClient:
                 role.value,
                 model,
             )
-            raise InferenceTimeoutError("Inference provider request timed out.") from exc
+            error = InferenceTimeoutError("Inference provider request timed out.")
+            raise error from exc
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
             logger.warning(
@@ -136,23 +143,29 @@ class OllamaClient:
                 model,
                 status,
             )
-            raise error_for_status(status) from exc
+            error = error_for_status(status)
+            raise error from exc
         else:
             try:
-                content = response.json()["message"]["content"]
+                payload = response.json()
+                content = payload["message"]["content"]
                 if not isinstance(content, str):
                     raise TypeError("message.content is not text")
-                logger.info(
-                    "Inference succeeded provider=%s role=%s model=%s stream=false",
-                    self.name,
-                    role.value,
-                    model,
-                )
+                observation.observe_usage(self._usage(payload))
                 return content
             except (ValueError, KeyError, TypeError) as exc:
                 logger.exception("Ollama returned an invalid non-streaming response")
-                raise InferenceResponseError("Inference provider returned an invalid response.") from exc
+                error = InferenceResponseError("Inference provider returned an invalid response.")
+                raise error from exc
         finally:
+            duration = observation.finish(error)
+            logger.info(
+                "Inference completed request_id=%s provider=%s role=%s model=%s "
+                "operation=generate outcome=%s duration_seconds=%.6f error_category=%s",
+                request_id(), self.name, role.value, model,
+                "error" if error else "success", duration,
+                getattr(error, "category", "none"),
+            )
             if response is not None and hasattr(response, "close"):
                 response.close()
 
@@ -163,6 +176,8 @@ class OllamaClient:
     ) -> Iterator[str]:
         response = None
         model = self.model_id(role)
+        observation = self.metrics.inference(self.name, role, model, "stream")
+        error = None
         try:
             response = self.http_client.post(
                 self.url,
@@ -185,13 +200,10 @@ class OllamaClient:
                         "Inference provider returned a malformed stream."
                     ) from exc
                 if content:
+                    observation.observe_content(content)
                     yield content
-            logger.info(
-                "Inference succeeded provider=%s role=%s model=%s stream=true",
-                self.name,
-                role.value,
-                model,
-            )
+                if chunk.get("done") is True:
+                    observation.observe_usage(self._usage(chunk))
         except requests.Timeout as exc:
             logger.warning(
                 "Inference timed out request_id=%s provider=%s role=%s model=%s stream=true",
@@ -200,7 +212,8 @@ class OllamaClient:
                 role.value,
                 model,
             )
-            raise InferenceTimeoutError("Inference provider request timed out.") from exc
+            error = InferenceTimeoutError("Inference provider request timed out.")
+            raise error from exc
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
             logger.warning(
@@ -211,7 +224,29 @@ class OllamaClient:
                 model,
                 status,
             )
-            raise error_for_status(status) from exc
+            error = error_for_status(status)
+            raise error from exc
+        except BaseException as exc:
+            error = exc
+            raise
         finally:
+            duration = observation.finish(error)
+            logger.info(
+                "Inference completed request_id=%s provider=%s role=%s model=%s "
+                "operation=stream outcome=%s duration_seconds=%.6f error_category=%s",
+                request_id(), self.name, role.value, model,
+                "error" if error else "success", duration,
+                getattr(error, "category", "none"),
+            )
             if response is not None and hasattr(response, "close"):
                 response.close()
+
+    @staticmethod
+    def _usage(payload) -> Optional[InferenceUsage]:
+        values = (payload.get("prompt_eval_count"), payload.get("eval_count"))
+        if not any(type(value) is int and value >= 0 for value in values):
+            return None
+        prompt = values[0] if type(values[0]) is int and values[0] >= 0 else None
+        completion = values[1] if type(values[1]) is int and values[1] >= 0 else None
+        total = prompt + completion if prompt is not None and completion is not None else None
+        return InferenceUsage(prompt, completion, total)

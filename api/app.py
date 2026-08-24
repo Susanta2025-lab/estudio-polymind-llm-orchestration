@@ -3,13 +3,14 @@ import logging
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from graph.generation import public_sources
 from graph.langgraph_flow import app_graph, inference_provider
 from graph.streaming import stream_rag_response
 from llm.inference import InferenceError
+from llm.metrics import CONTENT_TYPE_LATEST, metrics
 from llm.operational import (
     application_status,
     normalize_request_id,
@@ -77,7 +78,10 @@ def liveness():
 
 @app.get("/ready")
 def readiness():
+    started = time.perf_counter()
     result = inference_provider.check_readiness()
+    duration = time.perf_counter() - started
+    metrics.observe_readiness(result, duration)
     logger.info(
         "Readiness probe request_id=%s provider=%s outcome=%s",
         request_id(),
@@ -92,26 +96,34 @@ def readiness():
     return JSONResponse(status_code=200 if result.ready else 503, content=content)
 
 
+@app.get("/metrics", include_in_schema=False)
+def application_metrics():
+    return Response(content=metrics.render(), headers={"Content-Type": CONTENT_TYPE_LATEST})
+
+
 @app.post("/query")
 def query(req: QueryRequest):
-    start_time = time.time()
-    result = app_graph.invoke({"query": req.query, "session_id": req.session_id})
-    log_request(
-        query=req.query,
-        route=result.get("route"),
-        model=result.get("model"),
-        session_id=req.session_id,
-        start_time=start_time,
-    )
-    return {
-        "query": req.query,
-        "session_id": req.session_id,
-        "route": result.get("route"),
-        "model_role": result.get("model_role"),
-        "model": result.get("model"),
-        "response": result.get("answer"),
-        "sources": public_sources(result.get("sources", [])),
-    }
+    started = time.perf_counter()
+    route = "unknown"
+    outcome = "error"
+    try:
+        result = app_graph.invoke({"query": req.query, "session_id": req.session_id})
+        route = result.get("route") or "unknown"
+        response = {
+            "query": req.query,
+            "session_id": req.session_id,
+            "route": result.get("route"),
+            "model_role": result.get("model_role"),
+            "model": result.get("model"),
+            "response": result.get("answer"),
+            "sources": public_sources(result.get("sources", [])),
+        }
+        outcome = "success"
+        return response
+    finally:
+        duration = time.perf_counter() - started
+        metrics.observe_application(route, "query", outcome, duration)
+        log_request(route=route, operation="query", outcome=outcome, duration=duration)
 
 
 @app.post("/query/stream")
@@ -120,22 +132,21 @@ def query_stream(req: QueryRequest):
 
     def encode_events():
         token = set_request_id(correlation_id)
-        start_time = time.time()
+        started = time.perf_counter()
         metadata = {}
+        outcome = "error"
         try:
             for event in stream_rag_response(req.query, req.session_id, inference_provider):
                 if event["type"] == "metadata":
                     metadata = event
                 elif event["type"] == "done":
-                    log_request(
-                        query=req.query,
-                        route=metadata.get("route"),
-                        model=metadata.get("model"),
-                        session_id=req.session_id,
-                        start_time=start_time,
-                    )
+                    outcome = "success"
                 yield json.dumps(event, ensure_ascii=False) + "\n"
         finally:
+            route = metadata.get("route") or "unknown"
+            duration = time.perf_counter() - started
+            metrics.observe_application(route, "stream", outcome, duration)
+            log_request(route=route, operation="stream", outcome=outcome, duration=duration)
             reset_request_id(token)
 
     return StreamingResponse(encode_events(), media_type="application/x-ndjson")

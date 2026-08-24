@@ -419,6 +419,34 @@ when it is 1–64 characters from a bounded safe character set; otherwise PolyMi
 generates one. Provider and failure logs include the identifier and operational
 category without prompts, credentials, authorization headers, or upstream bodies.
 
+## Observability and inference metrics
+
+`GET /metrics` exposes process-local metrics in the Prometheus text exposition
+format. Scraping it performs no provider, readiness, retrieval, or inference call.
+The instrumentation covers inference outcomes and latency, normalized errors,
+stream lifetime, time to first token (TTFT), exact provider-reported token usage,
+bounded semantic-route behavior, and readiness outcomes/latency.
+
+TTFT is the time until the first non-empty generated content chunk; SSE comments,
+role deltas, empty deltas, and usage-only chunks do not count. OpenAI-compatible
+token metrics use a valid `usage` object when supplied, including optional stream
+usage chunks. Ollama uses non-negative `prompt_eval_count` and `eval_count` fields.
+Missing values remain unknown: PolyMind does not tokenize prompts or fabricate
+counts. Completion-token throughput can be derived from the completion-token
+counter and measured time/rate instead of storing a redundant gauge.
+
+Labels are limited to provider, configured logical role and served model,
+operation, outcome, route, normalized error category, and token type. Request IDs,
+session IDs, queries, prompts, documents, URLs, and exception messages are
+excluded. Request IDs remain in operational logs for individual diagnosis while
+metrics describe aggregate behavior.
+
+This is instrumentation only; Prometheus, Grafana, dashboards, alerts, and tracing
+are not deployed. Current Uvicorn commands use one worker. A future multi-worker
+deployment must configure multiprocess collection or per-worker scraping. In a
+production deployment, `/metrics` should be network-restricted or protected by
+infrastructure because the application has no endpoint authentication layer.
+
 ---
 
 # 📊 Multi-LLM Benchmark

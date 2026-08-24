@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, Mapping, Protocol, runtime_checkable
+from typing import Iterator, Mapping, Optional, Protocol, Tuple, runtime_checkable
 
 
 class ModelRole(str, Enum):
@@ -8,6 +8,22 @@ class ModelRole(str, Enum):
     CODING = "coding"
     SUMMARIZATION = "summarization"
     FAST = "fast"
+
+
+@dataclass(frozen=True)
+class InferenceUsage:
+    """Exact usage supplied by a provider; absent fields remain unknown."""
+
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+
+    def values(self) -> Tuple[Tuple[str, Optional[int]], ...]:
+        return (
+            ("prompt", self.prompt_tokens),
+            ("completion", self.completion_tokens),
+            ("total", self.total_tokens),
+        )
 
 
 class InferenceError(RuntimeError):

@@ -9,10 +9,12 @@ from llm.inference import (
     InferenceConnectionError,
     InferenceResponseError,
     InferenceTimeoutError,
+    InferenceUsage,
     ModelRole,
     ReadinessResult,
     ReadinessStatus,
 )
+from llm.metrics import Metrics, metrics
 from llm.operational import error_for_status, request_id
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,7 @@ class OpenAICompatibleProvider:
         readiness_retries: int = 1,
         readiness_backoff: float = 0.1,
         http_client=None,
+        metric_store: Optional[Metrics] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.url = f"{self.base_url}/chat/completions"
@@ -56,6 +59,7 @@ class OpenAICompatibleProvider:
         self.headers = {"Accept": "application/json"}
         if api_key and api_key.strip():
             self.headers["Authorization"] = f"Bearer {api_key}"
+        self.metrics = metric_store or metrics
 
     @property
     def name(self) -> str:
@@ -141,7 +145,8 @@ class OpenAICompatibleProvider:
                 role.value,
                 self.model_id(role),
             )
-            raise InferenceTimeoutError("Inference provider request timed out.") from exc
+            error = InferenceTimeoutError("Inference provider request timed out.")
+            raise error from exc
         except requests.RequestException as exc:
             if response is not None:
                 response.close()
@@ -195,6 +200,21 @@ class OpenAICompatibleProvider:
                 "Inference provider returned a malformed stream."
             ) from exc
 
+    @staticmethod
+    def _usage(payload: Any) -> Optional[InferenceUsage]:
+        usage = payload.get("usage") if isinstance(payload, dict) else None
+        if not isinstance(usage, dict):
+            return None
+
+        def valid(name):
+            value = usage.get(name)
+            return value if type(value) is int and value >= 0 else None
+
+        values = (valid("prompt_tokens"), valid("completion_tokens"), valid("total_tokens"))
+        if all(value is None for value in values):
+            return None
+        return InferenceUsage(*values)
+
     def generate(
         self,
         prompt: str,
@@ -202,22 +222,21 @@ class OpenAICompatibleProvider:
     ) -> str:
         response = None
         model = self.model_id(role)
+        observation = self.metrics.inference(self.name, role, model, "generate")
+        error = None
         try:
             response = self._request(prompt, role, stream=False)
             try:
-                content = self._completion_content(response.json())
+                payload = response.json()
+                content = self._completion_content(payload)
+                observation.observe_usage(self._usage(payload))
             except ValueError as exc:
                 raise InferenceResponseError(
                     "Inference provider returned an invalid response."
                 ) from exc
-            logger.info(
-                "Inference succeeded provider=%s role=%s model=%s stream=false",
-                self.name,
-                role.value,
-                model,
-            )
             return content
-        except InferenceResponseError:
+        except InferenceResponseError as exc:
+            error = exc
             logger.warning(
                 "Invalid inference response provider=%s role=%s model=%s stream=false",
                 self.name,
@@ -225,7 +244,18 @@ class OpenAICompatibleProvider:
                 model,
             )
             raise
+        except BaseException as exc:
+            error = exc
+            raise
         finally:
+            duration = observation.finish(error)
+            logger.info(
+                "Inference completed request_id=%s provider=%s role=%s model=%s "
+                "operation=generate outcome=%s duration_seconds=%.6f error_category=%s",
+                request_id(), self.name, role.value, model,
+                "error" if error else "success", duration,
+                getattr(error, "category", "none"),
+            )
             if response is not None:
                 response.close()
 
@@ -237,6 +267,8 @@ class OpenAICompatibleProvider:
         response = None
         model = self.model_id(role)
         completed = False
+        observation = self.metrics.inference(self.name, role, model, "stream")
+        error = None
         try:
             response = self._request(prompt, role, stream=True)
             for line_number, line in enumerate(
@@ -264,18 +296,14 @@ class OpenAICompatibleProvider:
                         "Inference provider returned a malformed stream."
                     ) from exc
                 content = self._stream_content(payload)
+                observation.observe_usage(self._usage(payload))
                 if content:
+                    observation.observe_content(content)
                     yield content
             if not completed:
                 raise InferenceResponseError(
                     "Inference provider stream ended before completion."
                 )
-            logger.info(
-                "Inference succeeded provider=%s role=%s model=%s stream=true",
-                self.name,
-                role.value,
-                model,
-            )
         except requests.Timeout as exc:
             logger.warning(
                 "Inference stream timed out provider=%s role=%s model=%s",
@@ -293,8 +321,10 @@ class OpenAICompatibleProvider:
                 model,
                 status,
             )
-            raise InferenceConnectionError("Inference provider request failed.") from exc
-        except InferenceResponseError:
+            error = error_for_status(status)
+            raise error from exc
+        except InferenceResponseError as exc:
+            error = exc
             logger.warning(
                 "Invalid inference response provider=%s role=%s model=%s stream=true",
                 self.name,
@@ -302,6 +332,18 @@ class OpenAICompatibleProvider:
                 model,
             )
             raise
+        except BaseException as exc:
+            error = exc
+            raise
         finally:
+            duration = observation.finish(error if not completed else None)
+            logger.info(
+                "Inference completed request_id=%s provider=%s role=%s model=%s "
+                "operation=stream outcome=%s duration_seconds=%.6f ttft_recorded=%s "
+                "error_category=%s",
+                request_id(), self.name, role.value, model,
+                "error" if error or not completed else "success", duration,
+                observation.ttft_recorded, getattr(error, "category", "none"),
+            )
             if response is not None:
                 response.close()
