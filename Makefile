@@ -14,6 +14,9 @@
 	clean \
 	router \
 	test \
+	helm-lint \
+	helm-template \
+	helm-validate \
 	validate \
 	test-retriever \
 	test-bm25 \
@@ -120,6 +123,15 @@ test-retrieval-eval:
 test:
 	python -m pytest
 
+# Validate the production control-plane chart without requiring a cluster.
+helm-lint:
+	helm lint deployment/helm/polymind
+
+helm-template:
+	helm template polymind deployment/helm/polymind
+
+helm-validate: helm-lint helm-template
+
 # Run all validation tests
 validate:
 	python experiments/test_retriever.py && \
@@ -195,6 +207,7 @@ help:
 	@echo "Validation:"
 	@echo "  make test             Run default test"
 	@echo "  make validate         Run all tests"
+	@echo "  make helm-validate    Lint and render the Helm chart"
 	@echo ""
 	@echo "CI:"
 	@echo "  make ci								Run local CI pipeline"

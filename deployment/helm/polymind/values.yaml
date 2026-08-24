@@ -1,0 +1,110 @@
+replicaCount: 2
+
+image:
+  repository: polymind
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 8001
+
+application:
+  port: 8001
+  deploymentEnv: production
+  inferenceProvider: openai_compatible
+  openaiCompatibleBaseUrl: https://inference.example.internal/v1
+  openaiCompatibleModelMap: '{"general":"served-model","coding":"served-model","summarization":"served-model","fast":"served-model"}'
+  memoryProvider: redis
+  vectorStoreProvider: chroma_http
+  vectorStoreHost: chroma.example.internal
+  vectorStorePort: 8000
+  vectorStoreSsl: true
+  vectorStoreCollection: knowledge_base
+  bm25CorpusVersion: production-v1
+  providerReadinessTimeout: 3
+  providerReadinessRetries: 1
+  providerReadinessBackoff: 0.1
+  memoryConnectTimeout: 2
+  memoryOperationTimeout: 2
+  vectorStoreTimeout: 5
+
+secrets:
+  # Create this Secret separately, or set create=true and supply values at install
+  # time. Never commit real values to values files.
+  create: false
+  existingSecret: polymind-secrets
+  openaiCompatibleApiKeyKey: openai-compatible-api-key
+  redisUrlKey: redis-url
+  values:
+    openaiCompatibleApiKey: ""
+    redisUrl: ""
+
+deployment:
+  strategy:
+    maxUnavailable: 0
+    maxSurge: 1
+
+probes:
+  liveness:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: polymind.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+

@@ -493,6 +493,28 @@ infrastructure because the application has no endpoint authentication layer.
 
 ## Production topology and multi-replica deployment constraints
 
+### Kubernetes and Helm
+
+The production control-plane chart is at
+[`deployment/helm/polymind`](deployment/helm/polymind/README.md). It deploys
+replicated PolyMind API pods and a Service, with an optional disabled-by-default
+Ingress. It deliberately does **not** deploy vLLM/OpenAI-compatible inference,
+Redis, Chroma, Prometheus, an ingress controller, or cloud infrastructure.
+
+Production values must identify externally operated inference and Chroma
+endpoints, an already-published BM25 corpus version, and a pre-created Kubernetes
+Secret containing the Redis URL and (when needed) inference API key. Validate the
+chart locally without a cluster using:
+
+```bash
+make helm-validate
+```
+
+Liveness uses `/health`; readiness uses `/ready` and therefore requires
+inference, Redis, Chroma, and the version-matched BM25 snapshot. `/metrics` shares
+the application port and must be network-restricted in production. The chart
+runbook documents installation, upgrades, rollback, and security defaults.
+
 ```text
 External clients
       |
