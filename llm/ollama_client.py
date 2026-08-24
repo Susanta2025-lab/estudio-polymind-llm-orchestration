@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Iterator, Mapping, Optional
 
 import requests
@@ -10,7 +11,10 @@ from llm.inference import (
     InferenceResponseError,
     InferenceTimeoutError,
     ModelRole,
+    ReadinessResult,
+    ReadinessStatus,
 )
+from llm.operational import error_for_status, request_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,9 @@ class OllamaClient:
         model_map: Optional[Mapping[str, str]] = None,
         connect_timeout: Optional[float] = None,
         read_timeout: Optional[float] = None,
+        readiness_timeout: float = 3.0,
+        readiness_retries: int = 1,
+        readiness_backoff: float = 0.1,
         http_client=requests,
     ):
         self.model = model
@@ -34,6 +41,10 @@ class OllamaClient:
             read_timeout or settings.INFERENCE_READ_TIMEOUT,
         )
         self.http_client = http_client
+        self.readiness_timeout = readiness_timeout
+        self.readiness_retries = readiness_retries
+        self.readiness_backoff = readiness_backoff
+        self.tags_url = self.url.split("/api/", 1)[0].rstrip("/") + "/api/tags"
 
     @property
     def name(self) -> str:
@@ -54,6 +65,44 @@ class OllamaClient:
             "stream": stream,
         }
 
+    def check_readiness(self) -> ReadinessResult:
+        models = {role.value: self.model_id(role) for role in ModelRole}
+        for attempt in range(self.readiness_retries + 1):
+            response = None
+            try:
+                response = self.http_client.get(self.tags_url, timeout=self.readiness_timeout)
+                response.raise_for_status()
+                items = response.json()["models"]
+                if not isinstance(items, list):
+                    raise TypeError("models is not a list")
+                available = {
+                    item["name"] for item in items
+                    if isinstance(item, dict) and isinstance(item.get("name"), str)
+                }
+                if len(available) != len(items):
+                    raise TypeError("model entry is malformed")
+                status = (ReadinessStatus.READY if set(models.values()) <= available
+                          else ReadinessStatus.MODEL_UNAVAILABLE)
+                return ReadinessResult(status, self.name, models)
+            except requests.Timeout:
+                status = ReadinessStatus.TIMEOUT
+            except requests.RequestException as exc:
+                code = getattr(getattr(exc, "response", None), "status_code", None)
+                status = ReadinessStatus(error_for_status(code).category)
+            except (ValueError, KeyError, TypeError):
+                status = ReadinessStatus.PROTOCOL_FAILURE
+            finally:
+                if response is not None and hasattr(response, "close"):
+                    response.close()
+            if attempt < self.readiness_retries and status in {
+                ReadinessStatus.UNREACHABLE, ReadinessStatus.TIMEOUT,
+                ReadinessStatus.OVERLOADED, ReadinessStatus.UPSTREAM_FAILURE,
+            }:
+                time.sleep(self.readiness_backoff * (attempt + 1))
+                continue
+            return ReadinessResult(status, self.name, models)
+        raise AssertionError("readiness attempts exhausted")
+
     def generate(
         self,
         prompt: str,
@@ -70,7 +119,8 @@ class OllamaClient:
             response.raise_for_status()
         except requests.Timeout as exc:
             logger.warning(
-                "Inference timed out provider=%s role=%s model=%s stream=false",
+                "Inference timed out request_id=%s provider=%s role=%s model=%s stream=false",
+                request_id(),
                 self.name,
                 role.value,
                 model,
@@ -79,13 +129,14 @@ class OllamaClient:
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
             logger.warning(
-                "Inference failed provider=%s role=%s model=%s stream=false status=%s",
+                "Inference failed request_id=%s provider=%s role=%s model=%s stream=false status=%s",
+                request_id(),
                 self.name,
                 role.value,
                 model,
                 status,
             )
-            raise InferenceConnectionError("Inference provider request failed.") from exc
+            raise error_for_status(status) from exc
         else:
             try:
                 content = response.json()["message"]["content"]
@@ -143,7 +194,8 @@ class OllamaClient:
             )
         except requests.Timeout as exc:
             logger.warning(
-                "Inference timed out provider=%s role=%s model=%s stream=true",
+                "Inference timed out request_id=%s provider=%s role=%s model=%s stream=true",
+                request_id(),
                 self.name,
                 role.value,
                 model,
@@ -152,13 +204,14 @@ class OllamaClient:
         except requests.RequestException as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
             logger.warning(
-                "Inference failed provider=%s role=%s model=%s stream=true status=%s",
+                "Inference failed request_id=%s provider=%s role=%s model=%s stream=true status=%s",
+                request_id(),
                 self.name,
                 role.value,
                 model,
                 status,
             )
-            raise InferenceConnectionError("Inference provider request failed.") from exc
+            raise error_for_status(status) from exc
         finally:
             if response is not None and hasattr(response, "close"):
                 response.close()

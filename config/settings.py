@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     OPENAI_COMPATIBLE_GENERATION_PARAMETERS: Dict[str, Any] = Field(
         default_factory=dict
     )
+    PROVIDER_READINESS_TIMEOUT: float = Field(default=3.0, gt=0)
+    PROVIDER_READINESS_RETRIES: int = Field(default=1, ge=0, le=5)
+    PROVIDER_READINESS_BACKOFF: float = Field(default=0.1, ge=0, le=5)
 
     # =========================
     # FastAPI Server

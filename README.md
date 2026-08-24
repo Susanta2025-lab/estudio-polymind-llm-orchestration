@@ -359,6 +359,9 @@ logical roles for the selected provider.
 | `OPENAI_COMPATIBLE_READ_TIMEOUT` | `120` | External provider read/inactivity timeout in seconds, including SSE reads |
 | `OPENAI_COMPATIBLE_MODEL_MAP` | all roles map to `gpt-oss-20b` | JSON object mapping logical roles to server-visible model IDs; this is configuration only, not a deployment claim |
 | `OPENAI_COMPATIBLE_GENERATION_PARAMETERS` | `{}` | Optional JSON object of chat generation parameters such as `temperature`; `model`, `messages`, and `stream` are reserved |
+| `PROVIDER_READINESS_TIMEOUT` | `3` | Timeout in seconds for lightweight provider discovery probes |
+| `PROVIDER_READINESS_RETRIES` | `1` | Additional attempts for transient readiness failures (maximum 5) |
+| `PROVIDER_READINESS_BACKOFF` | `0.1` | Linear readiness retry backoff in seconds (maximum 5) |
 
 Example model-map override:
 
@@ -393,9 +396,28 @@ does not proxy vLLM SSE to clients. HTTP connections are pooled, connect/read
 timeouts are explicit, responses are closed, and public errors do not contain
 upstream bodies or credentials.
 
-The root endpoint reports that the API process is alive. Provider reachability and
-model usability are not yet part of that response; a narrow readiness contract is
-deliberately deferred to Phase 8C rather than expanding Phase 8B's provider API.
+## Liveness, readiness, and failure handling
+
+`GET /health` reports only that the PolyMind API process is alive. The existing
+`GET /` response is preserved for compatibility. `GET /ready` performs lightweight
+model discovery against the selected provider: OpenAI-compatible providers use
+`GET /v1/models`, while Ollama uses `GET /api/tags`. It returns HTTP 200 with
+`status: ready` only when every configured logical-role model is advertised;
+unreachable, timeout, authentication, overload, missing-model, malformed-protocol,
+and other upstream states return a sanitized HTTP 503 response.
+
+In other words, API alive does not imply inference ready. A temporary provider
+outage does not prevent PolyMind from starting, and readiness never generates
+tokens. Transient readiness probes receive at most the configured number of
+additional attempts with bounded linear backoff. Generation and streaming are not
+automatically retried because the provider may already have accepted the request;
+restarting could duplicate work or user-visible tokens. A stream failure emits the
+existing sanitized NDJSON `error` event and incomplete output is not persisted.
+
+Every API response includes `X-Request-ID`. A caller-provided ID is accepted only
+when it is 1–64 characters from a bounded safe character set; otherwise PolyMind
+generates one. Provider and failure logs include the identifier and operational
+category without prompts, credentials, authorization headers, or upstream bodies.
 
 ---
 

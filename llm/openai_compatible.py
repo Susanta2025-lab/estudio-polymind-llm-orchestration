@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any, Iterator, Mapping, Optional
 
 import requests
@@ -9,7 +10,10 @@ from llm.inference import (
     InferenceResponseError,
     InferenceTimeoutError,
     ModelRole,
+    ReadinessResult,
+    ReadinessStatus,
 )
+from llm.operational import error_for_status, request_id
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +30,20 @@ class OpenAICompatibleProvider:
         connect_timeout: float = 5.0,
         read_timeout: float = 120.0,
         generation_parameters: Optional[Mapping[str, Any]] = None,
+        readiness_timeout: float = 3.0,
+        readiness_retries: int = 1,
+        readiness_backoff: float = 0.1,
         http_client=None,
     ):
-        self.url = f"{base_url.rstrip('/')}/chat/completions"
+        self.base_url = base_url.rstrip("/")
+        self.url = f"{self.base_url}/chat/completions"
+        self.models_url = f"{self.base_url}/models"
         self.model_map = dict(model_map)
         self.timeout = (connect_timeout, read_timeout)
         self.generation_parameters = dict(generation_parameters or {})
+        self.readiness_timeout = readiness_timeout
+        self.readiness_retries = readiness_retries
+        self.readiness_backoff = readiness_backoff
         reserved = {"model", "messages", "stream"}.intersection(
             self.generation_parameters
         )
@@ -65,6 +77,48 @@ class OpenAICompatibleProvider:
             **self.generation_parameters,
         }
 
+    def check_readiness(self) -> ReadinessResult:
+        models = {role.value: self.model_id(role) for role in ModelRole}
+        for attempt in range(self.readiness_retries + 1):
+            response = None
+            try:
+                response = self.http_client.get(
+                    self.models_url, headers=self.headers, timeout=self.readiness_timeout
+                )
+                response.raise_for_status()
+                payload = response.json()
+                items = payload["data"]
+                if not isinstance(items, list):
+                    raise TypeError("data is not a list")
+                available = {
+                    item["id"] for item in items
+                    if isinstance(item, dict) and isinstance(item.get("id"), str)
+                }
+                if len(available) != len(items):
+                    raise TypeError("model entry is malformed")
+                status = (ReadinessStatus.READY if set(models.values()) <= available
+                          else ReadinessStatus.MODEL_UNAVAILABLE)
+                return ReadinessResult(status, self.name, models)
+            except requests.Timeout:
+                status = ReadinessStatus.TIMEOUT
+            except requests.RequestException as exc:
+                code = getattr(getattr(exc, "response", None), "status_code", None)
+                category = error_for_status(code).category
+                status = ReadinessStatus(category)
+            except (ValueError, KeyError, TypeError):
+                status = ReadinessStatus.PROTOCOL_FAILURE
+            finally:
+                if response is not None:
+                    response.close()
+            if attempt < self.readiness_retries and status in {
+                ReadinessStatus.UNREACHABLE, ReadinessStatus.TIMEOUT,
+                ReadinessStatus.OVERLOADED, ReadinessStatus.UPSTREAM_FAILURE,
+            }:
+                time.sleep(self.readiness_backoff * (attempt + 1))
+                continue
+            return ReadinessResult(status, self.name, models)
+        raise AssertionError("readiness attempts exhausted")
+
     def _request(self, prompt: str, role: ModelRole, stream: bool):
         response = None
         try:
@@ -81,7 +135,8 @@ class OpenAICompatibleProvider:
             if response is not None:
                 response.close()
             logger.warning(
-                "OpenAI-compatible inference timed out provider=%s role=%s model=%s",
+                "OpenAI-compatible inference timed out request_id=%s provider=%s role=%s model=%s",
+                request_id(),
                 self.name,
                 role.value,
                 self.model_id(role),
@@ -93,13 +148,14 @@ class OpenAICompatibleProvider:
             status = getattr(getattr(exc, "response", None), "status_code", None)
             logger.warning(
                 "OpenAI-compatible inference request failed provider=%s role=%s "
-                "model=%s status=%s",
+                "model=%s status=%s request_id=%s",
                 self.name,
                 role.value,
                 self.model_id(role),
                 status,
+                request_id(),
             )
-            raise InferenceConnectionError("Inference provider request failed.") from exc
+            raise error_for_status(status) from exc
 
     @staticmethod
     def _completion_content(payload: Any) -> str:

@@ -4,7 +4,11 @@ import pytest
 import requests
 
 from llm.inference import (
+    InferenceAuthenticationError,
     InferenceConnectionError,
+    InferenceError,
+    InferenceModelUnavailableError,
+    InferenceRateLimitError,
     InferenceResponseError,
     InferenceTimeoutError,
     ModelRole,
@@ -182,7 +186,7 @@ def test_http_error_is_sanitized_in_exception_and_logs_and_response_is_closed(ca
     upstream.response = type("ErrorResponse", (), {"status_code": 503})()
     response = FakeResponse(error=upstream)
 
-    with pytest.raises(InferenceConnectionError, match="provider request failed") as caught:
+    with pytest.raises(InferenceConnectionError, match="temporarily unavailable") as caught:
         provider(response, api_key="secret-key").generate("prompt")
 
     assert "secret" not in str(caught.value)
@@ -234,3 +238,24 @@ def test_model_mapping_failure_is_provider_neutral():
 def test_reserved_generation_parameters_are_rejected():
     with pytest.raises(ValueError, match="reserved keys"):
         provider(parameters={"model": "override"})
+
+
+@pytest.mark.parametrize(("status", "error_type"), [
+    (400, InferenceError),
+    (401, InferenceAuthenticationError),
+    (403, InferenceAuthenticationError),
+    (404, InferenceModelUnavailableError),
+    (408, InferenceTimeoutError),
+    (429, InferenceRateLimitError),
+    (500, InferenceError),
+    (502, InferenceRateLimitError),
+    (503, InferenceRateLimitError),
+    (504, InferenceTimeoutError),
+])
+def test_generation_http_statuses_have_provider_neutral_categories(status, error_type):
+    upstream = requests.HTTPError("private upstream body")
+    upstream.response = type("ErrorResponse", (), {"status_code": status})()
+    response = FakeResponse(error=upstream)
+    with pytest.raises(error_type) as caught:
+        provider(response).generate("prompt")
+    assert "private" not in str(caught.value)

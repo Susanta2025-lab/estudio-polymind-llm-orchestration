@@ -57,3 +57,14 @@ def test_openai_compatible_model_mapping_requires_every_logical_role():
 def test_invalid_provider_configuration_fails_during_settings_initialization():
     with pytest.raises(ValueError, match="INFERENCE_PROVIDER"):
         Settings(_env_file=None, INFERENCE_PROVIDER="vllm")
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("PROVIDER_READINESS_TIMEOUT", 0),
+    ("PROVIDER_READINESS_RETRIES", -1),
+    ("PROVIDER_READINESS_RETRIES", 6),
+    ("PROVIDER_READINESS_BACKOFF", -0.1),
+])
+def test_invalid_readiness_configuration_fails_early(field, value):
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, **{field: value})

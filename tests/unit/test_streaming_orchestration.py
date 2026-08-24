@@ -95,3 +95,22 @@ def test_upstream_failure_is_a_sanitized_visible_event(monkeypatch):
 
     assert events[-1] == {"type": "error", "message": "Inference service is unavailable."}
     assert "private diagnostics" not in events[-1]["message"]
+
+
+def test_partial_stream_failure_is_not_retried_or_persisted(monkeypatch):
+    persisted = []
+    monkeypatch.setattr(streaming, "direct_prompt", lambda query, session: query)
+    monkeypatch.setattr(streaming, "persist_exchange", lambda *args: persisted.append(args))
+
+    class PartialProvider(FakeProvider):
+        def generate_stream(self, prompt, role):
+            self.calls.append((prompt, role))
+            yield "partial"
+            raise InferenceConnectionError("private diagnostics")
+
+    provider = PartialProvider()
+    events = list(streaming.stream_rag_response("question", "session", provider, lambda _: "direct"))
+
+    assert [event["type"] for event in events] == ["metadata", "chunk", "error"]
+    assert len(provider.calls) == 1
+    assert persisted == []

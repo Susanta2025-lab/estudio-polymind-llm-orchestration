@@ -10,6 +10,13 @@ from graph.generation import public_sources
 from graph.langgraph_flow import app_graph, inference_provider
 from graph.streaming import stream_rag_response
 from llm.inference import InferenceError
+from llm.operational import (
+    application_status,
+    normalize_request_id,
+    request_id,
+    reset_request_id,
+    set_request_id,
+)
 from memory.memory_store import get_history
 from utils.logger import log_request
 
@@ -27,10 +34,30 @@ class QueryRequest(BaseModel):
     session_id: str = "default"
 
 
+@app.middleware("http")
+async def request_correlation(request: Request, call_next):
+    correlation_id = normalize_request_id(request.headers.get("X-Request-ID"))
+    token = set_request_id(correlation_id)
+    request.state.request_id = correlation_id
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = correlation_id
+        return response
+    finally:
+        reset_request_id(token)
+
+
 @app.exception_handler(InferenceError)
 async def inference_error_handler(_request: Request, exc: InferenceError):
-    logger.exception("Inference request failed", exc_info=exc)
-    return JSONResponse(status_code=502, content={"detail": "Inference service is unavailable."})
+    logger.warning(
+        "Inference request failed request_id=%s category=%s",
+        _request.state.request_id,
+        exc.category,
+    )
+    return JSONResponse(
+        status_code=application_status(exc),
+        content={"detail": "Inference service is unavailable."},
+    )
 
 
 @app.get("/")
@@ -41,6 +68,28 @@ def health():
         "version": "1.0.0",
         "message": "Multi-LLM RAG & Orchestration Platform 🚀",
     }
+
+
+@app.get("/health")
+def liveness():
+    return {"status": "alive"}
+
+
+@app.get("/ready")
+def readiness():
+    result = inference_provider.check_readiness()
+    logger.info(
+        "Readiness probe request_id=%s provider=%s outcome=%s",
+        request_id(),
+        result.provider,
+        result.status.value,
+    )
+    content = {
+        "status": result.status.value,
+        "provider": result.provider,
+        "models": dict(result.models),
+    }
+    return JSONResponse(status_code=200 if result.ready else 503, content=content)
 
 
 @app.post("/query")
@@ -67,21 +116,27 @@ def query(req: QueryRequest):
 
 @app.post("/query/stream")
 def query_stream(req: QueryRequest):
+    correlation_id = request_id()
+
     def encode_events():
+        token = set_request_id(correlation_id)
         start_time = time.time()
         metadata = {}
-        for event in stream_rag_response(req.query, req.session_id, inference_provider):
-            if event["type"] == "metadata":
-                metadata = event
-            elif event["type"] == "done":
-                log_request(
-                    query=req.query,
-                    route=metadata.get("route"),
-                    model=metadata.get("model"),
-                    session_id=req.session_id,
-                    start_time=start_time,
-                )
-            yield json.dumps(event, ensure_ascii=False) + "\n"
+        try:
+            for event in stream_rag_response(req.query, req.session_id, inference_provider):
+                if event["type"] == "metadata":
+                    metadata = event
+                elif event["type"] == "done":
+                    log_request(
+                        query=req.query,
+                        route=metadata.get("route"),
+                        model=metadata.get("model"),
+                        session_id=req.session_id,
+                        start_time=start_time,
+                    )
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        finally:
+            reset_request_id(token)
 
     return StreamingResponse(encode_events(), media_type="application/x-ndjson")
 

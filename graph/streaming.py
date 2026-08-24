@@ -10,6 +10,7 @@ from graph.generation import (
 )
 from llm.inference import InferenceError, InferenceProvider
 from llm.provider_factory import create_inference_provider
+from llm.operational import request_id
 from llm.router import select_model_role
 
 logger = logging.getLogger(__name__)
@@ -67,12 +68,14 @@ def stream_rag_response(
 
         persist_exchange(query, answer, session_id)
         yield {"type": "done", "response": answer}
-    except InferenceError:
+    except InferenceError as exc:
         logger.exception(
-            "Inference failed for session=%s route=%s provider=%s",
+            "Inference failed request_id=%s session=%s route=%s provider=%s category=%s",
+            request_id(),
             session_id,
             route,
             getattr(provider, "name", "unknown"),
+            exc.category,
         )
         yield {"type": "error", "message": "Inference service is unavailable."}
     except Exception:
