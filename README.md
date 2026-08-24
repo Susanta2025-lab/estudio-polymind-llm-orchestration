@@ -515,6 +515,57 @@ inference, Redis, Chroma, and the version-matched BM25 snapshot. `/metrics` shar
 the application port and must be network-restricted in production. The chart
 runbook documents installation, upgrades, rollback, and security defaults.
 
+### Local Kubernetes operational validation
+
+Phase 10 validates the chart on a dedicated Kind cluster named
+`polymind-phase10`. This is an explicit laptop/CI-style operational workflow,
+not a production topology. Its fixtures provide ephemeral Redis, Chroma 1.5.9,
+and a deterministic OpenAI-compatible inference stub in the isolated
+`polymind-phase10` namespace; none are dependencies of the production Helm
+chart. Docker, kubectl, Helm 3, and Kind are prerequisites.
+
+```bash
+make k8s-phase10-create
+make k8s-phase10-build
+make k8s-phase10-load-image
+make k8s-phase10-deploy
+deployment/kind/phase10/phase10.sh bootstrap phase10-v1
+make k8s-phase10-test
+```
+
+The deployment initially starts before a corpus exists: `/health` remains 200
+while `/ready` is 503 with BM25 uninitialized. The bootstrap command performs a
+deterministic administrative upsert and publishes `phase10-v1`; restart the
+Deployment so every process builds that immutable snapshot at startup:
+
+```bash
+kubectl --context kind-polymind-phase10 -n polymind-phase10 \
+  rollout restart deployment/polymind-polymind
+kubectl --context kind-polymind-phase10 -n polymind-phase10 \
+  rollout status deployment/polymind-polymind --timeout=300s
+```
+
+To validate version gating, publish `phase10-v2` while pods still expect
+`phase10-v1`: readiness becomes 503 and Service endpoints are removed. Upgrade
+the release with `application.bm25CorpusVersion=phase10-v2`; replacement pods
+load the current snapshot and recover. Use `helm history` and `helm rollback`
+against the fixed namespace to validate revision restoration.
+
+For replica compatibility, set `replicaCount=2`, wait for rollout, and verify
+both ready pods use the shared Redis and Chroma Services. A scoped Redis outage
+can be tested by scaling `deployment/phase10-redis` to zero: PolyMind `/health`
+stays 200 while `/ready` becomes 503; scale Redis back to one and readiness
+recovers. Delete one PolyMind pod to observe Deployment reconciliation. Use
+port-forwarding rather than Ingress for `/query`, `/query/stream`, and `/metrics`.
+
+The guarded commands and fixture caveats are in
+[`deployment/kind/phase10/README.md`](deployment/kind/phase10/README.md). Teardown
+is deliberately limited to the named Kind cluster:
+
+```bash
+make k8s-phase10-destroy
+```
+
 ```text
 External clients
       |

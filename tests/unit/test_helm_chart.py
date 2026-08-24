@@ -8,6 +8,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CHART = ROOT / "deployment" / "helm" / "polymind"
+PHASE10 = ROOT / "deployment" / "kind" / "phase10"
 
 
 def test_chart_contains_required_artifacts_and_safe_defaults():
@@ -65,6 +66,50 @@ def test_templates_wire_probes_configuration_secrets_and_security():
     assert "OPENAI_COMPATIBLE_API_KEY" not in configmap
 
 
+def test_phase10_values_are_local_non_sensitive_overrides():
+    values = yaml.safe_load((PHASE10 / "values.yaml").read_text())
+    assert values["image"] == {"repository": "polymind", "tag": "phase10", "pullPolicy": "Never"}
+    assert values["application"]["deploymentEnv"] == "production"
+    assert values["application"]["vectorStoreHost"] == "phase10-chroma"
+    assert values["secrets"] == {"create": False, "existingSecret": "polymind-phase10-secrets"}
+    serialized = (PHASE10 / "values.yaml").read_text().lower()
+    assert "api_key" not in serialized
+    assert "password" not in serialized
+
+
+def test_phase10_fixtures_remain_outside_production_chart():
+    fixtures = list(yaml.safe_load_all((PHASE10 / "fixtures.yaml").read_text()))
+    names = {item["metadata"]["name"] for item in fixtures}
+    assert names == {"phase10-inference", "phase10-redis", "phase10-chroma"}
+    chart_text = "\n".join(path.read_text() for path in (CHART / "templates").glob("*.yaml")).lower()
+    for dependency in ("kind: statefulset", "phase10-redis", "phase10-chroma", "phase10-inference"):
+        assert dependency not in chart_text
+
+
+def test_phase10_script_has_fixed_cluster_context_and_scoped_deletes():
+    script = (PHASE10 / "phase10.sh").read_text()
+    assert 'CLUSTER="polymind-phase10"' in script
+    assert 'CONTEXT="kind-polymind-phase10"' in script
+    assert 'NAMESPACE="polymind-phase10"' in script
+    assert "require_context" in script
+    assert "kubectl delete namespace" not in script
+    assert "kubectl delete --all" not in script
+    assert "helm uninstall" not in script
+    assert 'delete cluster --name "$CLUSTER"' in script
+    assert "docker system prune" not in script
+    assert "curl -fsS http://127.0.0.1:18001/metrics" in script
+    fixtures = (PHASE10 / "fixtures.yaml").read_text()
+    assert "hostPath:" not in fixtures
+    assert "docker.sock" not in fixtures
+    assert "runAsUser: 999" in fixtures
+
+
+def test_container_defines_the_helm_non_root_identity():
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    assert "groupadd --gid 10001 polymind" in dockerfile
+    assert "useradd --uid 10001 --gid 10001 --create-home polymind" in dockerfile
+
+
 @pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is not installed")
 def test_helm_lint_and_default_render():
     subprocess.run(["helm", "lint", str(CHART)], check=True, capture_output=True, text=True)
@@ -78,4 +123,3 @@ def test_helm_lint_and_default_render():
     assert "kind: Service" in rendered
     assert "kind: ConfigMap" in rendered
     assert "kind: Ingress" not in rendered
-

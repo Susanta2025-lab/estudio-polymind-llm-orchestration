@@ -49,7 +49,11 @@ class ChromaVectorStore:
 
     def corpus_version(self) -> str | None:
         def read_version():
-            metadata = self._get_collection().metadata or {}
+            # Chroma collection objects cache metadata. Refresh the collection
+            # so already-running replicas observe an ingestion publication and
+            # can leave readiness when their immutable BM25 snapshot is stale.
+            self._collection = self.client.get_collection(name=self.collection_name)
+            metadata = self._collection.metadata or {}
             value = metadata.get("polymind_corpus_version")
             return value if isinstance(value, str) and value else None
         return self._observe("version", read_version)

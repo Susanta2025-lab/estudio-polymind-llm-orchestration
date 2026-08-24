@@ -17,6 +17,12 @@
 	helm-lint \
 	helm-template \
 	helm-validate \
+	k8s-phase10-create \
+	k8s-phase10-build \
+	k8s-phase10-load-image \
+	k8s-phase10-deploy \
+	k8s-phase10-test \
+	k8s-phase10-destroy \
 	validate \
 	test-retriever \
 	test-bm25 \
@@ -132,6 +138,24 @@ helm-template:
 
 helm-validate: helm-lint helm-template
 
+k8s-phase10-create:
+	deployment/kind/phase10/phase10.sh create
+
+k8s-phase10-build:
+	deployment/kind/phase10/phase10.sh build
+
+k8s-phase10-load-image:
+	deployment/kind/phase10/phase10.sh load
+
+k8s-phase10-deploy:
+	deployment/kind/phase10/phase10.sh deploy
+
+k8s-phase10-test:
+	deployment/kind/phase10/phase10.sh smoke
+
+k8s-phase10-destroy:
+	deployment/kind/phase10/phase10.sh destroy
+
 # Run all validation tests
 validate:
 	python experiments/test_retriever.py && \
@@ -208,6 +232,7 @@ help:
 	@echo "  make test             Run default test"
 	@echo "  make validate         Run all tests"
 	@echo "  make helm-validate    Lint and render the Helm chart"
+	@echo "  make k8s-phase10-*    Run the guarded local Kind validation workflow"
 	@echo ""
 	@echo "CI:"
 	@echo "  make ci								Run local CI pipeline"

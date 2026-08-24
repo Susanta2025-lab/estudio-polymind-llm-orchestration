@@ -1,0 +1,195 @@
+# Phase 10 test infrastructure only. These workloads are intentionally outside
+# deployment/helm/polymind and make no production availability/durability claim.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phase10-inference
+data:
+  server.py: |
+    import json
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, _format, *_args):
+            return
+
+        def _json(self, status, payload):
+            body = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path == "/v1/models":
+                self._json(200, {"object": "list", "data": [{"id": "phase10-model", "object": "model"}]})
+            else:
+                self._json(404, {"error": "not found"})
+
+        def do_POST(self):
+            if self.path != "/v1/chat/completions":
+                self._json(404, {"error": "not found"})
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            request = json.loads(self.rfile.read(length) or b"{}")
+            if request.get("stream"):
+                chunks = (
+                    {"choices": [{"delta": {"content": "Phase 10 "}}]},
+                    {"choices": [{"delta": {"content": "response"}}]},
+                    {"choices": [{"delta": {}, "finish_reason": "stop"}]},
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                for chunk in chunks:
+                    self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+                self.wfile.write(b"data: [DONE]\n\n")
+                self.wfile.flush()
+                return
+            self._json(200, {
+                "choices": [{"message": {"role": "assistant", "content": "Phase 10 response"}}],
+                "usage": {"prompt_tokens": 4, "completion_tokens": 3, "total_tokens": 7},
+            })
+
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phase10-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase10-inference
+  template:
+    metadata:
+      labels:
+        app: phase10-inference
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: inference
+          image: python:3.10-alpine
+          command: ["python", "/fixture/server.py"]
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /v1/models
+              port: http
+          volumeMounts:
+            - name: server
+              mountPath: /fixture
+              readOnly: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: server
+          configMap:
+            name: phase10-inference
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phase10-inference
+spec:
+  selector:
+    app: phase10-inference
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phase10-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase10-redis
+  template:
+    metadata:
+      labels:
+        app: phase10-redis
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          args: ["--save", "", "--appendonly", "no"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phase10-redis
+spec:
+  selector:
+    app: phase10-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phase10-chroma
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase10-chroma
+  template:
+    metadata:
+      labels:
+        app: phase10-chroma
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: chroma
+          image: chromadb/chroma:1.5.9
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phase10-chroma
+spec:
+  selector:
+    app: phase10-chroma
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

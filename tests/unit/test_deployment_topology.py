@@ -134,6 +134,25 @@ def test_serving_store_is_query_only_and_admin_mutation_is_explicit():
     assert client.collection.metadata["polymind_corpus_version"] == "v2"
 
 
+def test_serving_store_refreshes_published_corpus_version():
+    class VersionedClient:
+        def __init__(self):
+            self.version = "v1"
+            self.calls = 0
+
+        def get_collection(self, name):
+            assert name == "knowledge"
+            self.calls += 1
+            return SimpleNamespace(metadata={"polymind_corpus_version": self.version})
+
+    client = VersionedClient()
+    store = ChromaVectorStore(client, "knowledge", "chroma_http")
+    assert store.corpus_version() == "v1"
+    client.version = "v2"
+    assert store.corpus_version() == "v2"
+    assert client.calls == 2
+
+
 def test_ingestion_publishes_version_only_after_all_upserts(monkeypatch, tmp_path):
     document = tmp_path / "doc.txt"
     document.write_text("content", encoding="utf-8")
