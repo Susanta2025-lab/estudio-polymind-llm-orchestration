@@ -1,33 +1,18 @@
 from rag.embeddings import get_embedding
-from rag.vectordb import collection
+from rag.vector_store_factory import get_vector_store
 
 
-def retrieve(query: str, n_results: int = 5):
+def retrieve(query: str, n_results: int = 5, vector_store=None):
 
     query_embedding = get_embedding(query)
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-        include=[
-            "documents",
-            "metadatas",
-            "distances"
-        ]
-    )
-
-    docs = results["documents"][0]
-    metadatas = results["metadatas"][0]
-    distances = results["distances"][0]
+    matches = (vector_store or get_vector_store()).similarity_search(query_embedding, n_results)
 
     retrieved_docs = []
     seen = set()
 
-    for doc, metadata, distance in zip(
-        docs,
-        metadatas,
-        distances
-    ):
+    for match in matches:
+        doc, metadata, distance = match.document, match.metadata, match.distance
 
         score = round(
             max(0.0, 1 - distance),

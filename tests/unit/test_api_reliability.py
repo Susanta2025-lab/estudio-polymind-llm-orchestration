@@ -66,6 +66,7 @@ def test_health_is_independent_of_provider(monkeypatch):
 
 
 def test_memory_unavailable_makes_readiness_fail_but_not_liveness(monkeypatch):
+    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": True, "status": "ready", "provider": "chroma_http"})())
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
     unavailable = type("MemoryResult", (), {"ready": False, "status": "memory_unreachable", "provider": "redis"})()
     monkeypatch.setattr(api_module.memory_store, "check_readiness", lambda: unavailable)
@@ -99,14 +100,24 @@ def test_tool_only_query_records_route_but_not_inference(monkeypatch):
 
 
 def test_ready_returns_sanitized_200_or_503(monkeypatch):
+    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": True, "status": "ready", "provider": "chroma_http"})())
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
     ready = api_module.readiness()
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.AUTHENTICATION_FAILURE))
     unavailable = api_module.readiness()
     assert ready.status_code == 200
-    assert ready.body == b'{"status":"ready","provider":"fake","inference":{"status":"ready","provider":"fake"},"memory":{"status":"ready","provider":"file"},"models":{"general":"served"}}'
+    assert ready.body == b'{"status":"ready","provider":"fake","inference":{"status":"ready","provider":"fake"},"memory":{"status":"ready","provider":"file"},"vector_store":{"status":"ready","provider":"chroma_http"},"models":{"general":"served"}}'
     assert unavailable.status_code == 503
     assert b'"status":"authentication_failure"' in unavailable.body
+
+
+def test_vector_unavailable_makes_readiness_fail_but_health_stays_alive(monkeypatch):
+    monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
+    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": False, "status": "vector_unreachable", "provider": "chroma_http"})())
+    response = api_module.readiness()
+    assert response.status_code == 503
+    assert b'"vector_store":{"status":"vector_unreachable","provider":"chroma_http"}' in response.body
+    assert api_module.liveness() == {"status": "alive"}
 
 
 def test_request_id_is_generated_or_accepts_only_bounded_safe_input():

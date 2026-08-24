@@ -145,9 +145,11 @@ sentence-transformers/all-MiniLM-L6-v2
 
 ### Vector Database
 
-```text
-ChromaDB
-```
+RAG code depends on a provider-neutral vector-store contract rather than a
+concrete client. `chroma_local` (the backward-compatible default) persists under
+`CHROMA_PATH` for local, single-replica development. `chroma_http` connects each
+API worker to one external Chroma server and is the supported shared mode for
+horizontal replicas. It never falls back to local persistence.
 
 ---
 
@@ -451,7 +453,10 @@ format. Scraping it performs no provider, readiness, retrieval, or inference cal
 The instrumentation covers inference outcomes and latency, normalized errors,
 stream lifetime, time to first token (TTFT), exact provider-reported token usage,
 bounded semantic-route behavior, readiness outcomes/latency, and bounded memory
-operation/readiness outcomes, latency, and normalized errors.
+operation/readiness outcomes, latency, and normalized errors. Vector operations
+and readiness add the same bounded outcome, duration, and error-category views;
+dense queries, BM25 snapshot reads, upserts, and resets are distinguished only by
+a fixed operation label.
 
 TTFT is the time until the first non-empty generated content chunk; SSE comments,
 role deltas, empty deltas, and usage-only chunks do not count. OpenAI-compatible
@@ -481,14 +486,27 @@ Conversation memory is replica-safe when all workers use `MEMORY_PROVIDER=redis`
 and the same external service. Inference adapters are stateless, configuration is
 immutable after startup, and request correlation uses request-local context.
 
-RAG is not yet horizontally replica-safe as deployed here. `rag/vectordb.py`
-creates a module-level Chroma `PersistentClient` at local `./chroma_db` (and does
-not currently consume `CHROMA_PATH`). Sharing that filesystem path between
-independent replicas is not a supported distributed vector-store architecture.
-Identical read-only local indexes may be usable only where their update and
-consistency model permits it. A shared/server-mode vector-store migration and the
-module-level client lifecycle are deferred, as are the single-node ingestion and
-reset workflows.
+RAG dense retrieval is replica-safe when every worker uses
+`VECTOR_STORE_PROVIDER=chroma_http` and the same external Chroma service and
+collection. Client and collection initialization are lazy: import and process
+startup do not require connectivity. `/health` remains process-only, while
+`/ready` requires inference, memory, and vector readiness and returns sanitized
+component states. There is no silent local fallback.
+
+Serving code receives only retrieval access through the vector-store boundary.
+Ingestion and reset use the explicit `rag.ingest` and `rag.admin` administrative
+commands. Stable content-derived IDs make repeated/concurrent upserts idempotent;
+Chroma's backend-native get-or-create operation handles collection initialization.
+Chroma provides concurrent server reads and makes completed upserts visible to
+clients through the shared collection. This repository does not add distributed
+locking or claim transactional consistency across a multi-document ingestion.
+
+BM25 remains a process-local immutable snapshot of the shared collection, built
+on first sparse query. Replicas that build from the same collection version are
+deterministic. A long-running replica does not automatically refresh its BM25
+snapshot after later ingestion, so ingestion should be followed by replica
+restart/rollout (or a future explicit refresh/version protocol). Dense retrieval,
+RRF fusion, cross-encoder reranking, and source metadata remain unchanged.
 
 ---
 
@@ -634,6 +652,40 @@ pip install -r requirements.txt
 ```bash
 make ingest
 ```
+
+The command writes to whichever provider is configured. Reset is deliberately an
+administrative action (`python -m rag.admin reset`) and is never performed by API
+startup. For local persistence, the defaults are sufficient:
+
+```bash
+VECTOR_STORE_PROVIDER=chroma_local
+CHROMA_PATH=./chroma_db
+VECTOR_STORE_COLLECTION=knowledge_base
+```
+
+For a shared service:
+
+```bash
+VECTOR_STORE_PROVIDER=chroma_http
+VECTOR_STORE_HOST=chroma.example.internal
+VECTOR_STORE_PORT=8000
+VECTOR_STORE_SSL=true
+VECTOR_STORE_COLLECTION=knowledge_base
+```
+
+The optional Compose profile is development-only and deliberately publishes no
+Chroma host port:
+
+```bash
+VECTOR_STORE_PROVIDER=chroma_http docker compose --profile vector up
+docker compose exec api python rag/ingest.py
+```
+
+Production deployments should point all PolyMind replicas at a separately
+operated shared Chroma service with appropriate network isolation, TLS and/or
+authentication controls, persistence, backups, and availability management.
+The Compose profile is not a production topology and its local service is
+unauthenticated.
 
 ## Start API
 

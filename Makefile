@@ -68,12 +68,12 @@ ingest:
 
 # Rebuild vector database
 rebuild:
-	rm -rf chroma_db
+	python -m rag.admin reset
 	python rag/ingest.py
 
 # Delete vector database
 clean:
-	rm -rf chroma_db
+	python -m rag.admin reset
 
 # ==========================================
 # SEMANTIC ROUTING

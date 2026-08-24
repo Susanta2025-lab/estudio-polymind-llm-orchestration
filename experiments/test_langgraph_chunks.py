@@ -1,10 +1,11 @@
-from rag.vectordb import collection
+from rag.vector_store_factory import get_vector_store
 
-data = collection.get()
+data = get_vector_store().list_documents()
 
 count = 0
 
-for meta in data["metadatas"]:
+for item in data:
+    meta = item.metadata
     if meta["source"] == "LangGraph_Documentation.pdf":
         count += 1
 

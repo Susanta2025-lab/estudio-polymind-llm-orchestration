@@ -581,3 +581,17 @@ If a phase objective conflicts with the current repository architecture or would
 * report the limitation clearly.
 
 Never mask unresolved architectural problems simply to return `PASS`.
+
+
+
+## 26. Docker authorization
+
+Docker Desktop is expected to be running during development. Codex is authorized to run non-destructive Docker validation/build commands when needed, including `docker build`, `docker compose build`, `docker compose config`, `docker compose up` for scoped validation, and related inspection commands. No additional user approval is required for these operations.
+
+Continue to:
+
+* reuse Docker cache;
+* avoid `--no-cache`;
+* avoid global prune operations;
+* avoid deleting images, containers, volumes, or networks unless explicitly authorized;
+* avoid rebuilding unrelated services.

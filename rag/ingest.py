@@ -3,7 +3,7 @@ from pathlib import Path
 
 from rag.chunking import chunk_text
 from rag.embeddings import get_embedding
-from rag.vectordb import collection
+from rag.vector_store_factory import get_vector_store_admin
 
 from rag.loaders.pdf_loader import load_pdf
 from rag.loaders.text_loader import load_text
@@ -22,13 +22,14 @@ def load_document(path: Path):
     return None
 
 
-def ingest_documents():
+def ingest_documents(vector_store=None):
 
     total_documents = 0
     total_chunks = 0
 
     print("\n🚀 Starting document ingestion...\n")
 
+    store = vector_store or get_vector_store_admin()
     for file in DOCS_PATH.iterdir():
 
         if not file.is_file():
@@ -53,8 +54,9 @@ def ingest_documents():
 
             embedding = get_embedding(chunk)
 
-            collection.add(
-                ids=[str(uuid.uuid4())],
+            document_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{file.name}:{i}:{chunk}"))
+            store.upsert(
+                ids=[document_id],
 
                 documents=[chunk],
 

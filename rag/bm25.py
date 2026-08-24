@@ -2,7 +2,7 @@ import re
 
 from rank_bm25 import BM25Okapi
 
-from rag.vectordb import collection
+from rag.vector_store_factory import get_vector_store
 
 
 bm25_index = None
@@ -55,16 +55,15 @@ def tokenize(text: str):
     return tokens
 
 
-def build_bm25():
+def build_bm25(vector_store=None):
 
     global bm25_index
     global documents
     global metadata
 
-    data = collection.get()
-
-    documents = data["documents"]
-    metadata = data["metadatas"]
+    data = (vector_store or get_vector_store()).list_documents()
+    documents = [item.document for item in data]
+    metadata = [item.metadata for item in data]
 
     tokenized_docs = [
         tokenize(doc)
@@ -78,11 +77,12 @@ def build_bm25():
 
 def bm25_search(
     query: str,
-    top_k: int = 5
+    top_k: int = 5,
+    vector_store=None,
 ):
 
     if bm25_index is None:
-        build_bm25()
+        build_bm25(vector_store)
 
     query_tokens = tokenize(
         query

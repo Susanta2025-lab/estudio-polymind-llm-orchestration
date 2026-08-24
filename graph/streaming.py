@@ -14,6 +14,7 @@ from llm.operational import request_id
 from llm.router import select_model_role
 from memory.memory_store import ConversationMemoryStore, MemoryError
 from memory.provider_factory import get_memory_store
+from rag.vector_store import VectorStoreError
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,12 @@ def stream_rag_response(
             request_id(), route, getattr(memory_store, "provider", "unknown"), exc.category,
         )
         yield {"type": "error", "message": "Conversation memory is unavailable."}
+    except VectorStoreError as exc:
+        logger.exception(
+            "Vector operation failed request_id=%s route=%s category=%s",
+            request_id(), route, exc.category,
+        )
+        yield {"type": "error", "message": "Knowledge retrieval is unavailable."}
     except Exception:
         logger.exception("Streaming request failed for session=%s route=%s", session_id, route)
         yield {"type": "error", "message": "Request processing failed."}

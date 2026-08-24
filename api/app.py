@@ -21,6 +21,8 @@ from llm.operational import (
 )
 from memory.memory_store import MemoryError
 from memory.provider_factory import close_memory_store
+from rag.vector_store import VectorStoreError
+from rag.vector_store_factory import check_vector_store_readiness, close_vector_store
 from utils.logger import log_request
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     yield
     close_memory_store()
+    close_vector_store()
 
 app = FastAPI(
     title="Estudio PolyMind - API",
@@ -76,6 +79,12 @@ async def memory_error_handler(request: Request, exc: MemoryError):
     return JSONResponse(status_code=503, content={"detail": "Conversation memory is unavailable."})
 
 
+@app.exception_handler(VectorStoreError)
+async def vector_error_handler(request: Request, exc: VectorStoreError):
+    logger.warning("Vector request failed request_id=%s category=%s", request.state.request_id, exc.category)
+    return JSONResponse(status_code=503, content={"detail": "Knowledge retrieval is unavailable."})
+
+
 @app.get("/")
 def health():
     return {
@@ -96,23 +105,27 @@ def readiness():
     started = time.perf_counter()
     result = inference_provider.check_readiness()
     memory_result = memory_store.check_readiness()
+    vector_result = check_vector_store_readiness()
     duration = time.perf_counter() - started
     metrics.observe_readiness(result, duration)
     logger.info(
-        "Readiness probe request_id=%s inference_provider=%s inference_outcome=%s memory_provider=%s memory_outcome=%s",
+        "Readiness probe request_id=%s inference_provider=%s inference_outcome=%s memory_provider=%s memory_outcome=%s vector_provider=%s vector_outcome=%s",
         request_id(),
         result.provider,
         result.status.value,
         memory_result.provider,
         memory_result.status,
+        vector_result.provider,
+        vector_result.status,
     )
-    ready = result.ready and memory_result.ready
-    overall_status = "ready" if ready else (result.status.value if not result.ready else memory_result.status)
+    ready = result.ready and memory_result.ready and vector_result.ready
+    overall_status = "ready" if ready else next(status for ok, status in ((result.ready, result.status.value), (memory_result.ready, memory_result.status), (vector_result.ready, vector_result.status)) if not ok)
     content = {
         "status": overall_status,
         "provider": result.provider,
         "inference": {"status": result.status.value, "provider": result.provider},
         "memory": {"status": memory_result.status, "provider": memory_result.provider},
+        "vector_store": {"status": vector_result.status, "provider": vector_result.provider},
         "models": dict(result.models),
     }
     return JSONResponse(status_code=200 if ready else 503, content=content)

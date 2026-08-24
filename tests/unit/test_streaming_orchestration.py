@@ -1,4 +1,5 @@
 from llm.inference import InferenceConnectionError, ModelRole
+from rag.vector_store import VectorStoreError
 
 from graph import streaming  # noqa: E402
 
@@ -115,3 +116,16 @@ def test_partial_stream_failure_is_not_retried_or_persisted(monkeypatch):
     assert [event["type"] for event in events] == ["metadata", "chunk", "error"]
     assert len(provider.calls) == 1
     assert persisted == []
+
+
+def test_vector_failure_is_a_sanitized_ndjson_event(monkeypatch):
+    def fail(*args, **kwargs):
+        raise VectorStoreError("vector_unreachable")
+
+    monkeypatch.setattr(streaming, "rag_prompt_and_sources", fail)
+    events = list(
+        streaming.stream_rag_response(
+            "private query", "session", FakeProvider(["unused"]), lambda _: "rag"
+        )
+    )
+    assert events == [{"type": "error", "message": "Knowledge retrieval is unavailable."}]

@@ -47,9 +47,14 @@ class Settings(BaseSettings):
     API_PORT: int = 8001
 
     # =========================
-    # ChromaDB
+    # Vector store
     # =========================
+    VECTOR_STORE_PROVIDER: Literal["chroma_local", "chroma_http"] = "chroma_local"
     CHROMA_PATH: str = "./chroma_db"
+    VECTOR_STORE_HOST: str = "localhost"
+    VECTOR_STORE_PORT: int = Field(default=8000, ge=1, le=65535)
+    VECTOR_STORE_SSL: bool = False
+    VECTOR_STORE_COLLECTION: str = "knowledge_base"
 
     # =========================
     # Retrieval
@@ -118,6 +123,12 @@ class Settings(BaseSettings):
             )
         if self.MEMORY_PROVIDER == "redis" and not self.REDIS_URL.strip():
             raise ValueError("REDIS_URL must not be empty when MEMORY_PROVIDER=redis")
+        if not self.VECTOR_STORE_COLLECTION.strip():
+            raise ValueError("VECTOR_STORE_COLLECTION must not be empty")
+        if self.VECTOR_STORE_PROVIDER == "chroma_local" and not self.CHROMA_PATH.strip():
+            raise ValueError("CHROMA_PATH must not be empty for chroma_local")
+        if self.VECTOR_STORE_PROVIDER == "chroma_http" and not self.VECTOR_STORE_HOST.strip():
+            raise ValueError("VECTOR_STORE_HOST must not be empty for chroma_http")
         return self
 
 

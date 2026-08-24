@@ -80,6 +80,26 @@ class Metrics:
             "memory_readiness_check_duration_seconds", "Conversation-memory readiness duration.",
             ("provider", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
         )
+        self.vector_operations = Counter(
+            "vector_operations_total", "Completed vector-store operations.",
+            ("provider", "operation", "outcome"), registry=self.registry,
+        )
+        self.vector_duration = Histogram(
+            "vector_operation_duration_seconds", "Vector-store operation duration.",
+            ("provider", "operation", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
+        )
+        self.vector_errors = Counter(
+            "vector_errors_total", "Normalized vector-store failures.",
+            ("provider", "operation", "error_category"), registry=self.registry,
+        )
+        self.vector_readiness = Counter(
+            "vector_readiness_checks_total", "Vector-store readiness outcomes.",
+            ("provider", "outcome"), registry=self.registry,
+        )
+        self.vector_readiness_duration = Histogram(
+            "vector_readiness_duration_seconds", "Vector-store readiness duration.",
+            ("provider", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
+        )
 
     def inference(self, provider: str, role: ModelRole, model: str, operation: str):
         return InferenceObservation(self, provider, role.value, model, operation)
@@ -102,6 +122,17 @@ class Metrics:
         labels = (result.provider, result.status)
         self.memory_readiness.labels(*labels).inc()
         self.memory_readiness_duration.labels(*labels).observe(duration)
+
+    def observe_vector(self, provider: str, operation: str, error, duration: float) -> None:
+        outcome = "error" if error is not None else "success"
+        self.vector_operations.labels(provider, operation, outcome).inc()
+        self.vector_duration.labels(provider, operation, outcome).observe(duration)
+        if error is not None:
+            self.vector_errors.labels(provider, operation, error.category).inc()
+
+    def observe_vector_readiness(self, provider: str, outcome: str, duration: float) -> None:
+        self.vector_readiness.labels(provider, outcome).inc()
+        self.vector_readiness_duration.labels(provider, outcome).observe(duration)
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

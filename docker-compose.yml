@@ -37,6 +37,13 @@ services:
       MEMORY_OPERATION_TIMEOUT: ${MEMORY_OPERATION_TIMEOUT:-2}
       MEMORY_TTL: ${MEMORY_TTL:-0}
 
+      VECTOR_STORE_PROVIDER: ${VECTOR_STORE_PROVIDER:-chroma_local}
+      CHROMA_PATH: ${CHROMA_PATH:-./chroma_db}
+      VECTOR_STORE_HOST: ${VECTOR_STORE_HOST:-chroma}
+      VECTOR_STORE_PORT: ${VECTOR_STORE_PORT:-8000}
+      VECTOR_STORE_SSL: ${VECTOR_STORE_SSL:-false}
+      VECTOR_STORE_COLLECTION: ${VECTOR_STORE_COLLECTION:-knowledge_base}
+
     ports:
       - "8001:8001"
 
@@ -61,6 +68,18 @@ services:
       retries: 5
     volumes:
       - redis-memory:/data
+    restart: unless-stopped
+
+  chroma:
+    image: chromadb/chroma:1.5.9
+    profiles: ["vector"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/8000"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - chroma-data:/data
     restart: unless-stopped
 
   ui:
@@ -88,3 +107,4 @@ services:
 
 volumes:
   redis-memory:
+  chroma-data:
