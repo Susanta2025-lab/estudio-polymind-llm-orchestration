@@ -23,6 +23,7 @@ from memory.memory_store import MemoryError
 from memory.provider_factory import close_memory_store
 from rag.vector_store import VectorStoreError
 from rag.vector_store_factory import check_vector_store_readiness, close_vector_store
+from rag.bm25 import build_bm25, check_bm25_readiness, clear_bm25_snapshot
 from utils.logger import log_request
 
 logger = logging.getLogger(__name__)
@@ -30,9 +31,30 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    yield
-    close_memory_store()
-    close_vector_store()
+    logger.info("Service startup initialization beginning")
+    started = time.perf_counter()
+    successful = False
+    try:
+        build_bm25()
+        successful = True
+        logger.info("BM25 snapshot loaded")
+    except Exception as exc:
+        logger.warning(
+            "BM25 startup snapshot unavailable category=%s",
+            getattr(exc, "category", "bm25_snapshot_unavailable"),
+        )
+    finally:
+        metrics.observe_bm25_build(time.perf_counter() - started, successful)
+    try:
+        yield
+    finally:
+        clear_bm25_snapshot()
+        close_memory_store()
+        close_vector_store()
+        close_provider = getattr(inference_provider, "close", None)
+        if close_provider is not None:
+            close_provider()
+        logger.info("Service shutdown cleanup complete")
 
 app = FastAPI(
     title="Estudio PolyMind - API",
@@ -106,10 +128,14 @@ def readiness():
     result = inference_provider.check_readiness()
     memory_result = memory_store.check_readiness()
     vector_result = check_vector_store_readiness()
+    bm25_result = check_bm25_readiness(
+        published_version=getattr(vector_result, "corpus_version", None),
+        vector_ready=vector_result.ready,
+    )
     duration = time.perf_counter() - started
     metrics.observe_readiness(result, duration)
     logger.info(
-        "Readiness probe request_id=%s inference_provider=%s inference_outcome=%s memory_provider=%s memory_outcome=%s vector_provider=%s vector_outcome=%s",
+        "Readiness probe request_id=%s inference_provider=%s inference_outcome=%s memory_provider=%s memory_outcome=%s vector_provider=%s vector_outcome=%s bm25_outcome=%s",
         request_id(),
         result.provider,
         result.status.value,
@@ -117,15 +143,29 @@ def readiness():
         memory_result.status,
         vector_result.provider,
         vector_result.status,
+        bm25_result.status,
     )
-    ready = result.ready and memory_result.ready and vector_result.ready
-    overall_status = "ready" if ready else next(status for ok, status in ((result.ready, result.status.value), (memory_result.ready, memory_result.status), (vector_result.ready, vector_result.status)) if not ok)
+    components = (
+        ("inference", result.ready, result.status.value),
+        ("memory", memory_result.ready, memory_result.status),
+        ("vector_store", vector_result.ready, vector_result.status),
+        ("bm25", bm25_result.ready, bm25_result.status),
+    )
+    for component, component_ready, _status in components:
+        metrics.set_component_readiness(component, component_ready)
+    ready = all(component_ready for _, component_ready, _ in components)
+    overall_status = "ready" if ready else next(status for _, ok, status in components if not ok)
     content = {
         "status": overall_status,
         "provider": result.provider,
         "inference": {"status": result.status.value, "provider": result.provider},
         "memory": {"status": memory_result.status, "provider": memory_result.provider},
         "vector_store": {"status": vector_result.status, "provider": vector_result.provider},
+        "bm25": {
+            "status": bm25_result.status,
+            "loaded_version": bm25_result.loaded_version,
+            "expected_version": bm25_result.expected_version,
+        },
         "models": dict(result.models),
     }
     return JSONResponse(status_code=200 if ready else 503, content=content)

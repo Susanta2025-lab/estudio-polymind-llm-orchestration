@@ -66,7 +66,7 @@ def test_health_is_independent_of_provider(monkeypatch):
 
 
 def test_memory_unavailable_makes_readiness_fail_but_not_liveness(monkeypatch):
-    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": True, "status": "ready", "provider": "chroma_http"})())
+    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": True, "status": "ready", "provider": "chroma_http", "corpus_version": "v1"})())
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
     unavailable = type("MemoryResult", (), {"ready": False, "status": "memory_unreachable", "provider": "redis"})()
     monkeypatch.setattr(api_module.memory_store, "check_readiness", lambda: unavailable)
@@ -102,11 +102,12 @@ def test_tool_only_query_records_route_but_not_inference(monkeypatch):
 def test_ready_returns_sanitized_200_or_503(monkeypatch):
     monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {"ready": True, "status": "ready", "provider": "chroma_http"})())
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
+    monkeypatch.setattr(api_module, "check_bm25_readiness", lambda **kwargs: type("Result", (), {"ready": True, "status": "ready", "loaded_version": "v1", "expected_version": "v1"})())
     ready = api_module.readiness()
     monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.AUTHENTICATION_FAILURE))
     unavailable = api_module.readiness()
     assert ready.status_code == 200
-    assert ready.body == b'{"status":"ready","provider":"fake","inference":{"status":"ready","provider":"fake"},"memory":{"status":"ready","provider":"file"},"vector_store":{"status":"ready","provider":"chroma_http"},"models":{"general":"served"}}'
+    assert ready.body == b'{"status":"ready","provider":"fake","inference":{"status":"ready","provider":"fake"},"memory":{"status":"ready","provider":"file"},"vector_store":{"status":"ready","provider":"chroma_http"},"bm25":{"status":"ready","loaded_version":"v1","expected_version":"v1"},"models":{"general":"served"}}'
     assert unavailable.status_code == 503
     assert b'"status":"authentication_failure"' in unavailable.body
 
@@ -118,6 +119,20 @@ def test_vector_unavailable_makes_readiness_fail_but_health_stays_alive(monkeypa
     assert response.status_code == 503
     assert b'"vector_store":{"status":"vector_unreachable","provider":"chroma_http"}' in response.body
     assert api_module.liveness() == {"status": "alive"}
+
+
+def test_stale_bm25_makes_composite_readiness_fail(monkeypatch):
+    monkeypatch.setattr(api_module.inference_provider, "check_readiness", lambda: result(ReadinessStatus.READY))
+    monkeypatch.setattr(api_module, "check_vector_store_readiness", lambda: type("Result", (), {
+        "ready": True, "status": "ready", "provider": "chroma_http", "corpus_version": "v2",
+    })())
+    monkeypatch.setattr(api_module, "check_bm25_readiness", lambda **kwargs: type("Result", (), {
+        "ready": False, "status": "bm25_version_mismatch",
+        "loaded_version": "v1", "expected_version": "v2",
+    })())
+    response = api_module.readiness()
+    assert response.status_code == 503
+    assert b'"bm25":{"status":"bm25_version_mismatch","loaded_version":"v1","expected_version":"v2"}' in response.body
 
 
 def test_request_id_is_generated_or_accepts_only_bounded_safe_input():

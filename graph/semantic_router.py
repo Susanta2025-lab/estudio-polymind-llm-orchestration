@@ -1,4 +1,5 @@
 from sentence_transformers import util
+import threading
 
 from rag.embeddings import get_embedding
 
@@ -48,17 +49,20 @@ INTENTS = {
 }
 
 
-# Precompute intent embeddings once at startup
-INTENT_EMBEDDINGS = {}
+INTENT_EMBEDDINGS = None
+_intent_lock = threading.Lock()
 
-for route, examples in INTENTS.items():
 
-    INTENT_EMBEDDINGS[route] = [
-
-        get_embedding(example)
-
-        for example in examples
-    ]
+def _intent_embeddings():
+    global INTENT_EMBEDDINGS
+    if INTENT_EMBEDDINGS is None:
+        with _intent_lock:
+            if INTENT_EMBEDDINGS is None:
+                INTENT_EMBEDDINGS = {
+                    route: [get_embedding(example) for example in examples]
+                    for route, examples in INTENTS.items()
+                }
+    return INTENT_EMBEDDINGS
 
 
 def semantic_route(query: str):
@@ -69,11 +73,12 @@ def semantic_route(query: str):
 
     scores = {}
 
+    intent_embeddings = _intent_embeddings()
     for route in INTENTS:
 
         similarities = []
 
-        for example_embedding in INTENT_EMBEDDINGS[route]:
+        for example_embedding in intent_embeddings[route]:
 
             score = util.cos_sim(
                 query_embedding,

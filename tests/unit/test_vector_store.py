@@ -18,6 +18,7 @@ class Collection:
         self.get_result = get_result or {"documents": [], "metadatas": []}
         self.error = error
         self.upserts = []
+        self.metadata = {"polymind_corpus_version": "development"}
 
     def query(self, **kwargs):
         if self.error:
@@ -39,13 +40,20 @@ class Collection:
             raise self.error
         return len(self.get_result["documents"])
 
+    def modify(self, metadata):
+        self.metadata = metadata
+
 
 class Client:
     def __init__(self, collection, heartbeat_error=None):
         self.collection = collection
         self.heartbeat_error = heartbeat_error
+        self._server = SimpleNamespace(_session=SimpleNamespace(timeout=None, close=lambda: None))
 
     def get_or_create_collection(self, name):
+        return self.collection
+
+    def get_collection(self, name):
         return self.collection
 
     def heartbeat(self):
@@ -91,7 +99,7 @@ def test_malformed_response_and_unavailable_collection_are_normalized():
 
 def test_readiness_and_upsert_contract():
     collection = Collection()
-    target = store(collection)
+    target = ChromaVectorStore(Client(collection), "knowledge", "chroma_http", Metrics(CollectorRegistry()), administrative=True)
     assert target.check_readiness().ready is True
     target.upsert(["id"], ["doc"], [[1.0]], [{"source": "x"}])
     assert collection.upserts == [{"ids": ["id"], "documents": ["doc"], "embeddings": [[1.0]], "metadatas": [{"source": "x"}]}]
@@ -111,7 +119,10 @@ def test_factory_selects_local_and_shared_without_module_level_client(monkeypatc
     shared = create_vector_store(Settings(VECTOR_STORE_PROVIDER="chroma_http", VECTOR_STORE_HOST="vector.internal", VECTOR_STORE_PORT=9000, VECTOR_STORE_SSL=True))
     assert local.provider == "chroma_local"
     assert shared.provider == "chroma_http"
-    assert calls == [("local", {"path": "custom/path"}), ("http", {"host": "vector.internal", "port": 9000, "ssl": True})]
+    assert calls == [("local", {"path": "custom/path"}), ("http", {
+        "host": "vector.internal", "port": 9000, "ssl": True,
+    })]
+    assert fake_client._server._session.timeout.connect == 5.0
 
 
 def test_vector_configuration_rejects_invalid_or_incomplete_values():

@@ -62,7 +62,7 @@ dev:
 # RAG PIPELINE
 # ==========================================
 
-# Ingest documents into ChromaDB
+# Ingest documents and publish BM25_CORPUS_VERSION after all upserts succeed
 ingest:
 	python rag/ingest.py
 
@@ -175,7 +175,7 @@ help:
 	@echo "  make install          Install dependencies"
 	@echo ""
 	@echo "RAG Pipeline:"
-	@echo "  make ingest           Build ChromaDB index"
+	@echo "  make ingest           Upsert Chroma documents and publish corpus version"
 	@echo "  make rebuild          Rebuild ChromaDB index"
 	@echo "  make clean            Delete ChromaDB database"
 	@echo ""

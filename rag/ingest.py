@@ -4,6 +4,7 @@ from pathlib import Path
 from rag.chunking import chunk_text
 from rag.embeddings import get_embedding
 from rag.vector_store_factory import get_vector_store_admin
+from config.settings import settings
 
 from rag.loaders.pdf_loader import load_pdf
 from rag.loaders.text_loader import load_text
@@ -78,6 +79,13 @@ def ingest_documents(vector_store=None):
             f"✅ Ingested: {file.name}"
         )
 
+    if total_chunks == 0:
+        raise RuntimeError("No document chunks were available; corpus version was not published.")
+
+    # Publishing happens only after every idempotent upsert succeeds. Replicas
+    # never rebuild automatically; operators roll them after this version changes.
+    store.publish_corpus_version(settings.BM25_CORPUS_VERSION)
+
     print("\n📊 Ingestion Summary")
     print(
         f"Documents: {total_documents}"
@@ -86,6 +94,7 @@ def ingest_documents(vector_store=None):
         f"Chunks: {total_chunks}"
     )
     print("🎉 Ingestion complete!\n")
+    print(f"Corpus version: {settings.BM25_CORPUS_VERSION}")
 
 
 if __name__ == "__main__":

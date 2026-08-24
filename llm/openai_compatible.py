@@ -55,6 +55,7 @@ class OpenAICompatibleProvider:
                 "Generation parameters contain reserved keys: "
                 f"{sorted(reserved)}"
             )
+        self._owns_http_client = http_client is None
         self.http_client = http_client if http_client is not None else requests.Session()
         self.headers = {"Accept": "application/json"}
         if api_key and api_key.strip():
@@ -72,6 +73,10 @@ class OpenAICompatibleProvider:
             raise InferenceResponseError(
                 f"No served model is configured for role '{role.value}'."
             ) from exc
+
+    def close(self) -> None:
+        if self._owns_http_client:
+            self.http_client.close()
 
     def _payload(self, prompt: str, role: ModelRole, stream: bool) -> dict:
         return {

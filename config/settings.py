@@ -1,10 +1,14 @@
 from typing import Any, Dict, Literal, Optional
+from urllib.parse import urlparse
+import re
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+
+    DEPLOYMENT_ENV: Literal["local", "compose", "production"] = "local"
 
     # =========================
     # Inference providers
@@ -55,6 +59,8 @@ class Settings(BaseSettings):
     VECTOR_STORE_PORT: int = Field(default=8000, ge=1, le=65535)
     VECTOR_STORE_SSL: bool = False
     VECTOR_STORE_COLLECTION: str = "knowledge_base"
+    VECTOR_STORE_TIMEOUT: float = Field(default=5.0, gt=0)
+    BM25_CORPUS_VERSION: str = "development"
 
     # =========================
     # Retrieval
@@ -129,6 +135,40 @@ class Settings(BaseSettings):
             raise ValueError("CHROMA_PATH must not be empty for chroma_local")
         if self.VECTOR_STORE_PROVIDER == "chroma_http" and not self.VECTOR_STORE_HOST.strip():
             raise ValueError("VECTOR_STORE_HOST must not be empty for chroma_http")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", self.BM25_CORPUS_VERSION):
+            raise ValueError("BM25_CORPUS_VERSION must be a safe 1-64 character identifier")
+
+        active_endpoint = (
+            ("OLLAMA_URL", self.OLLAMA_URL)
+            if self.INFERENCE_PROVIDER == "ollama"
+            else ("OPENAI_COMPATIBLE_BASE_URL", self.OPENAI_COMPATIBLE_BASE_URL)
+        )
+        for name, value in (active_endpoint,):
+            parsed = urlparse(value)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                raise ValueError(f"{name} must be an HTTP(S) URL")
+
+        if self.MEMORY_PROVIDER == "redis":
+            parsed = urlparse(self.REDIS_URL)
+            if parsed.scheme not in {"redis", "rediss"} or not parsed.hostname:
+                raise ValueError("REDIS_URL must be a valid Redis URL")
+
+        if self.DEPLOYMENT_ENV == "production":
+            if self.INFERENCE_PROVIDER != "openai_compatible":
+                raise ValueError("production requires INFERENCE_PROVIDER=openai_compatible")
+            if self.MEMORY_PROVIDER != "redis":
+                raise ValueError("production requires MEMORY_PROVIDER=redis")
+            if self.VECTOR_STORE_PROVIDER != "chroma_http":
+                raise ValueError("production requires VECTOR_STORE_PROVIDER=chroma_http")
+            loopback = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+            endpoints = {
+                "OPENAI_COMPATIBLE_BASE_URL": urlparse(self.OPENAI_COMPATIBLE_BASE_URL).hostname,
+                "REDIS_URL": urlparse(self.REDIS_URL).hostname,
+                "VECTOR_STORE_HOST": self.VECTOR_STORE_HOST,
+            }
+            invalid = [name for name, host in endpoints.items() if host in loopback]
+            if invalid:
+                raise ValueError(f"production external services must not use loopback hosts: {sorted(invalid)}")
         return self
 
 

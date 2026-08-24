@@ -150,6 +150,8 @@ concrete client. `chroma_local` (the backward-compatible default) persists under
 `CHROMA_PATH` for local, single-replica development. `chroma_http` connects each
 API worker to one external Chroma server and is the supported shared mode for
 horizontal replicas. It never falls back to local persistence.
+Serving clients use Chroma's read-only collection lookup. Collection creation,
+upsert, reset, and corpus-version publication require the explicit admin client.
 
 ---
 
@@ -421,18 +423,21 @@ upstream bodies or credentials.
 ## Liveness, readiness, and failure handling
 
 `GET /health` reports only that the PolyMind API process is alive. The existing
-`GET /` response is preserved for compatibility. `GET /ready` performs lightweight
-inference and memory checks. OpenAI-compatible providers use
+`GET /` response is preserved for compatibility. `GET /ready` performs bounded
+inference, memory, vector-store, and BM25-version checks. OpenAI-compatible providers use
 `GET /v1/models`, while Ollama uses `GET /api/tags`. It returns HTTP 200 with
-`status: ready` only when every configured logical-role model is advertised and
-memory is available. Redis uses `PING`; the file backend checks local path access.
-The response includes sanitized `inference` and `memory` component states;
+`status: ready` only when every configured logical-role model is advertised,
+memory and vector storage are available, and the process-local BM25 snapshot
+matches the configured and published corpus version. Redis uses `PING`; the file
+backend checks local path access. The response includes sanitized `inference`,
+`memory`, `vector_store`, and `bm25` component states;
 unreachable, timeout, authentication, overload, missing-model, malformed-protocol,
 and other upstream states return a sanitized HTTP 503 response.
 
 In other words, API alive does not imply inference ready. A temporary provider
-outage does not prevent PolyMind from starting, and readiness never generates
-tokens. Transient readiness probes receive at most the configured number of
+outage does not prevent PolyMind from starting. Startup attempts one bounded BM25
+build and enters an alive/not-ready state if it fails. Readiness never builds BM25
+or generates tokens. Transient readiness probes receive at most the configured number of
 additional attempts with bounded linear backoff. Generation and streaming are not
 automatically retried because the provider may already have accepted the request;
 restarting could duplicate work or user-visible tokens. A stream failure emits the
@@ -440,6 +445,10 @@ existing sanitized NDJSON `error` event and incomplete output is not persisted.
 Memory connectivity, timeout, malformed-data, read, and write failures are also
 normalized. If Redis is selected, failure stays visible and never triggers a
 file fallback, avoiding split-brain state between replicas.
+
+Shutdown clears the local BM25 snapshot, closes Redis/vector lifecycle objects,
+and closes the OpenAI-compatible HTTP session owned by the process. PolyMind does
+not own the lifecycle of production inference, Redis, or Chroma services.
 
 Every API response includes `X-Request-ID`. A caller-provided ID is accepted only
 when it is 1–64 characters from a bounded safe character set; otherwise PolyMind
@@ -456,7 +465,9 @@ bounded semantic-route behavior, readiness outcomes/latency, and bounded memory
 operation/readiness outcomes, latency, and normalized errors. Vector operations
 and readiness add the same bounded outcome, duration, and error-category views;
 dense queries, BM25 snapshot reads, upserts, and resets are distinguished only by
-a fixed operation label.
+a fixed operation label. `component_readiness` is a bounded per-component gauge;
+`bm25_snapshot_build_duration_seconds` and `bm25_snapshot_refresh_total` describe
+the startup snapshot attempt. Corpus versions are never Prometheus labels.
 
 TTFT is the time until the first non-empty generated content chunk; SSE comments,
 role deltas, empty deltas, and usage-only chunks do not count. OpenAI-compatible
@@ -480,7 +491,28 @@ not used as a metrics registry. In a
 production deployment, `/metrics` should be network-restricted or protected by
 infrastructure because the application has no endpoint authentication layer.
 
-## Multi-replica deployment constraints
+## Production topology and multi-replica deployment constraints
+
+```text
+External clients
+      |
+PolyMind API replicas (FastAPI / LangGraph / RAG control plane)
+      |----------------------|----------------------|
+      v                      v                      v
+External OpenAI-         Shared Redis          Shared Chroma HTTP
+compatible inference    conversation state    vectors + corpus version
+
+Controlled ingestion/admin -> Shared Chroma -> publish corpus version
+                                      -> controlled API replica rollout
+```
+
+PolyMind owns serving, orchestration, routing, request correlation, readiness,
+and per-process metrics. Operators separately own inference, Redis, and Chroma
+lifecycle, durability, availability, and security. `DEPLOYMENT_ENV=production`
+requires OpenAI-compatible inference, Redis, and Chroma HTTP with non-loopback
+service hosts. Static configuration errors fail early; network outages degrade
+readiness. Docker Compose profiles remain local-development conveniences and are
+not the production deployment model.
 
 Conversation memory is replica-safe when all workers use `MEMORY_PROVIDER=redis`
 and the same external service. Inference adapters are stateless, configuration is
@@ -488,25 +520,40 @@ immutable after startup, and request correlation uses request-local context.
 
 RAG dense retrieval is replica-safe when every worker uses
 `VECTOR_STORE_PROVIDER=chroma_http` and the same external Chroma service and
-collection. Client and collection initialization are lazy: import and process
-startup do not require connectivity. `/health` remains process-only, while
-`/ready` requires inference, memory, and vector readiness and returns sanitized
-component states. There is no silent local fallback.
+collection. Client and collection initialization are lazy and imports perform no
+remote service access. Startup performs one bounded BM25 attempt and survives
+failure. `/health` remains process-only, while `/ready` requires inference,
+memory, vector, and current BM25 readiness. There is no silent local fallback.
 
 Serving code receives only retrieval access through the vector-store boundary.
 Ingestion and reset use the explicit `rag.ingest` and `rag.admin` administrative
-commands. Stable content-derived IDs make repeated/concurrent upserts idempotent;
-Chroma's backend-native get-or-create operation handles collection initialization.
+commands. Stable content-derived IDs make repeated/concurrent upserts idempotent.
+Only the admin client uses Chroma's backend-native get-or-create operation.
 Chroma provides concurrent server reads and makes completed upserts visible to
 clients through the shared collection. This repository does not add distributed
 locking or claim transactional consistency across a multi-document ingestion.
 
-BM25 remains a process-local immutable snapshot of the shared collection, built
-on first sparse query. Replicas that build from the same collection version are
-deterministic. A long-running replica does not automatically refresh its BM25
-snapshot after later ingestion, so ingestion should be followed by replica
-restart/rollout (or a future explicit refresh/version protocol). Dense retrieval,
-RRF fusion, cross-encoder reranking, and source metadata remain unchanged.
+BM25 is a process-local immutable startup snapshot. `BM25_CORPUS_VERSION` is a
+safe 1–64 character publication identifier. Ingestion performs deterministic
+UUIDv5 upserts and publishes that version in Chroma collection metadata only
+after all chunks succeed. Each replica configured with that expected version
+canonically sorts the shared documents and builds BM25 once during startup.
+Readiness returns 503 when the snapshot is uninitialized or its loaded/configured
+version differs from Chroma. It never rebuilds in request or readiness threads.
+
+The rollout procedure is: select a new immutable version, complete ingestion and
+publication, then restart/roll all replicas with that same value. Old replicas
+become unready when they observe the new publication; new replicas become ready
+only after loading it. Publication is not a transaction over the full ingestion,
+and automatic reload and blue/green vector publication remain future work. Dense
+retrieval, BM25 tokenization/ranking, RRF, reranking, and source metadata remain
+compatible.
+
+Production networks should restrict vLLM, Redis, and Chroma to trusted service
+paths. Use Redis authentication/TLS (`rediss`) and Chroma/vLLM authentication and
+TLS where supported by the operated services. Restrict `/metrics`, scrape every
+replica independently, and run ingestion/admin as a controlled job rather than a
+public API.
 
 ---
 
@@ -671,7 +718,13 @@ VECTOR_STORE_HOST=chroma.example.internal
 VECTOR_STORE_PORT=8000
 VECTOR_STORE_SSL=true
 VECTOR_STORE_COLLECTION=knowledge_base
+VECTOR_STORE_TIMEOUT=5
+BM25_CORPUS_VERSION=release-2026-08-24
 ```
+
+After changing `BM25_CORPUS_VERSION`, run ingestion to completion and then roll
+every API replica with the same value. `make rebuild` and `make clean` are explicit
+destructive admin actions; API startup and serving expose no ingestion/reset path.
 
 The optional Compose profile is development-only and deliberately publishes no
 Chroma host port:

@@ -15,6 +15,8 @@ services:
 
       API_PORT: 8001
 
+      DEPLOYMENT_ENV: compose
+
       INFERENCE_PROVIDER: ${INFERENCE_PROVIDER:-ollama}
 
       OLLAMA_URL: http://host.docker.internal:11434/api/chat
@@ -43,6 +45,8 @@ services:
       VECTOR_STORE_PORT: ${VECTOR_STORE_PORT:-8000}
       VECTOR_STORE_SSL: ${VECTOR_STORE_SSL:-false}
       VECTOR_STORE_COLLECTION: ${VECTOR_STORE_COLLECTION:-knowledge_base}
+      VECTOR_STORE_TIMEOUT: ${VECTOR_STORE_TIMEOUT:-5}
+      BM25_CORPUS_VERSION: ${BM25_CORPUS_VERSION:-development}
 
     ports:
       - "8001:8001"

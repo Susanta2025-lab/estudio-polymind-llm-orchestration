@@ -62,6 +62,10 @@ class OllamaClient:
                 f"No served model is configured for role '{role.value}'."
             ) from exc
 
+    def close(self) -> None:
+        # The default requests module has no owned pool lifecycle.
+        return None
+
     def _payload(self, prompt: str, role: ModelRole, stream: bool) -> dict:
         return {
             "model": self.model_id(role),

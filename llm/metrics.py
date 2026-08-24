@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
 from prometheus_client.exposition import CONTENT_TYPE_LATEST
 
 from llm.inference import InferenceError, InferenceUsage, ModelRole, ReadinessResult
@@ -100,6 +100,18 @@ class Metrics:
             "vector_readiness_duration_seconds", "Vector-store readiness duration.",
             ("provider", "outcome"), buckets=_LATENCY_BUCKETS, registry=self.registry,
         )
+        self.component_readiness = Gauge(
+            "component_readiness", "Current readiness of each required component.",
+            ("component",), registry=self.registry,
+        )
+        self.bm25_build_duration = Histogram(
+            "bm25_snapshot_build_duration_seconds", "BM25 startup snapshot build duration.",
+            buckets=_LATENCY_BUCKETS, registry=self.registry,
+        )
+        self.bm25_refreshes = Counter(
+            "bm25_snapshot_refresh_total", "Completed BM25 snapshot builds.",
+            ("outcome",), registry=self.registry,
+        )
 
     def inference(self, provider: str, role: ModelRole, model: str, operation: str):
         return InferenceObservation(self, provider, role.value, model, operation)
@@ -133,6 +145,13 @@ class Metrics:
     def observe_vector_readiness(self, provider: str, outcome: str, duration: float) -> None:
         self.vector_readiness.labels(provider, outcome).inc()
         self.vector_readiness_duration.labels(provider, outcome).observe(duration)
+
+    def set_component_readiness(self, component: str, ready: bool) -> None:
+        self.component_readiness.labels(component).set(1 if ready else 0)
+
+    def observe_bm25_build(self, duration: float, successful: bool) -> None:
+        self.bm25_build_duration.observe(duration)
+        self.bm25_refreshes.labels("success" if successful else "error").inc()
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

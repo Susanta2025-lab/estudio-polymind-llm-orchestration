@@ -20,11 +20,12 @@ def _category(error: BaseException, operation: str) -> str:
 
 
 class ChromaVectorStore:
-    def __init__(self, client, collection_name: str, provider: str, metric_store=metrics):
+    def __init__(self, client, collection_name: str, provider: str, metric_store=metrics, administrative: bool = False):
         self.client = client
         self.collection_name = collection_name
         self.provider = provider
         self.metrics = metric_store
+        self.administrative = administrative
         self._collection = None
 
     def _observe(self, operation, callback):
@@ -42,8 +43,26 @@ class ChromaVectorStore:
 
     def _get_collection(self):
         if self._collection is None:
-            self._collection = self.client.get_or_create_collection(name=self.collection_name)
+            operation = self.client.get_or_create_collection if self.administrative else self.client.get_collection
+            self._collection = operation(name=self.collection_name)
         return self._collection
+
+    def corpus_version(self) -> str | None:
+        def read_version():
+            metadata = self._get_collection().metadata or {}
+            value = metadata.get("polymind_corpus_version")
+            return value if isinstance(value, str) and value else None
+        return self._observe("version", read_version)
+
+    def publish_corpus_version(self, version: str) -> None:
+        if not self.administrative:
+            raise VectorStoreError("vector_write_forbidden")
+        def publish():
+            collection = self._get_collection()
+            metadata = dict(collection.metadata or {})
+            metadata["polymind_corpus_version"] = version
+            collection.modify(metadata=metadata)
+        self._observe("publish_version", publish)
 
     def similarity_search(self, embedding: Sequence[float], limit: int) -> List[VectorMatch]:
         def query():
@@ -69,11 +88,15 @@ class ChromaVectorStore:
         return self._observe("list", get)
 
     def upsert(self, ids: Sequence[str], documents: Sequence[str], embeddings: Sequence[Sequence[float]], metadatas: Sequence[Dict[str, Any]]) -> None:
+        if not self.administrative:
+            raise VectorStoreError("vector_write_forbidden")
         self._observe("upsert", lambda: self._get_collection().upsert(
             ids=list(ids), documents=list(documents), embeddings=[list(item) for item in embeddings], metadatas=list(metadatas)
         ))
 
     def reset(self) -> None:
+        if not self.administrative:
+            raise VectorStoreError("vector_write_forbidden")
         def reset_collection():
             try:
                 self.client.delete_collection(name=self.collection_name)
@@ -90,7 +113,7 @@ class ChromaVectorStore:
         try:
             self.client.heartbeat()
             self._get_collection().count()
-            return VectorReadiness(self.provider, True, status)
+            return VectorReadiness(self.provider, True, status, self.corpus_version())
         except Exception as exc:
             status = _category(exc, "readiness")
             return VectorReadiness(self.provider, False, status)
@@ -98,5 +121,7 @@ class ChromaVectorStore:
             self.metrics.observe_vector_readiness(self.provider, status, time.perf_counter() - started)
 
     def close(self) -> None:
-        # Chroma clients do not currently expose a public close lifecycle.
-        return None
+        session = getattr(getattr(self.client, "_server", None), "_session", None)
+        close = getattr(session, "close", None)
+        if close is not None:
+            close()

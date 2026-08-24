@@ -15,6 +15,9 @@ from graph.generation import rag_prompt_and_sources
 
 
 class Store:
+    def corpus_version(self):
+        return "development"
+
     def similarity_search(self, embedding, limit):
         return [
             VectorMatch("dense", {"source": "doc.txt", "chunk_id": 1}, 0.2),
@@ -38,7 +41,8 @@ def test_dense_retrieval_preserves_normalization_deduplication_and_metadata(monk
 
 
 def test_bm25_builds_from_provider_snapshot(monkeypatch):
-    monkeypatch.setattr(bm25, "bm25_index", None)
+    bm25.clear_bm25_snapshot()
+    bm25.build_bm25(Store())
     results = bm25.bm25_search("alpha", vector_store=Store())
     assert results[0]["text"] == "alpha dense"
     assert results[0]["source"] == "doc.txt"
