@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     # =========================
     RETRIEVAL_TOP_K: int = 5
     RERANK_TOP_K: int = 3
+    MODEL_ARTIFACT_DIR: Optional[str] = None
+    MODEL_OFFLINE_MODE: bool = False
 
     # =========================
     # Memory
@@ -177,6 +179,13 @@ class Settings(BaseSettings):
                 raise ValueError("production requires API_AUTH_ENABLED=true")
             if self.API_DOCS_ENABLED:
                 raise ValueError("production requires API_DOCS_ENABLED=false")
+            if not self.MODEL_OFFLINE_MODE or not self.MODEL_ARTIFACT_DIR:
+                raise ValueError(
+                    "production requires MODEL_OFFLINE_MODE=true and MODEL_ARTIFACT_DIR"
+                )
+            from pathlib import Path
+            if not Path(self.MODEL_ARTIFACT_DIR).is_absolute():
+                raise ValueError("MODEL_ARTIFACT_DIR must be an absolute path")
 
         if self.API_AUTH_ENABLED:
             token = self.API_AUTH_TOKEN.get_secret_value() if self.API_AUTH_TOKEN else ""

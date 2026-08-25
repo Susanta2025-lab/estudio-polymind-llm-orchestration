@@ -13,6 +13,8 @@ __pycache__/
 .vscode/
 
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 .env
 
@@ -23,6 +25,14 @@ __pycache__/
 .ipynb_checkpoints/
 
 logs/
+chroma_db/
+memory/*.json
+data/docs/
+docs/
+tests/
+*.egg-info/
+dist/
+build/
 
 media/
 

@@ -90,11 +90,12 @@ drops all capabilities, disables privilege escalation, and does not automount a
 service-account token. PolyMind does not call the Kubernetes API, so it requires
 no Role or RoleBinding.
 
-`readOnlyRootFilesystem` remains false. Current embedding/reranker downloads and
-Python/Hugging Face/Torch caches need writable home/cache paths; local file memory,
-local Chroma, and temporary files also need writes in development. Phase 12 should
-package immutable model artifacts, set explicit cache/temp paths, and determine
-the smallest `emptyDir` mounts before enabling a read-only production root.
+`readOnlyRootFilesystem` is enabled for production. Revision-pinned embedding and
+reranker artifacts are baked under `/opt/polymind/models` and loaded with Hugging
+Face offline mode, so they remain read-only. The chart mounts only a bounded
+256 MiB `emptyDir` at `/tmp`; model/library caches resolve beneath
+`/tmp/polymind-cache`. Local file memory and local Chroma remain development-only
+writable-volume concerns and are rejected by production configuration.
 
 ## Security operations
 

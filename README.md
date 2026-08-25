@@ -641,6 +641,38 @@ TLS where supported by the operated services. Restrict `/metrics`, scrape every
 replica independently, and run ingestion/admin as a controlled job rather than a
 public API.
 
+### Deterministic CPU model packaging
+
+The production control-plane image installs `torch==2.12.0+cpu` from PyTorch's
+CPU wheel index before installing the fully pinned application requirements. It
+contains no NVIDIA, CUDA, Triton, vLLM, Ollama, or generative-model runtime.
+External LLM inference remains behind the provider-neutral Ollama or
+OpenAI-compatible adapters.
+
+Two local model snapshots are acquired during `docker build` and stored read-only
+under `/opt/polymind/models`: `sentence-transformers/all-MiniLM-L6-v2` at revision
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41` for dense retrieval and semantic
+routing, and `cross-encoder/ms-marco-MiniLM-L-6-v2` at revision
+`c5ee24cb16019beea0893ab7796b1df96625c6b8` for reranking. A failed acquisition
+fails the build. Runtime uses `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, and
+`MODEL_OFFLINE_MODE=true`; missing artifacts fail model loading instead of
+triggering a download.
+
+Local development may leave `MODEL_ARTIFACT_DIR` unset and
+`MODEL_OFFLINE_MODE=false`; the same pinned revisions then use the developer's
+normal Hugging Face cache. To update a model, change its identifier/revision in
+`config/model_artifacts.py`, review retrieval-quality implications, rebuild the
+image, and rerun the offline smoke test:
+
+```bash
+docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=256m \
+  --entrypoint python polymind:phase12 -m scripts.validate_container_models
+```
+
+The production Helm chart enables `readOnlyRootFilesystem` and mounts a bounded
+256 MiB `/tmp` `emptyDir`; transient caches live at `/tmp/polymind-cache`.
+
 ---
 
 # 📊 Multi-LLM Benchmark

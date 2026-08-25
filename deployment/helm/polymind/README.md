@@ -66,8 +66,9 @@ from Service endpoints without asking Kubernetes to restart a live process.
 
 Containers run as UID/GID 10001, drop all Linux capabilities, disallow privilege
 escalation, use the runtime-default seccomp profile, and do not mount a service
-account token by default. The image currently needs a writable filesystem for
-Python/runtime caches, so read-only root filesystems are not enabled.
+account token by default. The root filesystem is read-only. Revision-pinned local
+models are baked into `/opt/polymind/models`; a bounded 256 MiB `emptyDir` at
+`/tmp` is the only writable filesystem and contains transient library caches.
 
 The Service exposes `/metrics` on the same application port. Restrict metrics at
 the network/ingress layer and scrape each replica independently; this chart does

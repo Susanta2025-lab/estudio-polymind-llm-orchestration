@@ -37,6 +37,7 @@
 # ==========================================
 
 install:
+	pip install --no-deps -r requirements-ml-cpu.txt
 	pip install -r requirements.txt
 
 # ==========================================

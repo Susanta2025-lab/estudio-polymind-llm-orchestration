@@ -30,6 +30,8 @@ def production_settings(**overrides):
         "API_AUTH_ENABLED": True,
         "API_AUTH_TOKEN": "synthetic-production-token-32-characters",
         "API_DOCS_ENABLED": False,
+        "MODEL_ARTIFACT_DIR": "/opt/polymind/models",
+        "MODEL_OFFLINE_MODE": True,
     }
     values.update(overrides)
     return Settings(**values)
@@ -234,3 +236,10 @@ def test_embedding_and_ingestion_modules_import_without_constructing_model():
         check=True, capture_output=True, text=True, timeout=20,
     )
     assert completed.stdout.strip() == "safe"
+
+
+def test_production_model_configuration_is_offline_and_absolute():
+    with pytest.raises(ValidationError):
+        production_settings(MODEL_OFFLINE_MODE=False)
+    with pytest.raises(ValidationError):
+        production_settings(MODEL_ARTIFACT_DIR="relative/models")

@@ -1,9 +1,27 @@
-from sentence_transformers import CrossEncoder
+import threading
+
+from config.model_artifacts import RERANKER_MODEL, model_source
+from config.settings import settings
 
 
-reranker = CrossEncoder(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-)
+_reranker = None
+_reranker_lock = threading.Lock()
+
+
+def get_reranker_model():
+    """Load the pinned CPU reranker lazily from the configured artifact path."""
+    global _reranker
+    if _reranker is None:
+        with _reranker_lock:
+            if _reranker is None:
+                from sentence_transformers import CrossEncoder
+                _reranker = CrossEncoder(
+                    model_source(RERANKER_MODEL, settings.MODEL_ARTIFACT_DIR),
+                    revision=None if settings.MODEL_ARTIFACT_DIR else RERANKER_MODEL.revision,
+                    local_files_only=settings.MODEL_OFFLINE_MODE,
+                    device="cpu",
+                )
+    return _reranker
 
 
 def rerank(
@@ -22,7 +40,7 @@ def rerank(
         for doc in docs
     ]
 
-    scores = reranker.predict(
+    scores = get_reranker_model().predict(
         pairs
     )
 

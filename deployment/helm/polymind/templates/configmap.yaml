@@ -28,3 +28,10 @@ data:
   API_AUTH_ENABLED: {{ .Values.application.authEnabled | quote }}
   API_DOCS_ENABLED: {{ .Values.application.docsEnabled | quote }}
   MAX_REQUEST_BYTES: {{ .Values.application.maxRequestBytes | quote }}
+  MODEL_ARTIFACT_DIR: {{ .Values.application.modelArtifactDir | quote }}
+  MODEL_OFFLINE_MODE: {{ .Values.application.modelOfflineMode | quote }}
+  HF_HOME: {{ .Values.application.modelCacheDir | quote }}
+  SENTENCE_TRANSFORMERS_HOME: {{ .Values.application.modelCacheDir | quote }}
+  TRANSFORMERS_OFFLINE: "1"
+  HF_HUB_OFFLINE: "1"
+  TMPDIR: /tmp

@@ -31,7 +31,7 @@ securityContext:
   capabilities:
     drop:
       - ALL
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
 
 service:
   type: ClusterIP
@@ -59,6 +59,12 @@ application:
   authEnabled: true
   docsEnabled: false
   maxRequestBytes: "1048576"
+  modelArtifactDir: /opt/polymind/models
+  modelOfflineMode: true
+  modelCacheDir: /tmp/polymind-cache
+
+temporaryStorage:
+  sizeLimit: 256Mi
 
 secrets:
   # Create this Secret separately, or set create=true and supply values at install

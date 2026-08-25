@@ -44,6 +44,8 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
     assert values["application"]["authEnabled"] is True
     assert values["application"]["docsEnabled"] is False
     assert values["networkPolicy"]["enabled"] is True
+    assert values["securityContext"]["readOnlyRootFilesystem"] is True
+    assert values["temporaryStorage"] == {"sizeLimit": "256Mi"}
 
 
 def test_templates_wire_probes_configuration_secrets_and_security():
@@ -68,12 +70,18 @@ def test_templates_wire_probes_configuration_secrets_and_security():
         "API_AUTH_ENABLED",
         "API_DOCS_ENABLED",
         "MAX_REQUEST_BYTES",
+        "MODEL_ARTIFACT_DIR",
+        "MODEL_OFFLINE_MODE",
+        "HF_HOME",
+        "SENTENCE_TRANSFORMERS_HOME",
     ):
         assert f"{name}:" in configmap
     assert "REDIS_URL" not in configmap
     assert "OPENAI_COMPATIBLE_API_KEY" not in configmap
     assert "API_AUTH_TOKEN" not in configmap
     assert "API_AUTH_TOKEN" in deployment
+    assert "mountPath: /tmp" in deployment
+    assert "sizeLimit:" in deployment
 
 
 def test_phase10_values_are_local_non_sensitive_overrides():
@@ -118,7 +126,7 @@ def test_phase10_script_has_fixed_cluster_context_and_scoped_deletes():
 def test_container_defines_the_helm_non_root_identity():
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "groupadd --gid 10001 polymind" in dockerfile
-    assert "useradd --uid 10001 --gid 10001 --create-home polymind" in dockerfile
+    assert "useradd --uid 10001 --gid 10001 --no-create-home" in dockerfile
     assert "USER 10001:10001" in dockerfile
 
 
