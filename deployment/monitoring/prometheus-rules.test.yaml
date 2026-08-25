@@ -16,6 +16,12 @@ tests:
         values: '0+30x10'
       - series: 'active_application_requests{namespace="polymind",pod="pod-a",operation="query"}'
         values: '2x11'
+      - series: 'up{namespace="polymind",pod="pod-a",job="polymind"}'
+        values: '1x11'
+      - series: 'active_application_requests{namespace="polymind",pod="pod-b",operation="query"}'
+        values: '0x11'
+      - series: 'up{namespace="polymind",pod="pod-b",job="polymind"}'
+        values: '1x11'
     promql_expr_test:
       - expr: polymind:application_requests:rate5m
         eval_time: 5m
@@ -32,3 +38,5 @@ tests:
         exp_samples:
           - labels: '{__name__="polymind:active_query_requests:sum_by_pod",namespace="polymind",pod="pod-a"}'
             value: 2
+          - labels: '{__name__="polymind:active_query_requests:sum_by_pod",namespace="polymind",pod="pod-b"}'
+            value: 0

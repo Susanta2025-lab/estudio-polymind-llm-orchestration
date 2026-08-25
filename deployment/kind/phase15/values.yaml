@@ -1,0 +1,79 @@
+# Functional validation parameters only. They are not production sizing.
+replicaCount: 2
+
+image:
+  repository: polymind
+  tag: phase15
+  pullPolicy: Never
+
+application:
+  deploymentEnv: production
+  openaiCompatibleBaseUrl: http://phase10-inference:8080/v1
+  openaiCompatibleModelMap: '{"general":"phase10-model","coding":"phase10-model","summarization":"phase10-model","fast":"phase10-model"}'
+  vectorStoreHost: phase10-chroma
+  vectorStorePort: 8000
+  vectorStoreSsl: false
+  vectorStoreCollection: phase10_knowledge
+  bm25CorpusVersion: phase10-v1
+  providerReadinessTimeout: 1
+  providerReadinessRetries: 0
+  memoryConnectTimeout: 1
+  memoryOperationTimeout: 1
+  vectorStoreTimeout: 2
+  authEnabled: true
+  docsEnabled: false
+
+monitoring:
+  scrapeAnnotations:
+    enabled: true
+
+networkPolicy:
+  # Kind's default CNI does not enforce policy. This is development-only.
+  enabled: false
+
+secrets:
+  create: false
+  existingSecret: polymind-phase10-secrets
+
+probes:
+  liveness:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 4
+    failureThreshold: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 384Mi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  # A deliberately sensitive Kind-only value used to prove the control loop.
+  targetAverageActiveQueries: 100m
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 15
+    scaleDown:
+      # Short enough for bounded local validation; recalibrate in production.
+      stabilizationWindowSeconds: 60
+      selectPolicy: Min
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30

@@ -58,6 +58,11 @@ class Metrics:
             "Application requests whose orchestration or stream iterator is active.",
             ("operation",), registry=self.registry,
         )
+        # Create every bounded child eagerly. A Ready process must publish an
+        # honest zero before its first request so pod custom metrics never
+        # confuse an idle replica with a missing time series.
+        for operation in ("query", "stream"):
+            self.active_application_requests.labels(operation).set(0)
         self.active_ndjson_streams = Gauge(
             "active_ndjson_streams",
             "NDJSON response iterators that are currently active.",

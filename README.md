@@ -519,6 +519,12 @@ and an operator PromQL/SLI/scaling runbook. Monitoring remains disabled by
 default, and the chart owns no monitoring stack, adapter, or HPA. See
 [`docs/operations/observability.md`](docs/operations/observability.md).
 
+Phase 15 adds an optional `autoscaling/v2` HPA driven by average active synchronous
+queries per pod. It is disabled by default and requires explicit maximum and target
+values. Adapter configuration lives under `deployment/monitoring`; the chart does
+not install cluster monitoring. Kind proves interoperability only, not production
+capacity, thresholds, ceilings, or SLOs.
+
 ## Production topology and multi-replica deployment constraints
 
 ### Kubernetes and Helm

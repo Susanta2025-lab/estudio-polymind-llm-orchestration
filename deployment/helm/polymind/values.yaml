@@ -1,5 +1,35 @@
 replicaCount: 2
 
+autoscaling:
+  # Application autoscaling is opt-in. maxReplicas and
+  # targetAverageActiveQueries must be set deliberately when enabled; the chart
+  # does not carry Kind-derived production sizing.
+  enabled: false
+  minReplicas: 2
+  maxReplicas: null
+  targetAverageActiveQueries: null
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      selectPolicy: Max
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      selectPolicy: Min
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+
 image:
   repository: polymind
   pullPolicy: IfNotPresent

@@ -209,7 +209,7 @@ error ratio and two-query saturation threshold are placeholders for operational
 validation, not production policy. Route alerts through dependency-specific
 runbooks and tune them against target traffic to avoid low-volume noise.
 
-## Future HPA contract
+## Application HPA contract
 
 `polymind:active_query_requests:sum_by_pod` is the preferred adapter input.
 Queries represent active synchronous orchestration and correlated best with the
@@ -218,17 +218,57 @@ stream can be active while consuming little local CPU. Do not sum query and stre
 counts into one unweighted target. CPU is a corroborating guardrail, not the
 application contract.
 
-A future Prometheus Adapter rule can match
-`polymind:active_query_requests:sum_by_pod`, associate `namespace` and `pod` with
+The reference Prometheus Adapter rule matches
+`polymind:active_query_requests:sum_by_pod`, associates `namespace` and `pod` with
 Kubernetes resources, and expose a renamed pods custom metric through
-`custom.metrics.k8s.io`. Managed platforms may map the same recorded series. Phase
-14 deliberately installs neither adapter nor HPA. Preserve target labels during
-scraping; validate adapter discovery and authorization before use.
+`custom.metrics.k8s.io`. Managed platforms may map the same recorded series; the
+adapter is cluster infrastructure, not chart-owned or a mandatory vendor choice.
 
-The exact target remains uncalibrated. Phase 15 needs representative multi-node
-nodes and external inference, steady and burst traffic, query/stream mixes, cold
+Metrics Server provides CPU/memory through `metrics.k8s.io`. It does not provide
+this signal. Prometheus Adapter or an equivalent provider exposes the application
+metric through `custom.metrics.k8s.io`; Phase 15 does not require Metrics Server.
+
+Fresh processes eagerly expose `active_application_requests{operation="query"} 0`.
+The recording rule retains only `namespace` and `pod` and requires a successful
+current `up == 1` target, so idle is zero but scrape failure stays missing. The
+adapter maps only Namespace and Pod and publishes
+`polymind_active_query_requests`; removed pod resources cannot consume stale data.
+
+The optional `autoscaling/v2` HPA uses a Pods metric and `AverageValue`. It is
+disabled by default and requires explicit `maxReplicas` and
+`targetAverageActiveQueries`. When enabled the Deployment omits `spec.replicas`,
+so Helm does not fight HPA state. Scale-up is explicitly bounded; scale-down is
+more conservative and must account for churn, long streams, rollout overlap, and
+the 135-second termination grace. Disable by setting `autoscaling.enabled=false`
+and deliberately restoring `replicaCount`.
+
+The exact production target and maximum remain uncalibrated. Production needs
+representative nodes and external inference, steady and burst traffic,
+query/stream mixes, cold
 replicas, dependency headroom, rollout overlap, and observation of latency, errors,
 CPU throttling, memory, and dependency latency. Scale-up should react faster than
 the sustained latency knee; scale-down needs stabilization longer than ordinary
 stream/request churn and must respect the 135-second termination grace. Provider,
 Redis, and Chroma capacity must be checked before increasing replica fan-out.
+
+Calibration must measure per-replica active queries, latency, throughput, TTFT,
+inference latency/errors, CPU/throttling, memory, readiness/cold-start distribution,
+direct/RAG/stream mix, Redis/Chroma latency and headroom, external inference
+headroom, scrape/rule/adapter delay, rollout overlap, and scale effectiveness.
+Those observations determine target, maximum, policies, and stabilization. Roll
+back when replicas rise without application improvement or dependency health
+deteriorates.
+
+Kind's `100m` target, maximum 4, and 60-second scale-down window prove only the
+control loop. They do not establish production sizing, HA, dependency capacity, or
+SLOs. Scaling PolyMind does not scale inference, Redis, or Chroma. CPU, memory,
+latency, TTFT, errors, readiness, and streams remain calibration/rollback evidence,
+not an unvalidated composite HPA signal.
+
+Adapter aggregation-layer RBAC and TLS/APIService ownership remain separate. It
+receives no application bearer token. PolyMind retains
+`automountServiceAccountToken: false` and needs no Kubernetes API permissions.
+`/metrics` remains excluded from public Ingress and requires network restriction.
+PDB and topology defaults remain deferred pending SLO/failure-domain policy;
+single-node Kind remains supported. Startup probe remains unnecessary because HPA
+did not change the measured startup lifecycle.

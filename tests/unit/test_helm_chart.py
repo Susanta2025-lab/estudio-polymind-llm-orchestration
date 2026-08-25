@@ -25,6 +25,7 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
         "templates/service.yaml",
         "templates/serviceaccount.yaml",
         "templates/servicemonitor.yaml",
+        "templates/hpa.yaml",
     }
     assert expected <= {
         str(path.relative_to(CHART)) for path in CHART.rglob("*") if path.is_file()
@@ -50,6 +51,9 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
     assert values["deployment"]["terminationGracePeriodSeconds"] == 135
     assert values["monitoring"]["scrapeAnnotations"]["enabled"] is False
     assert values["monitoring"]["serviceMonitor"]["enabled"] is False
+    assert values["autoscaling"]["enabled"] is False
+    assert values["autoscaling"]["maxReplicas"] is None
+    assert values["autoscaling"]["targetAverageActiveQueries"] is None
 
 
 def test_templates_wire_probes_configuration_secrets_and_security():
@@ -195,6 +199,8 @@ def test_helm_lint_and_default_render():
     assert 'MAX_REQUEST_BYTES: "1048576"' in rendered
     assert "kind: Ingress" not in rendered
     assert "kind: ServiceMonitor" not in rendered
+    assert "kind: HorizontalPodAutoscaler" not in rendered
+    assert "replicas: 2" in rendered
 
     enabled = subprocess.run(
         [
@@ -212,3 +218,41 @@ def test_helm_lint_and_default_render():
     assert 'prometheus.io/port: "8001"' in enabled
     assert "kind: ServiceMonitor" in enabled
     assert "app.kubernetes.io/name: prometheus" in enabled
+
+    autoscaled = subprocess.run(
+        [
+            "helm", "template", "polymind", str(CHART),
+            "--set", "autoscaling.enabled=true",
+            "--set", "autoscaling.maxReplicas=4",
+            "--set", "autoscaling.targetAverageActiveQueries=1",
+        ],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    documents = [item for item in yaml.safe_load_all(autoscaled) if item]
+    hpa = next(item for item in documents if item["kind"] == "HorizontalPodAutoscaler")
+    deployment = next(item for item in documents if item["kind"] == "Deployment")
+    assert hpa["apiVersion"] == "autoscaling/v2"
+    assert hpa["spec"]["scaleTargetRef"] == {
+        "apiVersion": "apps/v1", "kind": "Deployment", "name": "polymind-polymind",
+    }
+    assert hpa["spec"]["minReplicas"] == 2
+    assert hpa["spec"]["maxReplicas"] == 4
+    assert hpa["spec"]["metrics"][0] == {
+        "type": "Pods",
+        "pods": {
+            "metric": {"name": "polymind_active_query_requests"},
+            "target": {"type": "AverageValue", "averageValue": "1"},
+        },
+    }
+    assert set(hpa["spec"]["behavior"]) == {"scaleUp", "scaleDown"}
+    assert "replicas" not in deployment["spec"]
+
+
+@pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is not installed")
+def test_hpa_requires_explicit_target_and_maximum():
+    result = subprocess.run(
+        ["helm", "template", "polymind", str(CHART), "--set", "autoscaling.enabled=true"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode != 0
+    assert "autoscaling.maxReplicas is required" in result.stderr

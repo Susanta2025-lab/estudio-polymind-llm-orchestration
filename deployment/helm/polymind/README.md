@@ -83,9 +83,27 @@ annotations and a Prometheus Operator `ServiceMonitor` are independently opt-in
 under `monitoring`. The ServiceMonitor is not rendered by default, so installation
 does not require its CRD. Enable `networkPolicy.ingress.monitoring` with selectors
 matching the operated scraper; never expose `/metrics` through the public Ingress.
-The chart installs no Prometheus, rules engine, dashboard, adapter, or HPA. See
+The chart installs no Prometheus, rules engine, dashboard, or adapter. It can
+render an application HPA, disabled by default. See
 `docs/operations/observability.md` and the deployment-neutral rules under
 `deployment/monitoring/`.
+
+Enable autoscaling only after the recorded metric is available through
+`custom.metrics.k8s.io`:
+
+```yaml
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: <target-cluster-calibrated-maximum>
+  targetAverageActiveQueries: <target-cluster-calibrated-average>
+```
+
+The HPA uses `autoscaling/v2`, a Pods custom metric, and `AverageValue`. Enabling
+it removes `spec.replicas` from the Deployment render; disabling it restores
+`replicaCount`. The chart's explicit behavior is an operational starting point,
+not production calibration. Operators must override target, maximum, policies,
+and stabilization based on representative application and dependency evidence.
 
 The public Ingress path defaults to `/query`, which includes `/query/stream` but
 does not route probes, metrics, docs, OpenAPI, memory, or CLI-only administration.

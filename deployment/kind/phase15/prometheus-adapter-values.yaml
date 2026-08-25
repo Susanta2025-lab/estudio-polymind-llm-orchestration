@@ -1,0 +1,28 @@
+prometheus:
+  url: http://phase14-prometheus.polymind-phase10.svc
+  port: 9090
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+rules:
+  default: false
+  custom:
+    - seriesQuery: 'polymind:active_query_requests:sum_by_pod{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace:
+            resource: namespace
+          pod:
+            resource: pod
+      name:
+        matches: '^polymind:active_query_requests:sum_by_pod$'
+        as: polymind_active_query_requests
+      metricsQuery: 'max by (namespace, pod) (polymind:active_query_requests:sum_by_pod{<<.LabelMatchers>>})'

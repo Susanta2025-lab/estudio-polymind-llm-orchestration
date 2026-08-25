@@ -197,6 +197,8 @@ def test_readiness_and_application_metrics_use_bounded_dimensions():
 
 def test_active_request_and_stream_metrics_cleanup_on_success_and_cancellation():
     store = metric_store()
+    assert sample_value(store, "active_application_requests", {"operation": "query"}) == 0
+    assert sample_value(store, "active_application_requests", {"operation": "stream"}) == 0
     with store.active_request("query"):
         assert sample_value(store, "active_application_requests", {"operation": "query"}) == 1
     assert sample_value(store, "active_application_requests", {"operation": "query"}) == 0
@@ -207,3 +209,34 @@ def test_active_request_and_stream_metrics_cleanup_on_success_and_cancellation()
     stream.__exit__(GeneratorExit, GeneratorExit(), None)
     assert sample_value(store, "active_ndjson_streams", {}) == 0
     assert sample_value(store, "ndjson_stream_outcomes_total", {"outcome": "cancelled"}) == 1
+
+
+def test_active_query_metric_repeats_and_cleans_up_after_errors_without_going_negative():
+    store = metric_store()
+    labels = {"operation": "query"}
+
+    for _ in range(3):
+        with store.active_request("query"):
+            assert sample_value(store, "active_application_requests", labels) == 1
+        assert sample_value(store, "active_application_requests", labels) == 0
+
+    with pytest.raises(RuntimeError):
+        with store.active_request("query"):
+            assert sample_value(store, "active_application_requests", labels) == 1
+            raise RuntimeError("expected")
+
+    assert sample_value(store, "active_application_requests", labels) == 0
+    samples = [
+        sample for metric in store.registry.collect() for sample in metric.samples
+        if sample.name == "active_application_requests"
+    ]
+    assert {tuple(sorted(sample.labels)) for sample in samples} == {
+        ("operation",),
+    }
+    assert all(sample.value >= 0 for sample in samples)
+
+    cancelled = store.active_request("query")
+    cancelled.__enter__()
+    assert sample_value(store, "active_application_requests", labels) == 1
+    cancelled.__exit__(GeneratorExit, GeneratorExit(), None)
+    assert sample_value(store, "active_application_requests", labels) == 0

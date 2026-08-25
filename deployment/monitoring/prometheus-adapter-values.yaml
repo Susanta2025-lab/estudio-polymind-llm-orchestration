@@ -1,0 +1,16 @@
+# Reference Prometheus Adapter values. The adapter is cluster monitoring
+# infrastructure and is intentionally not installed by the PolyMind chart.
+rules:
+  default: false
+  custom:
+    - seriesQuery: 'polymind:active_query_requests:sum_by_pod{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace:
+            resource: namespace
+          pod:
+            resource: pod
+      name:
+        matches: '^polymind:active_query_requests:sum_by_pod$'
+        as: polymind_active_query_requests
+      metricsQuery: 'max by (namespace, pod) (polymind:active_query_requests:sum_by_pod{<<.LabelMatchers>>})'

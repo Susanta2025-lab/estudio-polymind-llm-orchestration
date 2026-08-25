@@ -1,0 +1,27 @@
+{{- if .Values.autoscaling.enabled }}
+{{- $maxReplicas := required "autoscaling.maxReplicas is required when autoscaling.enabled=true" .Values.autoscaling.maxReplicas }}
+{{- $target := required "autoscaling.targetAverageActiveQueries is required when autoscaling.enabled=true" .Values.autoscaling.targetAverageActiveQueries }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "polymind.fullname" . }}
+  labels:
+    {{- include "polymind.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "polymind.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ $maxReplicas }}
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: polymind_active_query_requests
+        target:
+          type: AverageValue
+          averageValue: {{ $target | quote }}
+  behavior:
+    {{- toYaml .Values.autoscaling.behavior | nindent 4 }}
+{{- end }}

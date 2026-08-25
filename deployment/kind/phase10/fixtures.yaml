@@ -58,6 +58,11 @@ data:
                 self.wfile.write(b"data: [DONE]\n\n")
                 self.wfile.flush()
                 return
+            prompt = " ".join(
+                str(message.get("content", "")) for message in request.get("messages", [])
+            )
+            if "phase15-slow-query" in prompt:
+                time.sleep(3)
             self._json(200, {
                 "choices": [{"message": {"role": "assistant", "content": "Phase 10 response"}}],
                 "usage": {"prompt_tokens": 4, "completion_tokens": 3, "total_tokens": 7},

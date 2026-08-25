@@ -15,7 +15,7 @@ groups:
       - record: polymind:active_application_requests:sum_by_pod
         expr: sum by (namespace, pod, operation) (active_application_requests)
       - record: polymind:active_query_requests:sum_by_pod
-        expr: sum by (namespace, pod) (active_application_requests{operation="query"})
+        expr: sum by (namespace, pod) (active_application_requests{operation="query"}) and on (namespace, pod) (max by (namespace, pod) (up{namespace!="",pod!=""}) == 1)
       - record: polymind:active_stream_requests:sum_by_pod
         expr: sum by (namespace, pod) (active_application_requests{operation="stream"})
       - record: polymind:active_ndjson_streams:sum_by_pod
