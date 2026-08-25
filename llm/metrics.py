@@ -112,6 +112,14 @@ class Metrics:
             "bm25_snapshot_refresh_total", "Completed BM25 snapshot builds.",
             ("outcome",), registry=self.registry,
         )
+        self.authentication_requests = Counter(
+            "authentication_requests_total", "Authentication decisions for protected API endpoints.",
+            ("endpoint_class", "outcome"), registry=self.registry,
+        )
+        self.request_rejections = Counter(
+            "request_rejections_total", "Requests rejected at the application security boundary.",
+            ("endpoint_class", "reason"), registry=self.registry,
+        )
 
     def inference(self, provider: str, role: ModelRole, model: str, operation: str):
         return InferenceObservation(self, provider, role.value, model, operation)
@@ -152,6 +160,12 @@ class Metrics:
     def observe_bm25_build(self, duration: float, successful: bool) -> None:
         self.bm25_build_duration.observe(duration)
         self.bm25_refreshes.labels("success" if successful else "error").inc()
+
+    def observe_authentication(self, endpoint_class: str, outcome: str) -> None:
+        self.authentication_requests.labels(endpoint_class, outcome).inc()
+
+    def observe_request_rejection(self, endpoint_class: str, reason: str) -> None:
+        self.request_rejections.labels(endpoint_class, reason).inc()
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

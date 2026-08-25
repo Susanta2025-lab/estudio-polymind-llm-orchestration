@@ -1,0 +1,70 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "polymind.fullname" . }}
+  labels:
+    {{- include "polymind.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "polymind.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if or .Values.networkPolicy.ingress.gateway.enabled .Values.networkPolicy.ingress.monitoring.enabled }}
+  ingress:
+    {{- if .Values.networkPolicy.ingress.gateway.enabled }}
+    - from:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.ingress.gateway.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.ingress.gateway.podSelector | nindent 12 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.application.port }}
+    {{- end }}
+    {{- if .Values.networkPolicy.ingress.monitoring.enabled }}
+    - from:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.ingress.monitoring.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.ingress.monitoring.podSelector | nindent 12 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.application.port }}
+    {{- end }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.egress.dns.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.egress.dns.podSelector | nindent 12 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- range $name := list "redis" "chroma" "inference" }}
+    {{- $target := index $.Values.networkPolicy.egress $name }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml $target.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml $target.podSelector | nindent 12 }}
+        {{- range $target.ipBlocks }}
+        - ipBlock:
+            cidr: {{ .cidr | quote }}
+            {{- with .except }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ $target.port }}
+    {{- end }}
+{{- end }}

@@ -56,6 +56,9 @@ application:
   memoryConnectTimeout: 2
   memoryOperationTimeout: 2
   vectorStoreTimeout: 5
+  authEnabled: true
+  docsEnabled: false
+  maxRequestBytes: "1048576"
 
 secrets:
   # Create this Secret separately, or set create=true and supply values at install
@@ -63,10 +66,67 @@ secrets:
   create: false
   existingSecret: polymind-secrets
   openaiCompatibleApiKeyKey: openai-compatible-api-key
+  apiAuthTokenKey: api-auth-token
   redisUrlKey: redis-url
   values:
     openaiCompatibleApiKey: ""
+    apiAuthToken: ""
     redisUrl: ""
+
+networkPolicy:
+  enabled: true
+  ingress:
+    gateway:
+      enabled: true
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/component: controller
+    monitoring:
+      enabled: false
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+  egress:
+    dns:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    redis:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: polymind-dependencies
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: redis
+      port: 6379
+      ipBlocks: []
+    chroma:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: polymind-dependencies
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: chroma
+      port: 8000
+      ipBlocks: []
+    inference:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: polymind-inference
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: vllm
+      port: 8000
+      ipBlocks: []
 
 deployment:
   strategy:
@@ -100,11 +160,10 @@ ingress:
   hosts:
     - host: polymind.example.com
       paths:
-        - path: /
+        - path: /query
           pathType: Prefix
   tls: []
 
 nodeSelector: {}
 tolerations: []
 affinity: {}
-

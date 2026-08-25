@@ -27,6 +27,9 @@ def production_settings(**overrides):
         "VECTOR_STORE_HOST": "vector.internal",
         "VECTOR_STORE_SSL": True,
         "BM25_CORPUS_VERSION": "corpus-2026-08-24",
+        "API_AUTH_ENABLED": True,
+        "API_AUTH_TOKEN": "synthetic-production-token-32-characters",
+        "API_DOCS_ENABLED": False,
     }
     values.update(overrides)
     return Settings(**values)
@@ -36,6 +39,19 @@ def test_local_and_production_deployment_configuration_is_valid():
     assert Settings(_env_file=None).DEPLOYMENT_ENV == "local"
     config = production_settings()
     assert (config.MEMORY_PROVIDER, config.VECTOR_STORE_PROVIDER) == ("redis", "chroma_http")
+
+
+@pytest.mark.parametrize("override", [
+    {"API_AUTH_ENABLED": False},
+    {"API_AUTH_TOKEN": None},
+    {"API_AUTH_TOKEN": "too-short"},
+    {"API_AUTH_TOKEN": " " * 32},
+    {"API_AUTH_TOKEN": "synthetic token containing whitespace"},
+    {"API_DOCS_ENABLED": True},
+])
+def test_insecure_production_api_configuration_fails_early(override):
+    with pytest.raises(ValidationError):
+        production_settings(**override)
 
 
 @pytest.mark.parametrize("override", [

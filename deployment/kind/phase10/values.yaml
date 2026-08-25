@@ -20,6 +20,13 @@ application:
   memoryConnectTimeout: 1
   memoryOperationTimeout: 1
   vectorStoreTimeout: 2
+  authEnabled: true
+  docsEnabled: false
+
+networkPolicy:
+  # Kind's default CNI does not enforce NetworkPolicy. Phase 10 keeps its
+  # operational smoke path unchanged; chart policy rendering is tested offline.
+  enabled: false
 
 secrets:
   create: false
@@ -44,4 +51,3 @@ resources:
   limits:
     cpu: "1"
     memory: 2Gi
-

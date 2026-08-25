@@ -60,6 +60,24 @@ jobs:
           python -m pytest
 
 
+      - name: Setup Helm
+
+        uses: azure/setup-helm@v4.3.0
+
+
+      - name: Validate Helm security controls
+
+        run: |
+
+          helm lint deployment/helm/polymind
+          helm template polymind deployment/helm/polymind > /dev/null
+
+
+      - name: Validate Compose configuration
+
+        run: docker compose config --quiet
+
+
       - name: Docker build
 
         run: |

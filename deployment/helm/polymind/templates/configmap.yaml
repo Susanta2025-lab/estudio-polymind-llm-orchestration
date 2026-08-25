@@ -25,4 +25,6 @@ data:
   MEMORY_CONNECT_TIMEOUT: {{ .Values.application.memoryConnectTimeout | quote }}
   MEMORY_OPERATION_TIMEOUT: {{ .Values.application.memoryOperationTimeout | quote }}
   VECTOR_STORE_TIMEOUT: {{ .Values.application.vectorStoreTimeout | quote }}
-
+  API_AUTH_ENABLED: {{ .Values.application.authEnabled | quote }}
+  API_DOCS_ENABLED: {{ .Values.application.docsEnabled | quote }}
+  MAX_REQUEST_BYTES: {{ .Values.application.maxRequestBytes | quote }}

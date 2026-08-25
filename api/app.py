@@ -7,18 +7,14 @@ from fastapi import FastAPI, Path, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
+from api.security import ApplicationSecurityMiddleware, documentation_urls
+from config.settings import settings
 from graph.generation import public_sources
 from graph.langgraph_flow import app_graph, inference_provider, memory_store
 from graph.streaming import stream_rag_response
 from llm.inference import InferenceError
 from llm.metrics import CONTENT_TYPE_LATEST, metrics
-from llm.operational import (
-    application_status,
-    normalize_request_id,
-    request_id,
-    reset_request_id,
-    set_request_id,
-)
+from llm.operational import application_status, request_id
 from memory.memory_store import MemoryError
 from memory.provider_factory import close_memory_store
 from rag.vector_store import VectorStoreError
@@ -56,30 +52,23 @@ async def lifespan(_app: FastAPI):
             close_provider()
         logger.info("Service shutdown cleanup complete")
 
+docs_url, redoc_url, openapi_url = documentation_urls(settings.API_DOCS_ENABLED)
+
 app = FastAPI(
     title="Estudio PolyMind - API",
     version="1.0.0",
     description="A platform that orchestrates multiple LLMs and RAG techniques.",
     lifespan=lifespan,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
 )
+app.add_middleware(ApplicationSecurityMiddleware, configuration=settings)
 
 
 class QueryRequest(BaseModel):
     query: str
     session_id: str = Field(default="default", min_length=1, max_length=256)
-
-
-@app.middleware("http")
-async def request_correlation(request: Request, call_next):
-    correlation_id = normalize_request_id(request.headers.get("X-Request-ID"))
-    token = set_request_id(correlation_id)
-    request.state.request_id = correlation_id
-    try:
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = correlation_id
-        return response
-    finally:
-        reset_request_id(token)
 
 
 @app.exception_handler(InferenceError)
@@ -203,10 +192,7 @@ def query(req: QueryRequest):
 
 @app.post("/query/stream")
 def query_stream(req: QueryRequest):
-    correlation_id = request_id()
-
     def encode_events():
-        token = set_request_id(correlation_id)
         started = time.perf_counter()
         metadata = {}
         outcome = "error"
@@ -222,7 +208,6 @@ def query_stream(req: QueryRequest):
             duration = time.perf_counter() - started
             metrics.observe_application(route, "stream", outcome, duration)
             log_request(route=route, operation="stream", outcome=outcome, duration=duration)
-            reset_request_id(token)
 
     return StreamingResponse(encode_events(), media_type="application/x-ndjson")
 

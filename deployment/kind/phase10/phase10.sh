@@ -6,6 +6,8 @@ CONTEXT="kind-polymind-phase10"
 NAMESPACE="polymind-phase10"
 RELEASE="polymind"
 IMAGE="polymind:phase10"
+# Deliberate local-only synthetic credential for the disposable Kind workflow.
+API_TOKEN="phase10-synthetic-api-token-32-characters"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 FIXTURES="$ROOT/deployment/kind/phase10/fixtures.yaml"
 VALUES="$ROOT/deployment/kind/phase10/values.yaml"
@@ -40,6 +42,7 @@ deploy() {
   kubectl --context "$CONTEXT" --namespace "$NAMESPACE" apply -f "$FIXTURES"
   kubectl --context "$CONTEXT" --namespace "$NAMESPACE" create secret generic polymind-phase10-secrets \
     --from-literal=redis-url='redis://phase10-redis:6379/0' \
+    --from-literal="api-auth-token=$API_TOKEN" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" --namespace "$NAMESPACE" apply -f -
   kubectl --context "$CONTEXT" --namespace "$NAMESPACE" rollout status deployment/phase10-inference --timeout=180s
   kubectl --context "$CONTEXT" --namespace "$NAMESPACE" rollout status deployment/phase10-redis --timeout=180s
@@ -71,9 +74,14 @@ smoke() {
   curl -fsS http://127.0.0.1:18001/health
   curl -fsS http://127.0.0.1:18001/ready
   curl -fsS http://127.0.0.1:18001/metrics | grep -m1 '^# HELP '
-  curl -fsS -H 'Content-Type: application/json' -H 'X-Request-ID: phase10-query' \
+  test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+    -d '{"query":"unauthenticated","session_id":"phase10"}' http://127.0.0.1:18001/query)" = 401
+  test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18001/docs)" = 404
+  curl -fsS -H "Authorization: Bearer $API_TOKEN" \
+    -H 'Content-Type: application/json' -H 'X-Request-ID: phase10-query' \
     -d '{"query":"Tell me a short joke","session_id":"phase10"}' http://127.0.0.1:18001/query
-  curl -fsS -H 'Content-Type: application/json' -H 'X-Request-ID: phase10-stream' \
+  curl -fsS -H "Authorization: Bearer $API_TOKEN" \
+    -H 'Content-Type: application/json' -H 'X-Request-ID: phase10-stream' \
     -d '{"query":"Tell me a short joke","session_id":"phase10-stream"}' http://127.0.0.1:18001/query/stream
 }
 

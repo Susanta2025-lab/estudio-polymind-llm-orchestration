@@ -1,6 +1,9 @@
 import sys
+import asyncio
+import json
 from types import ModuleType
 
+import pytest
 from llm.inference import (
     InferenceAuthenticationError,
     InferenceResponseError,
@@ -11,6 +14,9 @@ from llm.inference import (
 from llm.operational import application_status, normalize_request_id
 from llm.metrics import Metrics
 from prometheus_client import CollectorRegistry
+from pydantic import SecretStr
+
+from api.security import ApplicationSecurityMiddleware, documentation_urls
 
 
 class Provider:
@@ -146,3 +152,83 @@ def test_request_id_is_generated_or_accepts_only_bounded_safe_input():
 def test_application_status_is_normalized_by_category():
     assert application_status(InferenceAuthenticationError("safe")) == 503
     assert application_status(InferenceResponseError("safe")) == 502
+
+
+def security_response(path, authorization=None, body=b'{"query":"hello"}', enabled=True, limit=1024):
+    sent = []
+    consumed = []
+    configuration = type("SecurityConfiguration", (), {
+        "API_AUTH_ENABLED": enabled,
+        "API_AUTH_TOKEN": SecretStr("synthetic-api-token-that-is-long-enough"),
+        "MAX_REQUEST_BYTES": limit,
+    })()
+
+    async def downstream(_scope, receive, send):
+        consumed.append(await receive())
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    headers = [(b"content-length", str(len(body)).encode())]
+    if authorization is not None:
+        headers.append((b"authorization", authorization.encode()))
+    scope = {"type": "http", "method": "POST", "path": path, "headers": headers}
+    received = False
+
+    async def receive():
+        nonlocal received
+        if received:
+            return {"type": "http.disconnect"}
+        received = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(ApplicationSecurityMiddleware(downstream, configuration)(scope, receive, send))
+    status = next(message["status"] for message in sent if message["type"] == "http.response.start")
+    response_body = b"".join(message.get("body", b"") for message in sent if message["type"] == "http.response.body")
+    return status, response_body, consumed
+
+
+def test_local_auth_disabled_preserves_query_access():
+    status, _body, consumed = security_response("/query", enabled=False)
+    assert status == 204
+    assert consumed
+
+
+@pytest.mark.parametrize("authorization", [None, "Basic value", "Bearer", "Bearer wrong", "Bearer value extra"])
+def test_protected_query_rejects_missing_malformed_or_invalid_auth(monkeypatch, authorization):
+    status, body, consumed = security_response("/query", authorization)
+    assert status == 401
+    assert json.loads(body) == {"detail": "Authentication required."}
+    assert consumed == []
+    assert "synthetic-api-token" not in body.decode()
+
+
+def test_correct_token_protects_normal_streaming_and_memory_paths():
+    token = "synthetic-api-token-that-is-long-enough"
+    for path in ("/query", "/query/stream", "/memory/session"):
+        status, _body, consumed = security_response(path, f"Bearer {token}")
+        assert status == 204
+        assert consumed
+        assert security_response(path)[0] == 401
+
+
+def test_auth_rejection_logs_and_metrics_do_not_contain_token(monkeypatch, caplog):
+    token = "synthetic-api-token-that-must-not-leak"
+    status, body, _consumed = security_response("/query", f"Bearer {token}-wrong")
+    assert status == 401
+    assert token not in caplog.text and token not in body.decode()
+
+
+def test_request_size_limit_rejects_before_orchestration_for_query_and_stream():
+    for path in ("/query", "/query/stream"):
+        status, body, consumed = security_response(path, enabled=False, limit=32, body=b"x" * 64)
+        assert status == 413
+        assert json.loads(body) == {"detail": "Request body is too large."}
+        assert consumed == []
+
+
+def test_docs_urls_are_available_locally_and_disabled_in_production():
+    assert documentation_urls(True) == ("/docs", "/redoc", "/openapi.json")
+    assert documentation_urls(False) == (None, None, None)

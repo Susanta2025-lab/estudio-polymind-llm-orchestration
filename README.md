@@ -277,6 +277,19 @@ Swagger documentation:
 http://localhost:8001/docs
 ```
 
+Production enables a narrow bearer-token boundary for `/query`,
+`/query/stream`, and conversation-history access. Local development keeps auth
+disabled and interactive docs enabled; production configuration requires auth,
+a runtime token of at least 32 non-whitespace characters, and disabled docs,
+ReDoc, and OpenAPI URLs. Query bodies default to a 1 MiB ASGI-enforced limit.
+
+Health/readiness and metrics remain unauthenticated cluster-operational endpoints
+and are excluded from the default public Ingress. NetworkPolicy is enabled by
+default in the production chart with explicit gateway, monitoring, DNS, Redis,
+Chroma, and inference rules. See
+[`docs/security/production-security.md`](docs/security/production-security.md)
+and [`docs/security/threat-model.md`](docs/security/threat-model.md).
+
 ---
 
 ## Streamlit Interface

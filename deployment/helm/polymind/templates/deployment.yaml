@@ -58,6 +58,11 @@ spec:
                   name: {{ include "polymind.secretName" . }}
                   key: {{ .Values.secrets.openaiCompatibleApiKeyKey }}
                   optional: true
+            - name: API_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "polymind.secretName" . }}
+                  key: {{ .Values.secrets.apiAuthTokenKey }}
           ports:
             - name: http
               containerPort: {{ .Values.application.port }}
@@ -86,4 +91,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-

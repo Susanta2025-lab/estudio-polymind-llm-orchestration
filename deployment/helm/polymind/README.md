@@ -7,20 +7,22 @@ cloud infrastructure.
 
 ## Configure secrets
 
-Create a Secret before installation. The Redis URL is required; the inference
-API key is optional when the external service does not require authentication.
+Create a Secret before installation. The Redis URL and PolyMind API token are
+required; the inference API key is optional when the external service does not
+require authentication.
 
 ```bash
 kubectl create namespace polymind
 kubectl -n polymind create secret generic polymind-secrets \
   --from-literal=redis-url='rediss://user:password@redis.example.internal:6380/0' \
+  --from-literal=api-auth-token='supply-a-runtime-token-of-at-least-32-characters' \
   --from-literal=openai-compatible-api-key='replace-me'
 ```
 
 Keep credentials out of values files and shell history in real environments;
 prefer the organization's secret-management workflow. A differently named
 Secret and keys can be selected with `secrets.existingSecret` and the two key
-settings. `secrets.create=true` exists for controlled testing, but secret values
+settings, including `secrets.apiAuthTokenKey`. `secrets.create=true` exists for controlled testing, but secret values
 must be supplied at install time and must never be committed.
 
 ## Validate and deploy
@@ -45,6 +47,11 @@ reviewed environment-specific values file. Verify that the declared BM25 version
 has already been ingested and published in the external Chroma collection before
 rolling replicas.
 
+Production authentication and docs behavior are secure chart defaults. Clients
+must send `Authorization: Bearer <token>` to query and streaming endpoints.
+Rotate Secret values by updating the externally managed Secret and rolling the
+Deployment; secrets are read only at process startup.
+
 Upgrade with another `helm upgrade --install`. Review revisions using
 `helm history polymind --namespace polymind` and roll back using
 `helm rollback polymind REVISION --namespace polymind`. Rolling updates default
@@ -67,3 +74,16 @@ the network/ingress layer and scrape each replica independently; this chart does
 not install Prometheus or a network policy. Ingress is disabled by default and
 enabling it assumes an ingress controller and any TLS material already exist.
 
+The public Ingress path defaults to `/query`, which includes `/query/stream` but
+does not route probes, metrics, docs, OpenAPI, memory, or CLI-only administration.
+Configure `ingress.className`, hosts, annotations, and `ingress.tls` for the
+operated TLS boundary. The chart installs no controller or certificate manager.
+
+NetworkPolicy is enabled by default and selects only this release's pods. Replace
+the example gateway, monitoring, DNS, Redis, Chroma, and inference selectors with
+real labels. External dependencies require reviewed `ipBlocks` or a CNI/egress
+gateway because standard NetworkPolicy cannot select DNS names. The Phase 10 Kind
+override disables policy because Kind's default CNI does not enforce it.
+
+See `docs/security/production-security.md` and `docs/security/threat-model.md` for
+the complete endpoint, Secret rotation, network, proxy, and residual-risk contract.

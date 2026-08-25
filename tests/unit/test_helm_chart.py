@@ -20,6 +20,7 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
         "templates/configmap.yaml",
         "templates/deployment.yaml",
         "templates/ingress.yaml",
+        "templates/networkpolicy.yaml",
         "templates/secret.yaml",
         "templates/service.yaml",
         "templates/serviceaccount.yaml",
@@ -33,12 +34,16 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
     assert values["ingress"]["enabled"] is False
     assert values["secrets"]["create"] is False
     assert values["secrets"]["values"] == {
+        "apiAuthToken": "",
         "openaiCompatibleApiKey": "",
         "redisUrl": "",
     }
     assert values["application"]["deploymentEnv"] == "production"
     assert values["application"]["memoryProvider"] == "redis"
     assert values["application"]["vectorStoreProvider"] == "chroma_http"
+    assert values["application"]["authEnabled"] is True
+    assert values["application"]["docsEnabled"] is False
+    assert values["networkPolicy"]["enabled"] is True
 
 
 def test_templates_wire_probes_configuration_secrets_and_security():
@@ -60,10 +65,15 @@ def test_templates_wire_probes_configuration_secrets_and_security():
         "VECTOR_STORE_COLLECTION",
         "BM25_CORPUS_VERSION",
         "API_PORT",
+        "API_AUTH_ENABLED",
+        "API_DOCS_ENABLED",
+        "MAX_REQUEST_BYTES",
     ):
         assert f"{name}:" in configmap
     assert "REDIS_URL" not in configmap
     assert "OPENAI_COMPATIBLE_API_KEY" not in configmap
+    assert "API_AUTH_TOKEN" not in configmap
+    assert "API_AUTH_TOKEN" in deployment
 
 
 def test_phase10_values_are_local_non_sensitive_overrides():
@@ -72,6 +82,7 @@ def test_phase10_values_are_local_non_sensitive_overrides():
     assert values["application"]["deploymentEnv"] == "production"
     assert values["application"]["vectorStoreHost"] == "phase10-chroma"
     assert values["secrets"] == {"create": False, "existingSecret": "polymind-phase10-secrets"}
+    assert values["networkPolicy"]["enabled"] is False
     serialized = (PHASE10 / "values.yaml").read_text().lower()
     assert "api_key" not in serialized
     assert "password" not in serialized
@@ -108,6 +119,30 @@ def test_container_defines_the_helm_non_root_identity():
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "groupadd --gid 10001 polymind" in dockerfile
     assert "useradd --uid 10001 --gid 10001 --create-home polymind" in dockerfile
+    assert "USER 10001:10001" in dockerfile
+
+
+def test_network_policy_and_public_ingress_are_secure_by_default():
+    policy = (CHART / "templates" / "networkpolicy.yaml").read_text()
+    values = yaml.safe_load((CHART / "values.yaml").read_text())
+    assert "policyTypes:" in policy
+    assert "- Ingress" in policy and "- Egress" in policy
+    assert "port: 53" in policy
+    assert "namespaceSelector:" in policy and "podSelector:" in policy
+    assert "0.0.0.0/0" not in policy
+    assert values["ingress"]["hosts"][0]["paths"] == [
+        {"path": "/query", "pathType": "Prefix"}
+    ]
+    assert values["ingress"]["tls"] == []
+
+
+def test_ingress_template_supports_tls_without_public_metrics_or_probes():
+    ingress = (CHART / "templates" / "ingress.yaml").read_text()
+    values = (CHART / "values.yaml").read_text()
+    assert ".Values.ingress.tls" in ingress
+    for private_path in ("/metrics", "/health", "/ready", "/docs", "/openapi.json"):
+        assert private_path not in ingress
+        assert f"path: {private_path}" not in values
 
 
 @pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is not installed")
@@ -122,4 +157,6 @@ def test_helm_lint_and_default_render():
     assert "kind: Deployment" in rendered
     assert "kind: Service" in rendered
     assert "kind: ConfigMap" in rendered
+    assert "kind: NetworkPolicy" in rendered
+    assert 'MAX_REQUEST_BYTES: "1048576"' in rendered
     assert "kind: Ingress" not in rendered

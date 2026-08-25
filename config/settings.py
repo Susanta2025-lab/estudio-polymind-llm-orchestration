@@ -2,7 +2,7 @@ from typing import Any, Dict, Literal, Optional
 from urllib.parse import urlparse
 import re
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # =========================
     API_HOST: str = "127.0.0.1"
     API_PORT: int = 8001
+    API_AUTH_ENABLED: bool = False
+    API_AUTH_TOKEN: Optional[SecretStr] = None
+    API_DOCS_ENABLED: bool = True
+    MAX_REQUEST_BYTES: int = Field(default=1_048_576, ge=1, le=10_485_760)
 
     # =========================
     # Vector store
@@ -169,6 +173,18 @@ class Settings(BaseSettings):
             invalid = [name for name, host in endpoints.items() if host in loopback]
             if invalid:
                 raise ValueError(f"production external services must not use loopback hosts: {sorted(invalid)}")
+            if not self.API_AUTH_ENABLED:
+                raise ValueError("production requires API_AUTH_ENABLED=true")
+            if self.API_DOCS_ENABLED:
+                raise ValueError("production requires API_DOCS_ENABLED=false")
+
+        if self.API_AUTH_ENABLED:
+            token = self.API_AUTH_TOKEN.get_secret_value() if self.API_AUTH_TOKEN else ""
+            if len(token) < 32 or token != token.strip() or any(character.isspace() for character in token):
+                raise ValueError(
+                    "API_AUTH_TOKEN must contain at least 32 non-whitespace characters "
+                    "and no whitespace when authentication is enabled"
+                )
         return self
 
 
