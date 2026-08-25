@@ -193,3 +193,17 @@ def test_readiness_and_application_metrics_use_bounded_dimensions():
     output = store.render().decode()
     for forbidden in ("request_id", "session_id", "user-controlled-route"):
         assert forbidden not in output
+
+
+def test_active_request_and_stream_metrics_cleanup_on_success_and_cancellation():
+    store = metric_store()
+    with store.active_request("query"):
+        assert sample_value(store, "active_application_requests", {"operation": "query"}) == 1
+    assert sample_value(store, "active_application_requests", {"operation": "query"}) == 0
+
+    stream = store.active_stream()
+    stream.__enter__()
+    assert sample_value(store, "active_ndjson_streams", {}) == 1
+    stream.__exit__(GeneratorExit, GeneratorExit(), None)
+    assert sample_value(store, "active_ndjson_streams", {}) == 0
+    assert sample_value(store, "ndjson_stream_outcomes_total", {"outcome": "cancelled"}) == 1

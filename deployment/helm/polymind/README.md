@@ -47,6 +47,13 @@ reviewed environment-specific values file. Verify that the declared BM25 version
 has already been ingested and published in the external Chroma collection before
 rolling replicas.
 
+The default 135-second termination grace is bounded by the 120-second upstream
+inference read timeout plus 15 seconds for application and transport shutdown.
+Uvicorn stops accepting new work on SIGTERM and waits for active responses; the
+Kubernetes Service removes terminating pods. No sleep-based `preStop` hook is
+used. Streams exceeding the grace budget can still be terminated and are never
+automatically retried.
+
 Production authentication and docs behavior are secure chart defaults. Clients
 must send `Authorization: Bearer <token>` to query and streaming endpoints.
 Rotate Secret values by updating the externally managed Secret and rolling the

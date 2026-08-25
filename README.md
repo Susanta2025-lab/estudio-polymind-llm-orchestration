@@ -504,6 +504,14 @@ not used as a metrics registry. In a
 production deployment, `/metrics` should be network-restricted or protected by
 infrastructure because the application has no endpoint authentication layer.
 
+Phase 13 also exposes `active_application_requests` (bounded by operation),
+`active_ndjson_streams`, and bounded NDJSON iterator outcomes. Stream gauges cover
+the iterator lifetime, including cancellation cleanup, rather than response-object
+construction. The repository-owned authenticated capacity harness and guarded
+Kind rollout procedure are documented in
+[`deployment/kind/phase13`](deployment/kind/phase13/README.md). Results from the
+single-node developer Kind cluster are a local capacity baseline only.
+
 ## Production topology and multi-replica deployment constraints
 
 ### Kubernetes and Helm

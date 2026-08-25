@@ -135,6 +135,8 @@ networkPolicy:
       ipBlocks: []
 
 deployment:
+  # Bounded by the 120s inference read timeout plus shutdown/transport margin.
+  terminationGracePeriodSeconds: 135
   strategy:
     maxUnavailable: 0
     maxSurge: 1

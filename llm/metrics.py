@@ -1,4 +1,5 @@
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional
 
@@ -51,6 +52,21 @@ class Metrics:
             "application_request_duration_seconds", "Semantic-route request duration.",
             ("route", "operation", "outcome"), buckets=_LATENCY_BUCKETS,
             registry=self.registry,
+        )
+        self.active_application_requests = Gauge(
+            "active_application_requests",
+            "Application requests whose orchestration or stream iterator is active.",
+            ("operation",), registry=self.registry,
+        )
+        self.active_ndjson_streams = Gauge(
+            "active_ndjson_streams",
+            "NDJSON response iterators that are currently active.",
+            registry=self.registry,
+        )
+        self.ndjson_stream_outcomes = Counter(
+            "ndjson_stream_outcomes_total",
+            "Completed, failed, or cancelled NDJSON response iterators.",
+            ("outcome",), registry=self.registry,
         )
         self.readiness_checks = Counter(
             "readiness_checks_total", "Provider readiness outcomes.",
@@ -134,6 +150,32 @@ class Metrics:
         labels = (safe_route, operation, outcome)
         self.application_requests.labels(*labels).inc()
         self.application_duration.labels(*labels).observe(duration)
+
+    @contextmanager
+    def active_request(self, operation: str):
+        safe_operation = operation if operation in {"query", "stream"} else "unknown"
+        gauge = self.active_application_requests.labels(safe_operation)
+        gauge.inc()
+        try:
+            yield
+        finally:
+            gauge.dec()
+
+    @contextmanager
+    def active_stream(self):
+        self.active_ndjson_streams.inc()
+        try:
+            yield
+        except GeneratorExit:
+            self.ndjson_stream_outcomes.labels("cancelled").inc()
+            raise
+        except BaseException:
+            self.ndjson_stream_outcomes.labels("error").inc()
+            raise
+        else:
+            self.ndjson_stream_outcomes.labels("success").inc()
+        finally:
+            self.active_ndjson_streams.dec()
 
     def memory(self, provider: str, operation: str):
         return MemoryObservation(self, provider, operation)

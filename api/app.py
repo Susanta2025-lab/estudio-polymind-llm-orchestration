@@ -170,24 +170,25 @@ def query(req: QueryRequest):
     started = time.perf_counter()
     route = "unknown"
     outcome = "error"
-    try:
-        result = app_graph.invoke({"query": req.query, "session_id": req.session_id})
-        route = result.get("route") or "unknown"
-        response = {
-            "query": req.query,
-            "session_id": req.session_id,
-            "route": result.get("route"),
-            "model_role": result.get("model_role"),
-            "model": result.get("model"),
-            "response": result.get("answer"),
-            "sources": public_sources(result.get("sources", [])),
-        }
-        outcome = "success"
-        return response
-    finally:
-        duration = time.perf_counter() - started
-        metrics.observe_application(route, "query", outcome, duration)
-        log_request(route=route, operation="query", outcome=outcome, duration=duration)
+    with metrics.active_request("query"):
+        try:
+            result = app_graph.invoke({"query": req.query, "session_id": req.session_id})
+            route = result.get("route") or "unknown"
+            response = {
+                "query": req.query,
+                "session_id": req.session_id,
+                "route": result.get("route"),
+                "model_role": result.get("model_role"),
+                "model": result.get("model"),
+                "response": result.get("answer"),
+                "sources": public_sources(result.get("sources", [])),
+            }
+            outcome = "success"
+            return response
+        finally:
+            duration = time.perf_counter() - started
+            metrics.observe_application(route, "query", outcome, duration)
+            log_request(route=route, operation="query", outcome=outcome, duration=duration)
 
 
 @app.post("/query/stream")
@@ -196,18 +197,19 @@ def query_stream(req: QueryRequest):
         started = time.perf_counter()
         metadata = {}
         outcome = "error"
-        try:
-            for event in stream_rag_response(req.query, req.session_id, inference_provider, memory_store=memory_store):
-                if event["type"] == "metadata":
-                    metadata = event
-                elif event["type"] == "done":
-                    outcome = "success"
-                yield json.dumps(event, ensure_ascii=False) + "\n"
-        finally:
-            route = metadata.get("route") or "unknown"
-            duration = time.perf_counter() - started
-            metrics.observe_application(route, "stream", outcome, duration)
-            log_request(route=route, operation="stream", outcome=outcome, duration=duration)
+        with metrics.active_request("stream"), metrics.active_stream():
+            try:
+                for event in stream_rag_response(req.query, req.session_id, inference_provider, memory_store=memory_store):
+                    if event["type"] == "metadata":
+                        metadata = event
+                    elif event["type"] == "done":
+                        outcome = "success"
+                    yield json.dumps(event, ensure_ascii=False) + "\n"
+            finally:
+                route = metadata.get("route") or "unknown"
+                duration = time.perf_counter() - started
+                metrics.observe_application(route, "stream", outcome, duration)
+                log_request(route=route, operation="stream", outcome=outcome, duration=duration)
 
     return StreamingResponse(encode_events(), media_type="application/x-ndjson")
 

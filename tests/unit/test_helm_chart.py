@@ -46,6 +46,7 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
     assert values["networkPolicy"]["enabled"] is True
     assert values["securityContext"]["readOnlyRootFilesystem"] is True
     assert values["temporaryStorage"] == {"sizeLimit": "256Mi"}
+    assert values["deployment"]["terminationGracePeriodSeconds"] == 135
 
 
 def test_templates_wire_probes_configuration_secrets_and_security():
@@ -82,6 +83,7 @@ def test_templates_wire_probes_configuration_secrets_and_security():
     assert "API_AUTH_TOKEN" in deployment
     assert "mountPath: /tmp" in deployment
     assert "sizeLimit:" in deployment
+    assert "terminationGracePeriodSeconds:" in deployment
 
 
 def test_phase10_values_are_local_non_sensitive_overrides():
