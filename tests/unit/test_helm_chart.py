@@ -24,6 +24,7 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
         "templates/secret.yaml",
         "templates/service.yaml",
         "templates/serviceaccount.yaml",
+        "templates/servicemonitor.yaml",
     }
     assert expected <= {
         str(path.relative_to(CHART)) for path in CHART.rglob("*") if path.is_file()
@@ -47,6 +48,8 @@ def test_chart_contains_required_artifacts_and_safe_defaults():
     assert values["securityContext"]["readOnlyRootFilesystem"] is True
     assert values["temporaryStorage"] == {"sizeLimit": "256Mi"}
     assert values["deployment"]["terminationGracePeriodSeconds"] == 135
+    assert values["monitoring"]["scrapeAnnotations"]["enabled"] is False
+    assert values["monitoring"]["serviceMonitor"]["enabled"] is False
 
 
 def test_templates_wire_probes_configuration_secrets_and_security():
@@ -148,11 +151,32 @@ def test_network_policy_and_public_ingress_are_secure_by_default():
 
 def test_ingress_template_supports_tls_without_public_metrics_or_probes():
     ingress = (CHART / "templates" / "ingress.yaml").read_text()
-    values = (CHART / "values.yaml").read_text()
+    values = yaml.safe_load((CHART / "values.yaml").read_text())
     assert ".Values.ingress.tls" in ingress
     for private_path in ("/metrics", "/health", "/ready", "/docs", "/openapi.json"):
         assert private_path not in ingress
-        assert f"path: {private_path}" not in values
+        assert all(path["path"] != private_path for host in values["ingress"]["hosts"] for path in host["paths"])
+
+
+def test_monitoring_contract_is_opt_in_bounded_and_network_restricted():
+    values = yaml.safe_load((CHART / "values.yaml").read_text())
+    deployment = (CHART / "templates" / "deployment.yaml").read_text()
+    monitor = (CHART / "templates" / "servicemonitor.yaml").read_text()
+    policy = (CHART / "templates" / "networkpolicy.yaml").read_text()
+
+    assert values["monitoring"]["scrapeAnnotations"] == {
+        "enabled": False,
+        "path": "/metrics",
+        "port": "",
+        "scheme": "http",
+    }
+    assert ".Values.monitoring.scrapeAnnotations.enabled" in deployment
+    assert "prometheus.io/scrape" in deployment
+    assert ".Values.podAnnotations" in deployment
+    assert "monitoring.coreos.com/v1" in monitor
+    assert ".Values.monitoring.serviceMonitor.enabled" in monitor
+    assert "namespaceSelector:" in policy and "podSelector:" in policy
+    assert values["networkPolicy"]["ingress"]["monitoring"]["enabled"] is False
 
 
 @pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is not installed")
@@ -170,3 +194,21 @@ def test_helm_lint_and_default_render():
     assert "kind: NetworkPolicy" in rendered
     assert 'MAX_REQUEST_BYTES: "1048576"' in rendered
     assert "kind: Ingress" not in rendered
+    assert "kind: ServiceMonitor" not in rendered
+
+    enabled = subprocess.run(
+        [
+            "helm", "template", "polymind", str(CHART),
+            "--set", "monitoring.scrapeAnnotations.enabled=true",
+            "--set", "monitoring.serviceMonitor.enabled=true",
+            "--set", "networkPolicy.ingress.monitoring.enabled=true",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert 'prometheus.io/scrape: "true"' in enabled
+    assert 'prometheus.io/path: "/metrics"' in enabled
+    assert 'prometheus.io/port: "8001"' in enabled
+    assert "kind: ServiceMonitor" in enabled
+    assert "app.kubernetes.io/name: prometheus" in enabled

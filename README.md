@@ -501,8 +501,8 @@ are not deployed. Metrics registries remain process-local: scrape every worker o
 replica independently and aggregate in the monitoring system, or configure a
 supported Prometheus multiprocess deployment. Redis is application state and is
 not used as a metrics registry. In a
-production deployment, `/metrics` should be network-restricted or protected by
-infrastructure because the application has no endpoint authentication layer.
+production deployment, `/metrics` must be network-restricted; it is deliberately
+unauthenticated while application endpoints remain bearer-protected.
 
 Phase 13 also exposes `active_application_requests` (bounded by operation),
 `active_ndjson_streams`, and bounded NDJSON iterator outcomes. Stream gauges cover
@@ -511,6 +511,13 @@ construction. The repository-owned authenticated capacity harness and guarded
 Kind rollout procedure are documented in
 [`deployment/kind/phase13`](deployment/kind/phase13/README.md). Results from the
 single-node developer Kind cluster are a local capacity baseline only.
+
+Phase 14 adds deployment-neutral discovery and aggregation contracts without
+changing application instrumentation: configurable pod scrape annotations, an
+optional Prometheus Operator ServiceMonitor, restart-safe recording/alert rules,
+and an operator PromQL/SLI/scaling runbook. Monitoring remains disabled by
+default, and the chart owns no monitoring stack, adapter, or HPA. See
+[`docs/operations/observability.md`](docs/operations/observability.md).
 
 ## Production topology and multi-replica deployment constraints
 

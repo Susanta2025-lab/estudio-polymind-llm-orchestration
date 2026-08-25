@@ -1,0 +1,34 @@
+rule_files:
+  - prometheus-rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  - interval: 30s
+    input_series:
+      - series: 'application_requests_total{namespace="polymind",pod="pod-a",operation="query",outcome="success",route="direct"}'
+        values: '0+60x10'
+      - series: 'application_request_duration_seconds_bucket{namespace="polymind",pod="pod-a",operation="query",outcome="success",route="direct",le="1"}'
+        values: '0+27x10'
+      - series: 'application_request_duration_seconds_bucket{namespace="polymind",pod="pod-a",operation="query",outcome="success",route="direct",le="2.5"}'
+        values: '0+30x10'
+      - series: 'application_request_duration_seconds_bucket{namespace="polymind",pod="pod-a",operation="query",outcome="success",route="direct",le="+Inf"}'
+        values: '0+30x10'
+      - series: 'active_application_requests{namespace="polymind",pod="pod-a",operation="query"}'
+        values: '2x11'
+    promql_expr_test:
+      - expr: polymind:application_requests:rate5m
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="polymind:application_requests:rate5m",namespace="polymind",operation="query",outcome="success"}'
+            value: 2
+      - expr: polymind:application_request_duration_seconds:p95_rate5m
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="polymind:application_request_duration_seconds:p95_rate5m",namespace="polymind",operation="query"}'
+            value: 1.7499999999999991
+      - expr: polymind:active_query_requests:sum_by_pod
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="polymind:active_query_requests:sum_by_pod",namespace="polymind",pod="pod-a"}'
+            value: 2

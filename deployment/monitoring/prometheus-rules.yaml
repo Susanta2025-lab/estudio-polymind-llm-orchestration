@@ -1,0 +1,67 @@
+groups:
+  - name: polymind.recording
+    interval: 30s
+    rules:
+      - record: polymind:application_requests:rate5m
+        expr: sum by (namespace, operation, outcome) (rate(application_requests_total[5m]))
+      - record: polymind:application_errors:ratio_rate5m
+        expr: sum by (namespace, operation) (rate(application_requests_total{outcome="error"}[5m])) / clamp_min(sum by (namespace, operation) (rate(application_requests_total[5m])), 1e-12)
+      - record: polymind:application_request_duration_seconds:p95_rate5m
+        expr: histogram_quantile(0.95, sum by (namespace, operation, le) (rate(application_request_duration_seconds_bucket[5m])))
+      - record: polymind:inference_request_duration_seconds:p95_rate5m
+        expr: histogram_quantile(0.95, sum by (namespace, provider, operation, le) (rate(inference_request_duration_seconds_bucket[5m])))
+      - record: polymind:inference_ttft_seconds:p95_rate5m
+        expr: histogram_quantile(0.95, sum by (namespace, provider, logical_role, le) (rate(inference_time_to_first_token_seconds_bucket[5m])))
+      - record: polymind:active_application_requests:sum_by_pod
+        expr: sum by (namespace, pod, operation) (active_application_requests)
+      - record: polymind:active_query_requests:sum_by_pod
+        expr: sum by (namespace, pod) (active_application_requests{operation="query"})
+      - record: polymind:active_stream_requests:sum_by_pod
+        expr: sum by (namespace, pod) (active_application_requests{operation="stream"})
+      - record: polymind:active_ndjson_streams:sum_by_pod
+        expr: sum by (namespace, pod) (active_ndjson_streams)
+      - record: polymind:component_readiness:min_by_pod
+        expr: min by (namespace, pod, component) (component_readiness)
+
+  - name: polymind.candidate-alerts
+    rules:
+      - alert: PolyMindNoReadyReplica
+        expr: sum(kube_deployment_status_replicas_available{deployment=~".*polymind.*"}) < 1
+        for: 5m
+        labels:
+          severity: critical
+          calibration: required
+        annotations:
+          summary: PolyMind has no available replica
+      - alert: PolyMindSustainedApplicationErrors
+        expr: sum(rate(application_requests_total{outcome="error"}[10m])) / clamp_min(sum(rate(application_requests_total[10m])), 1e-12) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          calibration: required
+        annotations:
+          summary: PolyMind application error ratio is elevated
+      - alert: PolyMindProviderErrors
+        expr: sum by (provider) (rate(inference_errors_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          calibration: required
+        annotations:
+          summary: PolyMind inference provider errors are sustained
+      - alert: PolyMindComponentNotReady
+        expr: min by (namespace, component) (component_readiness) < 1
+        for: 5m
+        labels:
+          severity: warning
+          calibration: required
+        annotations:
+          summary: A required PolyMind component is not ready
+      - alert: PolyMindSustainedQuerySaturation
+        expr: max(polymind:active_query_requests:sum_by_pod) > 2
+        for: 10m
+        labels:
+          severity: warning
+          calibration: required
+        annotations:
+          summary: PolyMind query concurrency exceeds the provisional Kind saturation region

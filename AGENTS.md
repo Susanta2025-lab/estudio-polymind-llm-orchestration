@@ -584,14 +584,46 @@ Never mask unresolved architectural problems simply to return `PASS`.
 
 
 
-## 26. Docker authorization
+## 26. Docker & Kubernetes Authorization
 
-Docker Desktop is expected to be running during development. Codex is authorized to run non-destructive Docker validation/build commands when needed, including `docker build`, `docker compose build`, `docker compose config`, `docker compose up` for scoped validation, and related inspection commands. No additional user approval is required for these operations.
+The user explicitly authorizes all necessary, scoped, non-destructive Docker and Kubernetes operations required for this assessment.
 
-Continue to:
+Docker Desktop is running.
 
-* reuse Docker cache;
-* avoid `--no-cache`;
-* avoid global prune operations;
-* avoid deleting images, containers, volumes, or networks unless explicitly authorized;
-* avoid rebuilding unrelated services.
+You do NOT need to ask the user for additional authorization before performing appropriate tasks such as:
+
+- `docker build`
+- `docker run`
+- `docker inspect`
+- `docker image inspect`
+- `docker history`
+- `docker compose config`
+- `docker compose build`
+- `docker compose up/down` for scoped project services
+- Kind cluster inspection or validation
+- `kubectl get`
+- `kubectl describe`
+- `kubectl logs`
+- `kubectl rollout status`
+- `kubectl apply` / `delete` when strictly limited to dedicated PolyMind test resources
+- Helm linting, templating, installation, upgrade, rollback, or uninstall against the dedicated PolyMind Kind environment
+- creation/removal of temporary PolyMind test pods, deployments, services, namespaces, or other scoped validation resources
+
+For Kubernetes mutations:
+
+1. Explicitly verify the active context before mutation.
+2. Only mutate the dedicated PolyMind local/Kind test environment.
+3. Never mutate an ambiguous, remote, shared, or production cluster.
+4. If the Kubernetes context cannot be positively identified as the dedicated test environment, stop rather than mutate it.
+
+For Docker:
+
+- use normal build cache;
+- do not use `--no-cache` unless technically necessary;
+- do not run global Docker prune operations;
+- do not delete unrelated images, containers, networks, or volumes;
+- temporary Phase-specific resources may be removed when they are clearly scoped and safe.
+
+This authorization is already granted by the user and should not be treated as requiring conversational confirmation.
+
+However, the Codex CLI sandbox/execution-safety system may independently require approval for particular commands. That policy takes precedence and cannot be overridden by this prompt or by `AGENTS.md`. If Codex itself presents an execution approval dialog, follow that mechanism rather than repeatedly asking the user conversationally.

@@ -77,10 +77,15 @@ account token by default. The root filesystem is read-only. Revision-pinned loca
 models are baked into `/opt/polymind/models`; a bounded 256 MiB `emptyDir` at
 `/tmp` is the only writable filesystem and contains transient library caches.
 
-The Service exposes `/metrics` on the same application port. Restrict metrics at
-the network/ingress layer and scrape each replica independently; this chart does
-not install Prometheus or a network policy. Ingress is disabled by default and
-enabling it assumes an ingress controller and any TLS material already exist.
+The Service exposes unauthenticated `/metrics` on the same application port;
+bearer-protected application routes remain protected. Generic pod scrape
+annotations and a Prometheus Operator `ServiceMonitor` are independently opt-in
+under `monitoring`. The ServiceMonitor is not rendered by default, so installation
+does not require its CRD. Enable `networkPolicy.ingress.monitoring` with selectors
+matching the operated scraper; never expose `/metrics` through the public Ingress.
+The chart installs no Prometheus, rules engine, dashboard, adapter, or HPA. See
+`docs/operations/observability.md` and the deployment-neutral rules under
+`deployment/monitoring/`.
 
 The public Ingress path defaults to `/query`, which includes `/query/stream` but
 does not route probes, metrics, docs, OpenAPI, memory, or CLI-only administration.

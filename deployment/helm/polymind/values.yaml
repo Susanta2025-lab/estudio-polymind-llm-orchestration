@@ -18,6 +18,26 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
+monitoring:
+  # Generic Prometheus-compatible discovery. Disabled by default so platform
+  # operators can choose their own discovery convention.
+  scrapeAnnotations:
+    enabled: false
+    path: /metrics
+    # Empty uses application.port; set only when an external scraper requires an override.
+    port: ""
+    scheme: http
+  # Requires the monitoring.coreos.com/v1 ServiceMonitor CRD. The resource is
+  # not rendered unless explicitly enabled.
+  serviceMonitor:
+    enabled: false
+    path: /metrics
+    scheme: http
+    interval: 30s
+    scrapeTimeout: 10s
+    additionalLabels: {}
+    namespaceSelector: {}
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001

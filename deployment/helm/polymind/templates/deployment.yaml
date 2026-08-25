@@ -18,6 +18,12 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.monitoring.scrapeAnnotations.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.monitoring.scrapeAnnotations.path | quote }}
+        prometheus.io/port: {{ default .Values.application.port .Values.monitoring.scrapeAnnotations.port | quote }}
+        prometheus.io/scheme: {{ .Values.monitoring.scrapeAnnotations.scheme | quote }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
