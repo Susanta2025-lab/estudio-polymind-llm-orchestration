@@ -30,3 +30,4 @@ logs/
 
 # Memory files (Optional: keep if these are sample memory files, remove if they contain sensitive info)
 memory/chat_history.json
+docs/codex/prompts/phase_16.md
