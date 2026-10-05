@@ -11,6 +11,7 @@ from memory import memory_store as memory_module
 from memory.memory_store import (
     FileMemoryStore,
     MemoryProtocolError,
+    MemoryReadiness,
     MemoryReadError,
     MemoryTimeoutError,
     MemoryUnavailableError,
@@ -207,3 +208,24 @@ def test_memory_configuration_validation():
     ):
         with pytest.raises(ValidationError):
             Settings(**values)
+
+
+class AuthenticationError(RuntimeError):
+    """Offline double preserving redis-py's exception class name."""
+
+
+@pytest.mark.parametrize("ping_result,error,ready,status", [
+    (True, None, True, "ready"),
+    (False, None, False, "memory_unavailable"),
+    (True, ConnectionError("private Redis endpoint"), False, "memory_unreachable"),
+    (True, TimeoutError("private Redis endpoint"), False, "memory_timeout"),
+    (True, AuthenticationError("phase16-password-secret"), False, "memory_read_failure"),
+    (True, RuntimeError("private Redis response"), False, "memory_read_failure"),
+])
+def test_redis_ping_readiness_is_normalized(ping_result, error, ready, status, monkeypatch):
+    monkeypatch.setattr(memory_module, "metrics", Metrics(CollectorRegistry()))
+    client = FakeRedis()
+    client.ping_result = ping_result
+    client.read_error = error
+    store = RedisMemoryStore(client, history_limit=6)
+    assert store.check_readiness() == MemoryReadiness("redis", ready, status)

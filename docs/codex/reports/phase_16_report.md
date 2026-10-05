@@ -1580,3 +1580,633 @@ work, plus the previously untracked Phase 16 prompt and report. Work remains on
 Azure/cloud resources modified: **NONE**. Kubernetes resources modified: **NONE**.
 Live inference traffic performed by Codex: **NONE**. Branch created: **NO**.
 Commit created: **NO**. Push performed: **NO**.
+
+## H. 2026-10-05 — Azure-Managed Redis Readiness Assessment
+
+### H1. Decision, scope, and evidence status
+
+**Current managed-Redis compatibility: PARTIAL. Redis is not live-validated or
+READY; Phase 16 remains incomplete.** The generic implementation can consume a
+standard Redis/TLS endpoint with static credentials without an Azure-specific
+adapter. The remaining conditions are service protocol/topology compatibility,
+network access, credential delivery, security findings below, and live evidence.
+
+The operator selected **Option B: externally managed Azure Redis** for an
+enterprise-style architecture. Every PolyMind replica must use the same external
+service and database, with TLS and authentication. Redis has a lifecycle outside
+the PolyMind Helm release and outside AKS application pods. No in-cluster Redis
+production topology is proposed.
+
+The operator reports AKS `epolymind-aks-dev`, resource group `rg-epolymind`, Spain
+Central, ACR `epolymindacrdev`, and a published versioned image. The supplied live
+Foundry evidence reports provider `openai_compatible`, model
+`epolymind-gpt-54-mini`, readiness `ready`/True, generation
+`POLYMIND_PROVIDER_OK`, and streaming `POLYMIND_PROVIDER_STREAM_OK` against
+`epolymind-foundry-dev-susanta`. This supersedes earlier inference-blocker notes
+for the present assessment; Codex did not repeat those live calls. Redis is the
+next dependency. Other Phase 16 prerequisites are not declared resolved here.
+
+Work started on an unchanged `master` working tree. Repository instructions,
+all three memory package files, settings, graph consumers, API lifecycle and
+probes, Helm templates/values/helpers, requirements, Dockerfile, relevant tests,
+README and security documentation were inspected. Only this report was changed.
+Public primary-source documentation was consulted to verify client and Azure
+semantics; no Azure CLI, Azure account query, Kubernetes command, credential
+retrieval, or real Redis connection was performed.
+
+### H2. Runtime path and existing configuration
+
+`Settings` validates `MEMORY_PROVIDER`; `create_memory_store()` returns
+`FileMemoryStore` only for an explicitly selected `file` provider. Otherwise it
+imports redis-py, calls `redis.Redis.from_url(REDIS_URL, ...)`, and wraps that
+client in `RedisMemoryStore`. `get_memory_store()` caches the store per process.
+`graph/langgraph_flow.py` obtains it at import and injects it into graph nodes;
+`graph/generation.py` reads history before inference and appends the completed
+exchange. Streaming appends before emitting `done`. The API history endpoint
+reads from the same store, and `/ready` invokes its readiness method.
+
+| Setting | Current behavior |
+| --- | --- |
+| `MEMORY_PROVIDER` | `file` locally by default; `redis` required in production and selected by chart defaults |
+| `REDIS_URL` | Required nonempty for Redis; settings accept `redis://` and `rediss://` with a hostname; Unix-socket URLs are rejected by PolyMind |
+| `MEMORY_CONNECT_TIMEOUT` | Positive seconds, default 2; passed as `socket_connect_timeout` |
+| `MEMORY_OPERATION_TIMEOUT` | Positive seconds, default 2; passed as `socket_timeout`, not an overall request deadline |
+| `MEMORY_HISTORY` | Positive retained-message count, default 6, not six exchanges |
+| `MEMORY_TTL` | Nonnegative seconds, default 0; positive values add EXPIRE on each append |
+| Client options | `decode_responses=False`; `health_check_interval=30`; no explicit retry policy, pool cap, identity provider, or cluster client |
+
+**There is no silent Redis-to-file fallback.** Construction failure propagates;
+operational failures are normalized or make readiness false. Neither path creates
+a local memory store. This preserves the shared-state boundary during outages.
+
+Each key is `polymind:memory:` plus the SHA-256 hex digest of the UTF-8 session ID.
+The value is a Redis list of JSON messages containing `role`, `content`, and a UTC
+ISO timestamp. Reads use LRANGE for the newest requested message count and
+validate UTF-8/JSON and message field types. Append queues one RPUSH with both
+user/assistant messages, LTRIM, and optional EXPIRE in a transactional pipeline.
+Session clearing uses DEL on one derived key. Positive TTL is refreshed by writes,
+not reads. TTL zero omits EXPIRE; it does not explicitly remove an existing TTL
+after a configuration change. Defaults retain six messages indefinitely per
+session, so total session cardinality still determines storage growth.
+
+### H3. redis-py version, TLS, authentication, and service compatibility
+
+`requirements.txt` pins **redis==6.4.0** and Dockerfile installs that requirements
+file. However, `import redis` in this assessment's active Python environment
+failed with `ModuleNotFoundError`; `python -m pip show redis pytest` confirmed
+redis is absent and pytest is 8.4.2. No dependency was installed. The deployed
+image's actual installed client was not inspected. Thus client-library findings
+below are source inspection of the exact upstream pin, not a local or deployed
+runtime demonstration.
+
+In 6.4.0, `rediss` selects SSLConnection. Its actual constructor defaults are
+certificate verification `required` and hostname checking `True` (an adjacent
+docstring incorrectly says False). It uses the system trust context and SNI.
+Percent-decoded username/password support ACL-style or password-only AUTH.
+Database selection is supported. URL options can disable verification or override
+timeouts; PolyMind does not constrain them. The pool has no practical default cap.
+Connections are lazy; health checks run on use, not a background timer. Without
+retry options this pool path uses zero configured retries. DNS resolution precedes
+socket connection timeouts. These findings follow the
+[pinned connection implementation](https://raw.githubusercontent.com/redis/redis-py/v6.4.0/redis/connection.py).
+
+`Redis.from_url()` constructs a pool before constructing Redis: the ordinary
+Redis constructor's three-retry default is therefore not applied to that pool.
+URL query options take precedence over supplied keyword arguments. Database
+precedence is query `db`, path, then default zero. Client close owns/disconnects
+this pool; pipeline execution releases its connection in a finally block.
+Later calls can reconnect after disconnection, but there is no guarantee a failed
+write is replay-safe. See the
+[pinned client implementation](https://raw.githubusercontent.com/redis/redis-py/v6.4.0/redis/client.py).
+
+The abstract input shape is
+`rediss://<credentials>@<managed-host>:<tls-port>/<db>`; these are placeholders,
+not an endpoint or credential recommendation. Use the operator-confirmed hostname
+and port, correctly URL-encode credentials, retain verification, and confirm the
+runtime trust store. Do not connect using an IP merely to bypass DNS/certificate
+checks. A privately signed certificate would additionally require an approved CA
+delivery mechanism; the current chart has no dedicated CA volume configuration.
+
+**Service clustering policy is a prerequisite.** The factory constructs `Redis`,
+not `RedisCluster`; it has no cluster discovery or MOVED/ASK routing logic.
+Select/verify a service mode presenting a compatible non-cluster client endpoint,
+and confirm support for this single-key transactional command sequence. Azure
+Managed Redis documents Enterprise proxy and Non-clustered policies as alternatives
+to OSS clustering. This is a compatibility criterion, not a SKU selection.
+An OSS-cluster-required endpoint would need separately scoped generic client work
+or a different operator-selected service mode. Verify database-index restrictions
+instead of assuming nonzero databases work. See
+[Azure Managed Redis architecture](https://learn.microsoft.com/en-us/azure/redis/architecture).
+
+### H4. Authentication choices and credential lifetime
+
+| Approach | Current PolyMind support | Assessment |
+| --- | --- | --- |
+| Static/access-key-style password | Supported through URL | Smallest Phase 16 path if permitted by service and organizational policy; use TLS, protected delivery, and a rotation runbook |
+| Static ACL username/password | Supported by the generic client path | Service must expose the corresponding authentication mode; narrow key and command privileges where available |
+| Entra token supplied once as a password | Could authenticate while valid, subject to correct identity/service configuration | Not renewable identity support and unsuitable as a durable deployment configuration |
+| Managed identity / renewable Entra authentication | Not implemented | No acquisition, expiry tracking, refresh, pooled-connection reauthentication, or workload-identity setup exists |
+
+Microsoft requires refreshed token authentication before token expiry. A frozen
+URL cannot do this. Longer-term enterprise authentication should evaluate managed
+identity/Entra with supported renewal and reauthentication, confined to client
+configuration infrastructure. It requires additional application integration and
+likely an identity/credential-provider dependency plus platform identity work;
+none was added. If organizational policy forbids static credentials, identity
+integration becomes a blocker rather than a reason to weaken policy. See
+[Microsoft Entra authentication requirements](https://learn.microsoft.com/en-us/azure/redis/entra-for-authentication).
+
+Static rotation also is not automatic: update the externally delivered Secret,
+roll all application processes, verify recovery, then retire the old credential
+using an overlap window if the service permits one. Existing environment variables
+and pooled clients do not adopt a changed Secret in place. No secret should be
+pasted into this report, a chat, a values file, or a command-line argument.
+
+### H5. Production validation and secret handling
+
+Production requires Redis plus the existing openai-compatible inference,
+chroma_http, API authentication, disabled docs, and offline model configuration.
+Redis alone cannot satisfy all production checks. The loopback guard compares
+host strings against `localhost`, `127.0.0.1`, `::1`, and `host.docker.internal`.
+It does not cover every loopback spelling/range or resolve names to reject local
+addresses. URL validation does not fully validate port, database, or query options.
+
+**An external `redis://` URL can pass production validation.** Credentials are not
+required by settings, and insecure TLS query overrides are not rejected. Production
+therefore supports the desired configuration but does not enforce the required
+TLS/authentication policy. Use an explicitly reviewed secure URL for validation;
+add fail-closed validation later as generic hardening.
+
+The chart path is exact: `application.memoryProvider` becomes ConfigMap
+`MEMORY_PROVIDER`; Deployment `envFrom` loads it. Deployment `env.REDIS_URL`
+uses `secretKeyRef`, whose name comes from `polymind.secretName` and whose key
+comes from `secrets.redisUrlKey`. Defaults are `secrets.create=false`,
+`secrets.existingSecret=polymind-secrets`, and key `redis-url`. The URL is absent
+from ConfigMap. The Secret must also contain the configured API authentication
+token key; the inference key reference is optional. Every replica uses this same
+pod template and therefore the same Secret reference.
+
+No committed URL values or chart edits are necessary. Externally materialize a
+pre-created Secret in the application namespace through the platform secret
+workflow. Optional chart-managed creation uses `stringData` from values and could
+expose credentials in rendered manifests/Helm release values; avoid it for this
+integration. The pod checksum covers ConfigMap, not external Secret updates.
+`MEMORY_HISTORY` and `MEMORY_TTL` exist in Settings but have no chart values/env
+wiring; unmodified chart deployments use defaults. Exposing them is optional
+unless a retention requirement makes it necessary.
+
+Secret injection puts the URI into the process environment; authorized pod
+execution/debugging and dumps can expose it. Secret objects are not automatically
+a complete encryption/access-control solution: platform operations must verify
+RBAC, backing-store encryption and access restrictions. No such cloud controls
+were inspected. See [Kubernetes Secrets](https://kubernetes.io/docs/concepts/configuration/secret/).
+The Docker context excludes `.env`, `.env.*` except `.env.example`, and runtime
+logs; no real credentials were inspected or added.
+
+### H6. Readiness, errors, cleanup, and failure behavior
+
+`RedisMemoryStore.check_readiness()` executes PING, including connection/TLS/AUTH
+when a connection is opened, and catches ordinary exceptions. A truthy response
+means ready; false gives `memory_unavailable`. Class names containing `timeout`
+normalize to `memory_timeout`; those containing `connection` to
+`memory_unreachable`; other read failures become `memory_read_failure`.
+AuthenticationError is consequently not given a distinct authentication category.
+Reads/writes raise safe `MemoryError` subclasses with fixed messages and retain
+the original exception as their cause.
+
+`/ready` checks inference, memory, vector store, and BM25 sequentially. It returns
+200 only when all are ready, otherwise 503 with component statuses. `/health`
+returns process liveness independently. This separation is suitable for removing
+unready replicas from Kubernetes traffic without dependency-driven restarts.
+PING validates connectivity/authentication/command execution, but does not prove
+write permission, memory headroom, transaction support, durability, or that
+previously committed history survived failover.
+
+Socket waits have finite defaults; **there is no strict end-to-end readiness
+deadline**. DNS, multiple addresses, handshake steps, URL overrides, and sequential
+dependency checks prevent claiming a two-second overall bound. The Helm readiness
+probe timeout is five seconds. Kubernetes can time out that probe while the worker
+is still running. Failure duration and recovery need measurement, and a global
+budget is a hardening candidate. Valid configuration plus a TLS/auth outage
+normally produces sanitized unready status without crashing the process; invalid
+client options or missing redis-py can instead fail construction at graph import.
+
+| Failure | Expected application behavior, without URL retry overrides |
+| --- | --- |
+| Redis unavailable / refused connection | Request fails safely; PING makes memory unready; later calls may reconnect; no local fallback |
+| DNS failure | Usually normalized as connection failure; OS resolver duration is not guaranteed by socket timeout |
+| TLS/certificate failure | Caught by store operations/readiness; exact category depends on exception class; never disable verification to recover |
+| Authentication failure | Readiness false, generally `memory_read_failure`; request errors sanitized; no credential refresh |
+| Expired or rotated credential | Authentication failures when enforced by service/on reconnect; remains broken until valid credentials and processes are updated |
+| Connect timeout | `memory_timeout` when raised as a timeout class; request fails/readiness false |
+| Operation timeout | Same visible failure; an already-sent write may have committed despite its lost response |
+| Restart/failover | Affected requests can fail; subsequent pool reconnection can recover with a valid endpoint/credential; state survival is service-dependent |
+| Transient disconnect | No application retry; failed request is not transparently guaranteed success; later access can recover |
+
+These are implementation/source expectations, not live observations. No row
+falls back to file. Reconnection is not token renewal or exactly-once delivery.
+Readiness/client-facing error bodies do not include the URI. However, log leakage
+is a real residual risk described below, so safe logging cannot be asserted for
+all failure paths.
+
+Shutdown invokes `close_memory_store()` from FastAPI lifespan, then vector and
+inference cleanup. The store delegates to client close, and the cached singleton
+is reset. There is no isolation around a close exception: memory cleanup failure
+could prevent subsequent component cleanup. Factory-created standalone test
+stores must be closed explicitly; closing only the singleton would miss them.
+
+### H7. Security and two-replica semantics
+
+**Logging gap:** `graph/streaming.py` handles MemoryError with `logger.exception`.
+Because the store raises `from exc`, the full chained upstream exception is logged.
+An upstream exception can contain sensitive values or a pipeline command's
+synthetic/real message content. No direct normal-path Redis URL logging was found,
+but safe outer messages do not sanitize chained tracebacks. This conflicts with
+README's unconditional no-leak claim. Fix this path and add sentinel-based log
+tests before credentialed streaming failure validation. Generic streaming catches
+deserve the same review. Normal API memory handlers and readiness logs use bounded
+categories, not raw exceptions.
+
+`REDIS_URL` is a plain `str`, not a secret type. Settings representations/dumps,
+Pydantic validation input rendering, and uncaught constructor errors are additional
+potential exposure paths. No settings dump logger was found. Masking settings and
+normalizing early construction errors are recommended, without silently hiding
+configuration failures. Keep debug tracing and raw settings/error dumps out of
+the later operator harness.
+
+Both replicas see the same history when hostname/service, DB and session ID agree.
+There is no per-pod namespace. Append avoids a read/modify/write overwrite: both
+messages are in one RPUSH and the transaction serializes append/trim/expiry against
+other clients. Trimming intentionally removes older entries. Odd history limits
+may retain a partial oldest pair. This is not a lock over read → inference → write:
+simultaneous requests may generate from the same old history and append in
+completion order, not arrival order. Clear-versus-append and expiration-versus-read
+races also remain possible. Avoid parallel requests to one synthetic session when
+validating basic conversational continuity.
+
+Redis transactions do not roll back commands that encounter execution-time
+errors; lost EXEC acknowledgments can leave the commit outcome unknown. Therefore
+README's statement that failed transactions never persist partial exchanges is
+too broad. RPUSH itself writes the pair together, but a later trim/expiry failure
+may leave retention inconsistent. Caller retries can duplicate exchanges; there
+is no idempotency token, durable acknowledgement, or distributed conversation
+lock. These qualifications follow
+[Redis transaction semantics](https://redis.io/docs/latest/develop/using-commands/transactions/).
+
+SHA-256 collision risk is negligible for practical use, but intentional reuse of
+the same session ID shares data. API requests default to session `default` and
+allow caller-supplied IDs up to 256 characters. There is no tenant/user ownership
+binding: a shared API token is not per-session authorization. Use unique session
+IDs and a dedicated service/database scope for this validation. The fixed key
+prefix also means unrelated deployments sharing the same DB/session IDs collide
+logically. A constructor prefix exists but is not settings/factory configurable.
+Tenant isolation and configurable environment namespacing are future scope if
+the deployment expands beyond one trusted application boundary.
+
+Least privilege should cover only the application's key prefix and required
+LRANGE, RPUSH, LTRIM, EXPIRE when enabled, DEL, PING and transaction commands,
+plus service/client-required authentication/connection initialization commands.
+Confirm the selected service's ACL capabilities; do not assume access keys are
+fine-grained identities. Diagnostic SET/GET require separately considered test
+permissions and must not unnecessarily expand production privileges.
+
+### H8. Helm policy versus actual network security
+
+The chart defaults Redis egress to TCP 6379 and a combined namespace/pod selector
+for an in-cluster dependency, with empty `ipBlocks`. That default does **not**
+describe the managed endpoint. Existing `networkPolicy.egress.redis.port` and
+`ipBlocks` already allow a reviewed external TCP port and destination CIDRs, so
+no template change is necessary for a stable, known external destination.
+
+Within the selector peer, namespaceSelector AND podSelector must match. The
+additional ipBlock peers are alternatives. The template always retains its
+selector peer; adding CIDRs does not remove that allowance. If tightening it,
+choose appropriately restrictive labels; empty selectors would broaden access.
+Removing selector peers entirely would require optional-peer template work, which
+is not necessary merely to connect. DNS is allowed over UDP/TCP 53 to selected
+CoreDNS pods; verify actual AKS resolver labels, NodeLocal DNS if present, and
+private-zone forwarding rather than assuming these defaults match.
+
+Standard NetworkPolicy has no FQDN matching. Dynamic public IPs or changing
+private endpoint addresses need a platform-maintained CIDR strategy or a separately
+selected policy/egress mechanism. NAT and CNI behavior must be checked in the
+actual topology. See [Kubernetes NetworkPolicy semantics](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+
+**Operator-provided Phase 16 fact: AKS NetworkPolicy enforcement is not enabled.**
+Rendering or applying this chart policy would not prove enforcement. Actual
+protection must be assessed from Azure routing, NSGs/firewalls, service public
+access settings, and private networking. No such controls were queried here.
+This is an unresolved enterprise security evidence gap even if connectivity works.
+
+### H9. Preferred enterprise networking and operator ownership
+
+Prefer a private endpoint/private-network path from AKS with correct private DNS,
+TLS and authentication, and no unrestricted public application path. Azure Managed
+Redis supports Private Link; validate support and behavior for the selected
+resource/service. Preserve the service's certificate-valid client hostname while
+resolving it through private DNS. Private endpoint approval, zone links and public
+access restrictions require explicit platform configuration. See
+[Azure Managed Redis Private Link](https://learn.microsoft.com/en-us/azure/redis/private-link).
+
+A public endpoint with TLS/authentication and narrowly restricted network rules
+is a possible policy-approved validation alternative only if the selected service
+supports the required restrictions. It depends on known AKS egress identity/IPs
+and exposes more network surface. Do not substitute unrestricted public access
+for missing private connectivity. No existing VNet/subnet arrangement is assumed.
+
+Before choosing, the operator must inspect AKS node and pod network mode, VNet
+and subnet IDs/address ranges, managed node resource group where relevant,
+peering, endpoint-subnet suitability, routes/UDRs, outbound NAT/egress IPs,
+NSGs/firewalls, and address-space overlap. Confirm service private endpoint
+support/approval, DNS zone and VNet links, custom DNS forwarding, resolution from
+pods, and bidirectional routing. Determine actual NetworkPolicy/CNI enforcement
+separately from chart values. None of this inspection was run in this task.
+
+| Owner | Responsibility |
+| --- | --- |
+| PolyMind | Provider-neutral memory abstraction, client configuration, timeouts, JSON/list storage, session semantics, readiness, safe errors, cleanup |
+| Azure-managed Redis service | Server/infrastructure lifecycle and patching; availability, replication, persistence and backup/recovery only to the extent offered/configured by the chosen service/tier |
+| AKS/platform operators | Network/DNS reachability and enforcement, secret delivery and rotation, workload/image deployment, identity setup if later selected, monitoring integration and recovery procedures |
+
+No HA, backup, persistence, recovery point, or service-level guarantee can be
+inferred from PolyMind code. Phase 16 needs a small development workload with
+shared state, TLS, authentication, sufficient connections/latency and availability
+for validation, preferably private access. Large memory capacity is not justified
+at this stage. Select capacity, eviction/retention and availability deliberately;
+actual SKU and cost selection is separate and requires current Azure information.
+No price estimate or resource provisioning is part of this assessment.
+
+### H10. Test coverage, missing tests, and local validation
+
+| Area | Existing coverage | Gap before live managed-service validation |
+| --- | --- | --- |
+| Factory | Mock verifies URL, timeouts, binary responses, health interval, history and TTL | Real pinned client construction without connecting; TLS class/defaults, auth decoding, DB, URL overrides, pool ownership/retries |
+| Settings | Provider, nonempty URL, positive limits/timeouts, production Redis and rediss example, selected loopback rejection | Malformed URL/port/DB/query; insecure external URL acceptance documented; later TLS/verification/secret masking regressions |
+| Memory data | Fake verifies ordering, trim, TTL command, session hashing/isolation, clear, concurrent pairs and malformed reads | Two independent stores; actual expiry; odd limits; mixed TTL settings; managed transaction contract |
+| Failures | Fake connection/timeout/read/write normalization | Real redis exception types for DNS/TLS/AUTH; failed append/clear; explicit no-FileMemoryStore spy across construction and runtime failures |
+| Readiness | API fake proves memory failure → 503 and independent liveness; sanitized response shape | Direct Redis PING true/false/errors, ACL write-denied despite PING, measured timeout/recovery; HTTP boundary with real store + mocked transport |
+| Shutdown | Lifespan test verifies cleanup callbacks | Factory singleton reset, real pool close ownership, store/client close, cleanup when one close raises |
+| Helm | Defaults ≥2 replicas, external services, Secret refs, no URL in ConfigMap, lint/render | Parsed custom Secret/key reference assertions; external Redis CIDR/TLS-port render; absence of generated Secret; rotation contract |
+| Security | Bounded metrics and safe outer error strings | Sentinel username/password/token/URI and message-content absence from streaming logs, settings validation and constructor failures |
+
+The fakes implement an idealized successful transaction under a Python lock; they
+do not prove real Redis rollback, failover, expiry, TLS or cluster behavior. The
+tests do not assert an automatic file fallback because none exists in code; an
+explicit negative regression is still valuable. No tests were modified or added.
+
+Local checks actually run:
+
+| Command/check | Result |
+| --- | --- |
+| `python -m pytest -q -p no:cacheprovider tests/unit/test_memory_store.py tests/unit/test_memory_integration.py tests/unit/test_deployment_topology.py tests/unit/test_helm_chart.py` | **45 passed in 17.85s**, exit 0 |
+| `PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/unit/test_api_reliability.py tests/unit/test_streaming_orchestration.py` | **25 passed in 0.48s**, exit 0 |
+| `helm lint deployment/helm/polymind` | 1 chart linted, 0 failed; informational icon recommendation |
+| `helm template polymind deployment/helm/polymind > /tmp/polymind-redis-assessment.yaml` | Exit 0; local manifest only, no deployment |
+| Parsed default and synthetic override renders | Verified two replicas, Redis selection, URL absent from ConfigMap, no generated Secret, default/custom Secret references, configurable external CIDR and TCP port; exit 0 |
+| Local redis import / package metadata | redis absent; no installation or real-client execution claimed |
+| `git diff --check` and append-only comparison with HEAD | Passed; historical report preserved byte-for-byte |
+
+Full pytest, compilation and Docker builds were not necessary for this
+documentation-only assessment and were not run. These 70 passing tests are
+repository regression evidence, not managed Redis readiness evidence.
+
+### H11. Required changes versus hardening
+
+No Azure-specific Redis abstraction, application connectivity rewrite, new cloud
+SDK, or Helm Secret template change is required for a compatible standard endpoint.
+The following separates connection prerequisites from safe end-to-end validation.
+All proposed changes remain unimplemented.
+
+| Category | File(s)/owner | Reason and scope | Behavior changes | Test requirement |
+| --- | --- | --- | --- | --- |
+| **A. REQUIRED BEFORE MANAGED REDIS VALIDATION** | Operator runtime; existing `requirements.txt` | Ensure the validation/deployed runtime actually contains pinned redis-py; absent locally | Environment only; no new dependency declaration | Offline real-client construction/version check |
+| A | Operator service/network/Secret configuration; external deployment values | Confirm standard-client mode, DB/transactions, actual TLS endpoint, route/DNS, static-auth policy and shared Secret; set existing egress port/CIDRs as applicable | Deployment configuration only | DNS/TLS/AUTH and transaction/shared-session checks below |
+| A, before credentialed API/streaming failure tests | `graph/streaming.py`, `tests/unit/test_streaming_orchestration.py` | Eliminate raw chained memory exception logging; broader generic catch review | Logging only, retain client error contract | Sentinel credentials/URI/content absent from logs and responses |
+| A, validation evidence | Existing memory/topology/Helm/API test files | Add focused offline rediss/auth/factory, no-fallback, PING errors/close and external Secret/policy checks identified above | Tests only | Run with the pinned real client and mocked transport, no service required |
+| **B. RECOMMENDED HARDENING** | `config/settings.py`, factory, settings tests | Require production TLS/auth policy, reject insecure verification overrides, validate URL options/port/DB and broader loopback forms; protect URL repr/validation errors | Rejects previously accepted insecure/malformed config; unwrap secret internally if introduced | Positive secure and negative insecure inputs, secret-redaction tests |
+| B | `memory/provider_factory.py`, `api/app.py`, chart probe values | Explicit pool/retry policy and overall readiness budget; protect all shutdown cleanup | Operational limits; do not add blind write retries | Timeout, pool exhaustion, lost-ack and cleanup cases |
+| B | Chart values/configmap, memory factory/settings if required | Expose retention/history and environment prefix only when needed; optional external-only policy peer support | Optional configuration, preserve defaults deliberately | Render/TTL/key compatibility tests |
+| B | `README.md`, security/deployment docs | Qualify no-leak, transaction, deadline and secret-rotation claims | Documentation only | Cross-check against implementation and sentinel tests |
+| **C. NOT REQUIRED FOR PHASE 16** | Future identity infrastructure/factory | Entra token acquisition/renewal, Azure identity dependencies | New authentication mode, separately scoped; becomes required only if static auth is forbidden | Renewal, reauthentication, expiry and identity-failure tests in that future scope |
+| C | Future generic client work | RedisCluster support if a standard-client-compatible endpoint is selected | No change now; required later only if service mode demands it | Cluster routing/failover tests if introduced |
+| C | Graph/API/storage design | Distributed conversation locks, idempotent writes, tenant authorization redesign, in-cluster Redis | No speculative redesign; in-cluster production Redis is excluded | Scope separately when requirements demand stronger guarantees |
+
+### H12. Non-secret operator inputs needed later
+
+After separate authorized resource selection/creation, provide only:
+
+1. Exact Azure service/product and resource name, resource group, region and
+   selected tier/capabilities; Redis protocol/version and clustering policy.
+2. Certificate-valid client hostname, actual TLS port, required TLS version/CA
+   trust, database/index support and selected index; supported transaction commands.
+3. Authentication mode, whether static keys are allowed, whether a username is
+   required, privilege scope and rotation/expiry policy. Do not supply keys/tokens.
+4. Private/public access mode, public-access restrictions, endpoint approval and
+   private IP/subnet information, relevant VNet/peering/routing/NSG facts, DNS
+   zone/link/forwarding configuration and pod-side resolution result.
+5. AKS egress identity/IPs if public access is selected; actual policy enforcement
+   status and approved destination CIDRs/ports, separately from Helm declarations.
+6. Application namespace, existing Secret name and key names, protected delivery
+   mechanism and rollout owner; deployed image tag/digest and installed client version.
+7. Intended replica count (at least two), connection limit, history/TTL/eviction
+   policy, persistence/availability expectations and agreed validation/failure window.
+
+Credentials belong in the operator's approved secret store and the referenced
+Kubernetes Secret, delivered without source control, shell-history or report
+exposure. No secret contents are required to resolve the non-secret design choices.
+
+### H13. Later live validation plan — designed, not executed
+
+Run only after separate operator authorization, the relevant security fix/tests,
+and protected credential delivery. Use an approved environment on the intended
+AKS network path and the deployed application image where possible. Bound each
+test with a wall-clock deadline as well as socket timeouts. Record pass/fail,
+duration, non-secret endpoint facts and sanitized categories, not connection URIs
+or raw exception tracebacks. Do not enable verbose command logging.
+
+1. Resolve the supplied hostname from the intended environment, eventually from
+   each application pod. Compare to approved private/public addresses and verify
+   private DNS/route expectations.
+2. Establish TLS with hostname and certificate verification enabled. Verify the
+   expected certificate identity/trust without bypass flags.
+3. Load credentials through the protected environment/Secret, authenticate and
+   PING using the pinned client; never print the URL or credentials.
+4. Generate a unique `polymind:phase16:<random-run-id>:probe` key. Perform a small
+   SET with a short expiry and collision protection, GET/compare the synthetic
+   value, then DEL that exact key in a finally block. Keep a cleanup ledger; TTL
+   protects against interrupted cleanup. No key scans or database-wide deletion.
+5. Construct `Settings` and `create_memory_store()` with the real approved
+   configuration; verify provider `redis` and store readiness. Do not dump Settings.
+6. Through the real RedisMemoryStore, use a fresh
+   `phase16:<random-run-id>:<session>` session, read empty history, append synthetic
+   exchanges, read back ordered content, test trimming/isolation and optional
+   expiry. Factory keys remain `polymind:memory:<sha256(session)>`; record these
+   exact derived test keys for cleanup. The factory does not expose a custom
+   prefix, so do not pretend a session prefix appears literally in Redis keys.
+   Apply a short safety TTL to exact test keys if needed; always clear the session
+   through the store and close clients in finally blocks.
+7. Confirm the full application `/ready` returns 200 with memory ready. Inference,
+   Chroma and BM25 must also be ready; isolate their failures rather than attributing
+   every 503 to Redis. Check `/health` independently.
+8. With two replicas referencing the same external Secret/DB, direct a synthetic
+   write/query to pod A, verify its history on pod B, then reverse direction using
+   the same session. Test another session remains isolated. Use approved direct
+   pod access to prove routing actually crossed pods, not just repeated load-balancer
+   calls. Exercise API persistence as well as independently constructed stores.
+9. Optionally test simultaneous appends with small synthetic payloads and a large
+   enough history limit. Assert intact pairs and expected retention, without
+   asserting request-arrival ordering or exactly-once retries.
+10. In an isolated validation instance/canary, inject unreachable endpoint, DNS,
+    TLS and invalid-auth conditions or an approved scoped network interruption.
+    Do not stop/delete the managed service, rotate a shared live credential, or
+    disrupt unrelated workloads. Verify `/health` remains 200, `/ready` fails or
+    reaches its probe deadline, requests return safe errors, no file fallback
+    occurs, and logs contain no sentinels/credentials. Restore configuration and
+    prove readiness/reconnection recovery. Actual service failover testing, if
+    desired, needs its own approved service-specific plan.
+11. Delete only the exact recorded synthetic keys/sessions, confirm cleanup,
+    close clients and record results. **Never use FLUSHALL or FLUSHDB.**
+
+### H14. Conclusion and review record
+
+The safest minimal path is a standard-client-compatible, external Azure-managed
+Redis endpoint, private connectivity where appropriate, verified TLS, and static
+credentials delivered through the existing Secret path if policy allows. Preserve
+the provider-neutral abstraction. No application or chart connectivity feature
+has been shown to require Azure-specific code. Fix the demonstrated logging risk
+before credentialed streaming failure validation and add focused missing tests.
+
+Outstanding blockers are endpoint/service/auth/DB selection, actual client runtime
+verification, network/DNS/security evidence, secret delivery, the logging/test
+gate, and live shared-session/failure evidence. Entra-only policy or a mandatory
+cluster-aware service mode would add explicit implementation work. Production
+hardening and broader Phase 16 dependency/operational validation remain open.
+
+Assessment self-review checked architecture, compatibility, concurrent writes,
+failure handling, lifecycle, sources and test limitations. Separate pre-commit
+review checked the report for secrets, executable provisioning instructions,
+unproven readiness claims, unrelated changes and historical preservation. No
+implementation, tests, Helm files or dependencies were modified. Existing report
+history is preserved; this assessment is intentionally not a deployment approval
+or a declaration that Redis/Phase 16 is READY.
+
+Final `git status --short --branch` shows `master...origin/master` and only
+`docs/codex/reports/phase_16_report.md` modified. `git diff --stat` records one
+file changed, with an append-only assessment; nothing is staged.
+
+Azure resources created/modified: **NONE**. Kubernetes resources created/modified:
+**NONE**. Live Redis calls: **NONE**. Branch created: **NO**. Commit created: **NO**.
+Push performed: **NO**. Work remains on `master`, uncommitted for operator review.
+
+## I. 2026-10-05 — Redis streaming security and offline regression patch
+
+This narrow follow-up addresses the streaming memory log-leak finding in section
+H and protects the existing generic external Redis contract. Managed-Redis
+compatibility remains **PARTIAL**, Redis is **not READY**, and Phase 16 remains
+incomplete. No managed-service connection or deployment was attempted.
+
+### I1. Security change and compatibility
+
+`graph/streaming.py` now uses `logger.error` instead of `logger.exception` in the
+`MemoryError` handler. Previously, the normalized exception retained its upstream
+cause and logging included the chained traceback. Now the log contains only the
+existing request ID, route, memory provider and bounded category. It does not
+attach exception information or render the exception/cause. The existing key=value
+logging format is preserved; unrelated inference/vector/generic handlers are
+unchanged. This is a memory-handler fix, not a claim that all previously identified
+settings, construction or unrelated exception-logging risks have been resolved.
+
+The client error remains exactly `{"type": "error", "message": "Conversation
+memory is unavailable."}`. A failed history read emits only the error; a failed
+append after generation retains prior metadata/chunks, emits the error and does
+not emit `done`. No retry, fallback, provider boundary, configuration or memory
+storage behavior changed.
+
+Two security regressions exercise the real `RedisMemoryStore` with a fake failing
+client, covering both read and append. The upstream exceptions carry clearly
+synthetic username, password, hostname, full URI and private message sentinels.
+Both tests failed before the fix and pass afterward. They assert sentinel absence
+from rendered logs, captured exception text and client events; log records must
+have neither `exc_info` nor `exc_text`. They also assert the exact bounded log,
+request correlation, unchanged client error, and absence of query/session content
+from logs. All URI/authentication values added by this patch are test-only values
+using reserved `.invalid` domains.
+
+### I2. Regression coverage and dependency verification
+
+`tests/unit/test_memory_integration.py` extends factory coverage to rediss URLs
+carrying password-only and ACL username/password authentication. These cases
+verify Settings acceptance, RedisMemoryStore selection, exact URL forwarding,
+connect/operation timeouts, binary responses, health interval 30, history and TTL.
+Separate construction/runtime failure cases spy on FileMemoryStore, check that
+no local memory directory/file is created, retain `MEMORY_PROVIDER=redis`, and
+verify propagated construction errors, normalized runtime errors and unready
+PING results. The runtime test also closes its client.
+
+Two real-client parsing cases are included for environments with the project
+dependency installed. They check redis-py 6.4.0, SSLConnection selection,
+certificate-required and hostname-verification defaults, percent-decoded fake
+passwords, optional ACL username, host/port/database and propagated options. DNS,
+socket creation and connection calls are guarded to fail the tests rather than
+access a network; clients/connections are closed. **These two cases were skipped
+locally** because redis-py is absent. No dependency installation or version change
+was performed, and real-client parsing is not reported as executed evidence.
+
+`tests/unit/test_memory_store.py` adds six PING cases: success, false response,
+connection error, timeout, authentication-style exception and generic read error.
+These use offline doubles (including the authentication exception name) and
+assert existing readiness categories without inventing a new auth category.
+Existing API tests still verify `/ready` failure independently of `/health`.
+
+`tests/unit/test_helm_chart.py` parses default-name and custom-name external Secret
+renders. It verifies Redis selection in ConfigMap, no Redis URL there, exact
+secretKeyRef name/key, no chart-owned Secret, and a shared Deployment pod template
+for at least two replicas. A synthetic `192.0.2.0/24` CIDR and custom TCP port
+are asserted in the same egress rule. No chart values/templates changed; Redis
+remains externally operated. This proves rendering only: operator-reported AKS
+NetworkPolicy enforcement remains disabled and no isolation test was performed.
+
+`requirements.txt` still pins **redis==6.4.0**. Dockerfile copies the requirements
+file and installs it with `pip install -r requirements.txt`. Local package metadata
+confirmed redis-py is absent. The deployed image was not inspected or rebuilt.
+There are no new dependencies, Azure-specific code, Entra/identity support,
+cluster clients, locks or retry-on-write changes.
+
+### I3. Validation and reviews
+
+| Check | Result |
+| --- | --- |
+| Sentinel regression before fix | 2 failed, 6 deselected in 0.25s; reproduced chained exception disclosure |
+| Requested six-file targeted pytest run | **84 passed, 2 skipped in 18.30s**, exit 0 |
+| `python -m pytest -q` | **229 passed, 2 skipped in 12.97s**, exit 0 |
+| Skips in both suites | Only the two real-client TLS/static-auth parsing cases; pinned redis-py absent locally |
+| Compile with `PYTHONPYCACHEPREFIX=/tmp/polymind-phase16-redis-pycache` | Exit 0 |
+| `docker compose config --quiet` | Exit 0 |
+| `helm lint deployment/helm/polymind` | 1 chart linted, 0 failed; informational icon suggestion |
+| `helm template polymind deployment/helm/polymind` | Exit 0; output `/tmp/polymind-phase16-redis.yaml` |
+| `git diff --check` | Exit 0 |
+
+Implementation self-review inspected the complete implementation/test diff,
+client contract, correlation, failure causes, test isolation, no-fallback checks,
+cleanup and render assertions. A separate pre-commit security review confirmed
+that the only runtime change is the memory logging call/comment, test credentials
+are synthetic, no settings dumps or raw exception formatting were introduced,
+and there are no dependency, chart, configuration or unrelated implementation
+changes. No configured lint/format tool was found. Temporary logs/manifests and
+the compile cache are under `/tmp`; no generated artifact is included in the diff.
+The report's prior history, including the uncommitted assessment, is preserved.
+
+This patch passes its executed offline checks, with the explicit real-client
+environment limitation above. Repeat those two construction tests in the approved
+runtime containing the pinned dependency before treating TLS/auth parsing as
+locally verified. Live DNS/TLS/authentication, two-pod state sharing and failure
+recovery remain operator validation work; this patch does not establish managed
+Redis readiness.
+
+Work remains directly on `master`, unstaged and uncommitted. `git status` and
+`git diff --stat` show six modified files: the streaming module, four test files,
+and this report (including the earlier assessment). No new branch was created.
+
+Azure resources modified: **NONE**. Kubernetes resources modified: **NONE**.
+Live Redis calls: **NONE**. Branch created: **NO**. Commit created: **NO**.
+Push performed: **NO**.

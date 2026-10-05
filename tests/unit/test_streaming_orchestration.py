@@ -1,4 +1,11 @@
+import json
+import logging
+
+import pytest
+
 from llm.inference import InferenceConnectionError, ModelRole
+from llm.operational import reset_request_id, set_request_id
+from memory.memory_store import RedisMemoryStore
 from rag.vector_store import VectorStoreError
 
 from graph import streaming  # noqa: E402
@@ -129,3 +136,51 @@ def test_vector_failure_is_a_sanitized_ndjson_event(monkeypatch):
         )
     )
     assert events == [{"type": "error", "message": "Knowledge retrieval is unavailable."}]
+
+
+@pytest.mark.parametrize("operation", ["read", "append"])
+def test_memory_failure_logs_no_chained_secrets_or_content(operation, caplog):
+    # Fake credentials/content only; the real store normalizes this fake client's error.
+    sentinels = (
+        "phase16-user-secret", "phase16-password-secret", "example.invalid",
+        "rediss://phase16-user-secret:phase16-password-secret@example.invalid:6380/0",
+        "PHASE16_PRIVATE_MESSAGE_CONTENT",
+    )
+
+    class FailingClient:
+        def lrange(self, *args):
+            if operation == "read":
+                raise ConnectionError(" ".join(sentinels))
+            return []
+
+        def pipeline(self, **kwargs):
+            raise ConnectionError(" ".join(sentinels))
+
+    store = RedisMemoryStore(FailingClient(), history_limit=6)
+    token = set_request_id("phase16-memory-request")
+    try:
+        with caplog.at_level(logging.ERROR, logger=streaming.__name__):
+            events = list(streaming.stream_rag_response(
+                "PHASE16_PRIVATE_QUERY", "PHASE16_PRIVATE_SESSION",
+                FakeProvider(["synthetic answer"]), lambda _: "direct", store,
+            ))
+    finally:
+        reset_request_id(token)
+
+    assert events[-1] == {"type": "error", "message": "Conversation memory is unavailable."}
+    assert [event["type"] for event in events] == (
+        ["error"] if operation == "read" else ["metadata", "chunk", "error"]
+    )
+    records = [record for record in caplog.records if record.name == streaming.__name__]
+    assert len(records) == 1
+    assert records[0].getMessage() == (
+        "Memory operation failed request_id=phase16-memory-request "
+        "route=direct provider=redis category=memory_unreachable"
+    )
+    for sentinel in sentinels:
+        assert sentinel not in caplog.text
+        assert sentinel not in json.dumps(events)
+        assert all(sentinel not in (record.exc_text or "") for record in records)
+    assert "PHASE16_PRIVATE_QUERY" not in caplog.text
+    assert "PHASE16_PRIVATE_SESSION" not in caplog.text
+    assert all(record.exc_info is None and record.exc_text is None for record in records)

@@ -84,7 +84,8 @@ def stream_rag_response(
         )
         yield {"type": "error", "message": "Inference service is unavailable."}
     except MemoryError as exc:
-        logger.exception(
+        # The normalized error can chain an upstream exception containing secrets.
+        logger.error(
             "Memory operation failed request_id=%s route=%s provider=%s category=%s",
             request_id(), route, getattr(memory_store, "provider", "unknown"), exc.category,
         )

@@ -256,3 +256,42 @@ def test_hpa_requires_explicit_target_and_maximum():
     )
     assert result.returncode != 0
     assert "autoscaling.maxReplicas is required" in result.stderr
+
+
+@pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is not installed")
+@pytest.mark.parametrize("secret_name,secret_key", [
+    ("polymind-secrets", "redis-url"),
+    ("phase16-external-secret", "phase16-redis-url"),
+])
+def test_external_redis_secret_and_egress_render(secret_name, secret_key):
+    # Documentation-only network: this checks rendering, not AKS policy enforcement.
+    rendered = subprocess.run(
+        ["helm", "template", "polymind", str(CHART),
+         "--set", "secrets.create=false",
+         "--set", f"secrets.existingSecret={secret_name}",
+         "--set", f"secrets.redisUrlKey={secret_key}",
+         "--set", "networkPolicy.egress.redis.port=16380",
+         "--set", "networkPolicy.egress.redis.ipBlocks[0].cidr=192.0.2.0/24"],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    documents = [item for item in yaml.safe_load_all(rendered) if item]
+    assert not any(item["kind"] in {"Secret", "StatefulSet"} for item in documents)
+    deployments = [item for item in documents if item["kind"] == "Deployment"]
+    assert len(deployments) == 1  # Only PolyMind; Redis is externally operated.
+    deployment = deployments[0]
+    assert deployment["spec"]["replicas"] >= 2
+    configmap = next(item for item in documents if item["kind"] == "ConfigMap")
+    assert configmap["data"]["MEMORY_PROVIDER"] == "redis"
+    assert "REDIS_URL" not in configmap["data"]
+    container = deployment["spec"]["template"]["spec"]["containers"][0]
+    assert {"configMapRef": {"name": configmap["metadata"]["name"]}} in container["envFrom"]
+    redis_env = [entry for entry in container["env"] if entry["name"] == "REDIS_URL"]
+    assert redis_env == [{
+        "name": "REDIS_URL",
+        "valueFrom": {"secretKeyRef": {"name": secret_name, "key": secret_key}},
+    }]
+    policy = next(item for item in documents if item["kind"] == "NetworkPolicy")
+    rules = [rule for rule in policy["spec"]["egress"]
+             if {"ipBlock": {"cidr": "192.0.2.0/24"}} in rule.get("to", [])]
+    assert len(rules) == 1
+    assert rules[0]["ports"] == [{"protocol": "TCP", "port": 16380}]
