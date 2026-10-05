@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     OPENAI_COMPATIBLE_API_KEY: Optional[str] = None
     OPENAI_COMPATIBLE_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
     OPENAI_COMPATIBLE_READ_TIMEOUT: float = Field(default=120.0, gt=0)
+    OPENAI_COMPATIBLE_READINESS_MODEL_CHECK: bool = True
     OPENAI_COMPATIBLE_MODEL_MAP: Dict[str, str] = Field(
         default_factory=lambda: {
             "general": "gpt-oss-20b",

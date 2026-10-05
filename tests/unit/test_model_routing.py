@@ -68,3 +68,18 @@ def test_invalid_provider_configuration_fails_during_settings_initialization():
 def test_invalid_readiness_configuration_fails_early(field, value):
     with pytest.raises(ValueError):
         Settings(_env_file=None, **{field: value})
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, True), ("false", False)])
+def test_readiness_model_check_settings_and_factory(monkeypatch, value, expected):
+    name = "OPENAI_COMPATIBLE_READINESS_MODEL_CHECK"
+    monkeypatch.delenv(name, raising=False)
+    if value is not None:
+        monkeypatch.setenv(name, value)
+    config = Settings(_env_file=None, INFERENCE_PROVIDER="openai_compatible")
+    assert config.OPENAI_COMPATIBLE_READINESS_MODEL_CHECK is expected
+    provider = create_inference_provider(config)
+    try:
+        assert provider.readiness_model_check is expected
+    finally:
+        provider.close()

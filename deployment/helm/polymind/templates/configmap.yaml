@@ -11,6 +11,7 @@ data:
   DEPLOYMENT_ENV: {{ .Values.application.deploymentEnv | quote }}
   INFERENCE_PROVIDER: {{ .Values.application.inferenceProvider | quote }}
   OPENAI_COMPATIBLE_BASE_URL: {{ required "application.openaiCompatibleBaseUrl is required" .Values.application.openaiCompatibleBaseUrl | quote }}
+  OPENAI_COMPATIBLE_READINESS_MODEL_CHECK: {{ .Values.application.openaiCompatibleReadinessModelCheck | quote }}
   OPENAI_COMPATIBLE_MODEL_MAP: {{ .Values.application.openaiCompatibleModelMap | quote }}
   MEMORY_PROVIDER: {{ .Values.application.memoryProvider | quote }}
   VECTOR_STORE_PROVIDER: {{ .Values.application.vectorStoreProvider | quote }}

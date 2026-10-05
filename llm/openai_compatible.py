@@ -32,6 +32,7 @@ class OpenAICompatibleProvider:
         connect_timeout: float = 5.0,
         read_timeout: float = 120.0,
         generation_parameters: Optional[Mapping[str, Any]] = None,
+        readiness_model_check: bool = True,
         readiness_timeout: float = 3.0,
         readiness_retries: int = 1,
         readiness_backoff: float = 0.1,
@@ -44,6 +45,7 @@ class OpenAICompatibleProvider:
         self.model_map = dict(model_map)
         self.timeout = (connect_timeout, read_timeout)
         self.generation_parameters = dict(generation_parameters or {})
+        self.readiness_model_check = readiness_model_check
         self.readiness_timeout = readiness_timeout
         self.readiness_retries = readiness_retries
         self.readiness_backoff = readiness_backoff
@@ -99,14 +101,17 @@ class OpenAICompatibleProvider:
                 items = payload["data"]
                 if not isinstance(items, list):
                     raise TypeError("data is not a list")
-                available = {
-                    item["id"] for item in items
-                    if isinstance(item, dict) and isinstance(item.get("id"), str)
-                }
-                if len(available) != len(items):
+                if not all(
+                    isinstance(item, dict) and isinstance(item.get("id"), str)
+                    for item in items
+                ):
                     raise TypeError("model entry is malformed")
-                status = (ReadinessStatus.READY if set(models.values()) <= available
-                          else ReadinessStatus.MODEL_UNAVAILABLE)
+                available = {item["id"] for item in items}
+                status = (
+                    ReadinessStatus.READY
+                    if not self.readiness_model_check or set(models.values()) <= available
+                    else ReadinessStatus.MODEL_UNAVAILABLE
+                )
                 return ReadinessResult(status, self.name, models)
             except requests.Timeout:
                 status = ReadinessStatus.TIMEOUT
@@ -192,7 +197,13 @@ class OpenAICompatibleProvider:
             if not choices:
                 if isinstance(payload.get("usage"), dict):
                     return None
-                raise TypeError("choices is empty without usage")
+                prompt_filter_results = payload.get("prompt_filter_results")
+                if (
+                    isinstance(prompt_filter_results, list)
+                    and all(isinstance(item, dict) for item in prompt_filter_results)
+                ):
+                    return None
+                raise TypeError("choices is empty without usage or prompt filter metadata")
             delta = choices[0]["delta"]
             if not isinstance(delta, dict):
                 raise TypeError("delta is not an object")

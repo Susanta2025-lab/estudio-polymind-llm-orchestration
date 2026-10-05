@@ -23,6 +23,7 @@ def create_inference_provider(config: Settings = settings) -> InferenceProvider:
             connect_timeout=config.OPENAI_COMPATIBLE_CONNECT_TIMEOUT,
             read_timeout=config.OPENAI_COMPATIBLE_READ_TIMEOUT,
             generation_parameters=config.OPENAI_COMPATIBLE_GENERATION_PARAMETERS,
+            readiness_model_check=config.OPENAI_COMPATIBLE_READINESS_MODEL_CHECK,
             readiness_timeout=config.PROVIDER_READINESS_TIMEOUT,
             readiness_retries=config.PROVIDER_READINESS_RETRIES,
             readiness_backoff=config.PROVIDER_READINESS_BACKOFF,

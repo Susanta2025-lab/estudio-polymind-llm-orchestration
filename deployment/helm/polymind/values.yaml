@@ -91,6 +91,7 @@ application:
   port: 8001
   deploymentEnv: production
   inferenceProvider: openai_compatible
+  openaiCompatibleReadinessModelCheck: true
   openaiCompatibleBaseUrl: https://inference.example.internal/v1
   openaiCompatibleModelMap: '{"general":"served-model","coding":"served-model","summarization":"served-model","fast":"served-model"}'
   memoryProvider: redis

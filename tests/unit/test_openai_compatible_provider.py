@@ -98,6 +98,7 @@ def test_api_key_is_optional():
     client.generate("prompt")
 
     assert "Authorization" not in client.http_client.calls[0][1]["headers"]
+    assert client.readiness_model_check is True
 
 
 def test_streaming_sse_yields_content_ignores_role_chunk_and_stops_at_done():
@@ -259,3 +260,34 @@ def test_generation_http_statuses_have_provider_neutral_categories(status, error
     with pytest.raises(error_type) as caught:
         provider(response).generate("prompt")
     assert "private" not in str(caught.value)
+
+
+@pytest.mark.parametrize("done", [True, False])
+def test_azure_prompt_filter_metadata_yields_only_content_and_requires_done(done):
+    response = FakeResponse(lines=[
+        sse({"choices": [], "prompt_filter_results": [{
+            "prompt_index": 0,
+            "content_filter_results": {"hate": {"filtered": False, "severity": "safe"}},
+        }]}),
+        sse({"choices": [{"delta": {"content": "POLYMIND"}}]}),
+        sse({"choices": [{"delta": {"content": "_OK"}}]}),
+    ] + (["data: [DONE]"] if done else []))
+    stream = provider(response).generate_stream("prompt")
+    assert next(stream) == "POLYMIND"
+    assert next(stream) == "_OK"
+    if done:
+        assert list(stream) == []
+    else:
+        with pytest.raises(InferenceResponseError, match="before completion"):
+            next(stream)
+    assert response.closed is True
+
+
+@pytest.mark.parametrize("metadata", [None, {}, "invalid", [None], [{}, "invalid"]])
+def test_invalid_prompt_filter_metadata_is_rejected(metadata):
+    response = FakeResponse(lines=[
+        sse({"choices": [], "prompt_filter_results": metadata}), "data: [DONE]",
+    ])
+    with pytest.raises(InferenceResponseError, match="malformed stream"):
+        list(provider(response).generate_stream("prompt"))
+    assert response.closed is True

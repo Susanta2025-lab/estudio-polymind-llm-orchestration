@@ -393,6 +393,7 @@ logical roles for the selected provider.
 | `OPENAI_COMPATIBLE_BASE_URL` | `http://localhost:8000/v1` | Base URL whose `/chat/completions` endpoint implements the OpenAI-compatible protocol |
 | `OPENAI_COMPATIBLE_API_KEY` | unset | Optional Bearer credential; no authorization header is sent when unset or blank |
 | `OPENAI_COMPATIBLE_CONNECT_TIMEOUT` | `5` | External provider connection timeout in seconds |
+| `OPENAI_COMPATIBLE_READINESS_MODEL_CHECK` | `true` | Require configured model IDs in `/models`; set `false` for services advertising catalog IDs instead of deployment aliases |
 | `OPENAI_COMPATIBLE_READ_TIMEOUT` | `120` | External provider read/inactivity timeout in seconds, including SSE reads |
 | `OPENAI_COMPATIBLE_MODEL_MAP` | all roles map to `gpt-oss-20b` | JSON object mapping logical roles to server-visible model IDs; this is configuration only, not a deployment claim |
 | `OPENAI_COMPATIBLE_GENERATION_PARAMETERS` | `{}` | Optional JSON object of chat generation parameters such as `temperature`; `model`, `messages`, and `stream` are reserved |
@@ -439,13 +440,20 @@ upstream bodies or credentials.
 `GET /` response is preserved for compatibility. `GET /ready` performs bounded
 inference, memory, vector-store, and BM25-version checks. OpenAI-compatible providers use
 `GET /v1/models`, while Ollama uses `GET /api/tags`. It returns HTTP 200 with
-`status: ready` only when every configured logical-role model is advertised,
+`status: ready` by default only when every configured logical-role model is advertised,
 memory and vector storage are available, and the process-local BM25 snapshot
 matches the configured and published corpus version. Redis uses `PING`; the file
 backend checks local path access. The response includes sanitized `inference`,
 `memory`, `vector_store`, and `bm25` component states;
 unreachable, timeout, authentication, overload, missing-model, malformed-protocol,
 and other upstream states return a sanitized HTTP 503 response.
+
+For services such as Azure Foundry/OpenAI v1 that advertise catalog IDs instead of
+deployment aliases, set `OPENAI_COMPATIBLE_READINESS_MODEL_CHECK=false` (Helm:
+`application.openaiCompatibleReadinessModelCheck: false`). This skips only model
+membership enforcement: `/models` must still succeed and return structurally valid
+model discovery JSON. It does not verify that the configured aliases can generate
+responses. Strict membership remains the default for vLLM and other services.
 
 In other words, API alive does not imply inference ready. A temporary provider
 outage does not prevent PolyMind from starting. Startup attempts one bounded BM25

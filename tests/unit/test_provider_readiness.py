@@ -40,13 +40,16 @@ class HTTP:
         return outcome
 
 
-def make(kind, outcomes, retries=0, backoff=0):
+def make(kind, outcomes, retries=0, backoff=0, readiness_model_check=True):
     models = {role.value: f"served-{role.value}" for role in ModelRole}
     http = HTTP(outcomes)
     kwargs = dict(model_map=models, http_client=http, readiness_retries=retries,
                   readiness_backoff=backoff)
     if kind == "openai_compatible":
-        provider = OpenAICompatibleProvider(base_url="http://inference/v1", **kwargs)
+        provider = OpenAICompatibleProvider(
+            base_url="http://inference/v1",
+            readiness_model_check=readiness_model_check, **kwargs,
+        )
     else:
         provider = OllamaClient(url="http://ollama:11434/api/chat", **kwargs)
     return provider, http
@@ -81,8 +84,9 @@ def test_readiness_contract_ready_and_uses_lightweight_discovery(kind):
     (Response(status=503), ReadinessStatus.OVERLOADED),
     (Response(status=504), ReadinessStatus.TIMEOUT),
 ])
-def test_openai_readiness_classifies_operational_failures(outcome, status):
-    provider, _ = make("openai_compatible", [outcome])
+@pytest.mark.parametrize("model_check", [True, False])
+def test_openai_readiness_classifies_operational_failures(outcome, status, model_check):
+    provider, _ = make("openai_compatible", [outcome], readiness_model_check=model_check)
     assert provider.check_readiness().status is status
 
 
@@ -113,3 +117,45 @@ def test_readiness_retry_limit_and_non_retryable_error(monkeypatch):
     assert len(retry_http.calls) == 2
     assert auth.check_readiness().status is ReadinessStatus.AUTHENTICATION_FAILURE
     assert len(auth_http.calls) == 1
+
+
+@pytest.mark.parametrize("model_check", [True, False])
+def test_openai_readiness_catalog_ids_with_deployment_aliases(model_check):
+    response = Response({"data": [{"id": "catalog-model-a"}, {"id": "catalog-model-b"}]})
+    provider, http = make(
+        "openai_compatible", [response], readiness_model_check=model_check,
+    )
+    expected = ReadinessStatus.MODEL_UNAVAILABLE if model_check else ReadinessStatus.READY
+    assert provider.check_readiness().status is expected
+    assert len(http.calls) == 1
+    assert http.calls[0][0] == ("http://inference/v1/models",)
+    assert response.closed is True
+
+
+@pytest.mark.parametrize("model_check", [True, False])
+def test_openai_readiness_accepts_duplicate_model_ids(model_check):
+    response = Response({"data": [
+        {"id": "gpt-model-a"}, {"id": "gpt-model-a"}, {"id": "gpt-model-b"},
+    ]})
+    provider = OpenAICompatibleProvider(
+        base_url="http://inference/v1",
+        model_map={role.value: "gpt-model-a" for role in ModelRole},
+        readiness_model_check=model_check,
+        http_client=HTTP([response]),
+    )
+    result = provider.check_readiness()
+    assert result.status is ReadinessStatus.READY
+    assert result.ready is True
+    assert response.closed is True
+
+
+@pytest.mark.parametrize("model_check", [True, False])
+@pytest.mark.parametrize("invalid_payload", [
+    {"wrong": []}, {"data": {}}, {"data": [{}]}, {"data": ["model"]},
+    {"data": [{"id": 3}]}, ValueError("invalid JSON"),
+])
+def test_readiness_still_rejects_malformed_discovery(invalid_payload, model_check):
+    response = Response(invalid_payload)
+    provider, _ = make("openai_compatible", [response], readiness_model_check=model_check)
+    assert provider.check_readiness().status is ReadinessStatus.PROTOCOL_FAILURE
+    assert response.closed is True
