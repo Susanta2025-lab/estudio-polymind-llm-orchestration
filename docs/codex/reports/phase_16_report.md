@@ -1,6 +1,33 @@
 # Phase 16 Report — Target-Environment Capacity Calibration & Dependency Headroom Validation
 
-## Current status — 2026-10-04 operator-created AKS assessment
+## Current phase result — 2026-10-07 closure
+
+**PASS — PHASE CLOSED.**
+
+**AKS DEPLOYMENT / RUNTIME VALIDATION: COMPLETE / PASS.** The operator's final
+live evidence confirms two healthy real PolyMind replicas, the expected image
+digest, Foundry generation, shared Redis memory, Chroma/BM25 and real RAG, and the
+real application Prometheus/Adapter/custom-metrics path, including active values
+and return to idle zero. The final validation posture is two fixed replicas,
+HPA absent/disabled, and Foundry capacity unchanged at 10.
+
+**HPA TARGET-CLUSTER SCALE-UP/SCALE-DOWN CALIBRATION: DEFERRED / NOT REQUIRED TO
+CLOSE PHASE 16.** Foundry's 10 requests per 60 seconds limit produced an upstream
+429 during bounded C2 testing. This dependency-capacity constraint prevents a
+useful higher-load AKS autoscaling experiment; it does not invalidate the runtime
+validation or block closure. Production readiness and HA are not claimed.
+
+Section O, **Final AKS Application Validation and Phase 16 Closure**, is the
+final authoritative status, based on operator-provided evidence recorded on
+2026-10-07. It supersedes all earlier blocked/incomplete, awaiting/pending,
+not-yet-deployed and next-step statements through N7. Those sections remain
+historical evidence of their respective checkpoints, including their original
+validation limits; they are not statements of the final retained environment.
+Next: **Phase 17 — Production Document Digestion & Intelligence**.
+Beginning with **Phase 17A — Architecture, Cost & Risk Assessment**, a
+design/read-only assessment. No document-digestion implementation begins here.
+
+## Historical status — 2026-10-04 operator-created AKS assessment
 
 Gate: **PARTIALLY READY — INFRASTRUCTURE READY, DEPENDENCIES INCOMPLETE**.
 
@@ -2210,3 +2237,1605 @@ and this report (including the earlier assessment). No new branch was created.
 Azure resources modified: **NONE**. Kubernetes resources modified: **NONE**.
 Live Redis calls: **NONE**. Branch created: **NO**. Commit created: **NO**.
 Push performed: **NO**.
+
+## J. 2026-10-05 — Azure Managed Redis Stage A discovery and approval plan
+
+**Stage A only; STOP before provisioning.** No approval for Stage B has been
+received. Redis remains **PARTIAL / NOT LIVE VALIDATED** and Phase 16 is incomplete.
+This section records read-only Azure/Kubernetes discovery and a proposed plan,
+not deployed resources or successful Redis connectivity. The working tree was
+clean on `master` at the start; the earlier security patch is now in repository
+history. The active local Python environment now contains redis-py **6.4.0**.
+
+### J1. Verified subscription, tools and service availability
+
+The active subscription is `ECI-Development`, state Enabled. `rg-epolymind` exists
+in `spaincentral` with provisioning state Succeeded; its group-level tags are
+currently null. No `Microsoft.Cache/redisEnterprise` resource was returned by
+subscription inventory, so no existing Managed Redis instance can be reused.
+`Microsoft.Cache` is **NotRegistered**; `Microsoft.Network` is Registered.
+No policy assignments were returned by the subscription policy-assignment list.
+This does not substitute for successful service-side policy/RBAC validation.
+Do not bypass any denial of access-key authentication or other policy at creation.
+
+Azure CLI is **2.89.1**. The `redisenterprise` extension was initially absent;
+the installed CLI's dynamic-install behavior installed stable **1.4.0** when
+its help was requested. This was a local tooling change, not an Azure mutation.
+Installed `az redisenterprise create --help` and database create help were read.
+The extension uses stable API **2025-07-01** for creation. Verified flags include
+`--sku Balanced_B0`, `--high-availability Disabled`,
+`--public-network-access Disabled`, `--minimum-tls-version 1.2`,
+`--client-protocol Encrypted`, `--clustering-policy EnterpriseCluster`,
+`--port 10000`, and `--access-keys-auth Enabled`. No create command was executed.
+The CLI help has conflicting descriptions of authentication defaults; Stage B
+must explicitly set the approved value. Do not use legacy `az redis create`.
+See [current CLI reference](https://learn.microsoft.com/en-us/cli/azure/redisenterprise?view=azure-cli-latest).
+
+Provider metadata lists Spain Central for redisEnterprise and includes stable API
+versions. Current Spain Central retail meters exist for B0, B1, B3, B5, X3 and M10.
+The smallest catalog candidate is **Balanced_B0**, a GA in-memory SKU (not marked
+preview in current pricing/creation documentation). This is catalog/region
+evidence, **not guaranteed allocatable capacity or quota for this subscription**.
+The CLI's SKU-list operation is for scaling an existing instance, not pre-creation
+capacity discovery. If Azure rejects B0/EnterpriseCluster/non-HA in Spain Central,
+stop and report; do not silently choose a larger SKU, OSSCluster or another region.
+
+Memory-size caveat: the current Microsoft pricing page labels B0 as **1 GB**,
+while the overview lists the Balanced range starting at **0.5 GB**. Treat B0 as
+the approximately 0.5–1 GB development class; the documentation is inconsistent
+and this assessment does not claim a measured usable-memory figure. No workload
+requires resolving that discrepancy by increasing capacity. Service properties
+and the later bounded test must confirm the actual available memory.
+Non-HA is documented for dev/test and explicitly supported by the CLI; there is
+no HA availability guarantee in that mode. Sources:
+[pricing](https://azure.microsoft.com/en-us/pricing/details/managed-redis/),
+[overview](https://learn.microsoft.com/en-us/azure/redis/overview), and
+[creation guidance](https://learn.microsoft.com/en-us/azure/redis/quickstart-create-managed-redis).
+
+EnterpriseCluster presents the proxy endpoint needed by the existing `Redis`
+client. PING, LRANGE, RPUSH, LTRIM, EXPIRE, DEL and single-key MULTI/EXEC are
+compatible with the documented command model; actual execution remains to be
+proved. All commands in PolyMind's append transaction address one key. SELECT is
+blocked by the service, so use DB 0 (the client need not issue SELECT for DB 0).
+No modules, geo-replication, OSSCluster or preview NoCluster are proposed. Sources:
+[architecture](https://learn.microsoft.com/en-us/azure/redis/architecture) and
+[command restrictions](https://learn.microsoft.com/en-us/azure/redis/configure).
+
+### J2. Observed AKS network and safer topology
+
+AKS `epolymind-aks-dev` is provisioned successfully in Spain Central, with an
+agent pool configured for two Standard_D4s_v4 nodes. It uses Azure CNI Overlay,
+Azure dataplane, public API, OIDC and workload identity enabled, and
+`networkPolicy=none`. Node readiness was operator-provided; this discovery did
+not replace that with a fresh node readiness measurement.
+
+| Network fact | Read-only finding |
+| --- | --- |
+| Node resource group | `MC_rg-epolymind_epolymind-aks-dev_spaincentral` |
+| VNet | `aks-vnet-36185111`, `10.224.0.0/12`, in the managed node resource group |
+| Node subnet | `aks-subnet`, `10.224.0.0/16`; verified from VM scale-set NIC configuration because AKS agent-pool subnet ID was null |
+| Other subnets | `aks-appgateway`, `10.238.0.0/24`, delegated to traffic controllers; `aks-virtualkubelet`, `10.239.0.0/16`, delegated to container groups |
+| Pod / service CIDRs | `10.244.0.0/16` / `10.0.0.0/16`; DNS service IP `10.0.0.10` |
+| Outbound | Standard load balancer, one effective static public outbound IP; its resource/value were verified but are unnecessary for private Redis access |
+| Routes | No subnet route-table association; no route-table resources returned in the node resource group; future effective peering routes are not yet validated |
+| NSG | `aks-agentpool-36185111-nsg` on node subnet; no custom rules, only default VNet/LB/Internet allow and terminal deny rules; no VMSS NIC-level NSG |
+| VNet DNS | No custom DHCP DNS settings; CoreDNS forwards to `/etc/resolv.conf`; `coredns-custom` has no data |
+| Existing connectivity | No VNet peerings, private endpoints or private DNS zones found in subscription inventory |
+| Managed-resource controls | Node resource-group lockdown profile null; no locks returned for that resource group |
+| Kubernetes namespaces | Only default/system namespaces; no PolyMind namespace exists yet |
+
+The subscription inventory exposed only the AKS-managed VNet. There is no observed
+operator-controlled reachable subnet to reuse, and the existing non-node subnets
+are delegated. **Choose topology C:** a separate operator-controlled PolyMind
+VNet/private-endpoint subnet, with explicit bidirectional peering. Do not add a
+subnet inside the AKS-managed VNet, change its address space, or modify node/NSG/
+route/AKS properties. One peering child resource in the managed VNet is the only
+proposed write under the MC_ resource group and requires the Stage B approval.
+Microsoft documents peering with the AKS node-resource-group VNet, while warning
+against arbitrary changes to managed resources. Sources:
+[documented AKS peering](https://learn.microsoft.com/en-us/azure/aks/private-cluster-connect)
+and [managed-resource cautions](https://learn.microsoft.com/en-us/azure/aks/faq).
+
+Proposed `vnet-epolymind-private-dev` uses `10.50.0.0/24`; its
+`snet-private-endpoints` uses `10.50.0.0/27`. These do not overlap any discovered
+VNet/pod/service range. Recheck inventory before writes; unseen external network
+plans remain an operator consideration. Peerings allow VNet access only: no
+gateway transit, remote gateway, or forwarded-traffic feature is needed.
+No new NSG, route table, public IP, NAT gateway, DNS resolver appliance or AKS
+network-policy change is proposed.
+
+Expected data path is pod → node-side overlay egress → VNet peering → private
+endpoint → Redis, on TCP 10000. This is a design expectation, not a live routing
+result. Redis public network access must be disabled from creation onward.
+
+Create zone `privatelink.redis.azure.net` in `rg-epolymind`, with non-registering
+links to both the AKS VNet and new endpoint VNet, and an endpoint DNS zone group.
+Clients use the normal certificate-valid service hostname, never the private-link
+alias directly. Given Azure-provided VNet DNS and the observed CoreDNS forwarding,
+pod resolution is expected to use the linked private zone without a CoreDNS edit;
+prove this in Stage B. Peering alone does not provide the required DNS link.
+See [Private DNS service mapping](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns)
+and [Managed Redis Private Link](https://learn.microsoft.com/en-us/azure/redis/private-link).
+
+### J3. Verified retail pricing before approval
+
+Public [Azure Retail Prices API](https://prices.azure.com/api/retail/prices)
+queried on **2026-10-05**, USD Consumption prices, with region `spaincentral` and
+product names containing `Azure Managed Redis`. Redis meters below have effective
+start date 2025-06-01 and unit `1 Hour`. These are current API-returned public
+retail rates, not a subscription-discount quote. Monthly arithmetic uses 730 hours.
+
+| Candidate, non-HA one-node basis | Hourly USD | Monthly USD |
+| --- | --- | --- |
+| Balanced B0 — proposed | 0.019 | 13.87 |
+| Balanced B1 | 0.038 | 27.74 |
+| Balanced B3 | 0.077 | 56.21 |
+| Balanced B5 | 0.186 | 135.78 |
+| Memory Optimized M10 | 0.257 | 187.61 |
+| Compute Optimized X3 | 0.261 | 190.53 |
+
+The proposed B0 meter ID is `1278b376-3839-55e1-bf63-9f486dc4e204`, product
+`Azure Managed Redis - Balanced`, ARM SKU `Azure_Managed_Redis_Balanced_B0`.
+Microsoft's pricing page distinguishes one-node non-HA from two-node HA pricing;
+this estimate is explicitly one-node, not a production HA configuration.
+
+Additional current public meters: one Standard Private Endpoint is **USD 0.01/h**
+(**7.30/month**); one Private DNS zone in the first tier is **USD 0.50/month**.
+Fixed estimate: **USD 0.029/h plus USD 0.50/month**, or **USD 21.67/month**.
+Private Link data processing adds USD 0.01/GB in each direction at the first tier;
+same-region peering adds USD 0.01/GB for ingress and USD 0.01/GB for egress at the
+applicable ends; private DNS queries are USD 0.40/million. No traffic volume is
+assumed. Taxes, exchange rates, commercial discounts, and existing AKS costs are
+excluded. No paid resolver, fixed-capacity Private Link tier, or new public IP is
+included. Sources: [Private Link pricing](https://azure.microsoft.com/en-us/pricing/details/private-link/),
+[DNS pricing](https://azure.microsoft.com/en-us/pricing/details/dns/), and the
+retail API's Global Private Link/peering and Private DNS meters. Pricing responses
+were retained only under `/tmp`; they contain no credentials.
+
+### J4. REDIS PROVISIONING PLAN — awaiting operator approval
+
+| Field | Proposed value |
+| --- | --- |
+| Subscription / resource group / region | ECI-Development / rg-epolymind / spaincentral |
+| Service / name | Azure Managed Redis (`Microsoft.Cache/redisEnterprise`) / `epolymind-redis-dev-970e5901` |
+| Naming | 28 characters, legal letters/digits/single hyphens; within documented regional-name length constraint. Regional uniqueness is not reserved or guaranteed; stop on conflict rather than overwrite |
+| SKU / release status / memory | Balanced_B0 / GA catalog candidate / approximately 0.5–1 GB class, published size discrepancy documented above |
+| HA / clustering | Disabled for dev/test / EnterpriseCluster |
+| TLS / protocol / port / database | Minimum TLS 1.2 / Encrypted / 10000 / default database, client DB 0 |
+| Authentication | Explicit access-key authentication enabled, temporary Phase 16 choice; stop if policy disallows it; no Entra integration |
+| Persistence / geo-replication / modules | None / none / none |
+| Encryption / eviction | Microsoft-managed encryption / NoEviction, so capacity exhaustion is visible rather than silent history eviction |
+| Public network | Disabled from creation; never enabled for troubleshooting |
+| Endpoint | `pe-epolymind-redis-dev`, subresource `redisEnterprise`, in rg-epolymind |
+| Endpoint VNet / subnet | `vnet-epolymind-private-dev` (`10.50.0.0/24`) / `snet-private-endpoints` (`10.50.0.0/27`) |
+| DNS | `privatelink.redis.azure.net`, two non-registering VNet links and endpoint DNS zone group |
+| Tags on supported new resources | Project=epolymind, Environment=dev, Workload=polymind, Purpose=phase16, ManagedBy=manual |
+
+**Azure resources to CREATE:** one Redis cluster and its default database; one
+VNet and subnet; one private endpoint and its managed NIC; one private DNS zone,
+two VNet links, DNS zone group and service-managed record; two peering child
+resources named `epolymind-private-to-aks` and `aks-to-epolymind-private`.
+
+**Azure state/resources to MODIFY:** register Microsoft.Cache for the subscription;
+add only the approved `aks-to-epolymind-private` peering child to
+`aks-vnet-36185111` in its MC_ group. The reciprocal peering belongs to the new
+VNet. No existing NSG, subnet, route, node pool, ACR, Foundry, ECI workload, AKS
+configuration or resource-group tags will be changed. DNS linking references the
+AKS VNet without changing its DHCP DNS configuration.
+
+**Kubernetes resources to CREATE in Stage B:** namespace `polymind`; temporary
+Secret `polymind-redis-phase16` containing only `redis-url`; two short-lived
+validation pods and, if needed, a replacement failure-test pod (at most two
+concurrent pods). Use the existing published PolyMind image, after verifying its
+immutable reference. No application Deployment, Service, LoadBalancer or Helm
+release is created. **Existing Kubernetes resources to MODIFY: none.** Recheck
+namespace/Secret state before acting; never overwrite another object's data.
+The temporary Secret is necessary because the final application Secret is not
+yet populated with API/inference configuration. No missing values are fabricated.
+
+Key retrieval is deferred until actually needed after provisioning. It must stay
+in protected process memory, be URL-encoded, and be delivered to the temporary
+Secret without command-line literals or output. No keys or Secret contents were
+retrieved in Stage A. Do not emit raw credential-bearing errors.
+
+### J5. Stage B validation, risks and cleanup boundaries
+
+After the exact approval phrase, reconfirm subscription/group/context and absence
+of duplicates; register the provider and stop on any permission/policy/capacity
+denial. Provision only the approved SKU and topology. Record creation time and
+sanitized properties; verify public access disabled, TLS, authentication mode,
+clustering, endpoint approval and DNS group state before data-plane testing.
+
+Bounded validation uses synthetic data and the pinned application image: normal
+hostname DNS resolves privately, TCP 10000 connects, certificate/hostname-verified
+TLS succeeds, authentication/PING succeeds, and one unique short-TTL key passes
+SET/GET/compare/DEL. Then exercise Settings → create_memory_store → RedisMemoryStore
+for readiness, empty session, append/read/order/trim/isolation/clear/close. Two pods
+must independently write/read the same synthetic session in both directions.
+This is shared-client evidence, not final application Deployment validation.
+A separate pod-only invalid configuration should fail within a wall-clock budget
+without local fallback or secret logging; do not interrupt Redis or rotate its key.
+
+Known risks: non-HA/no-persistence data loss and downtime; access-key rotation
+remains operational; B0 memory documentation discrepancy; allocation/quota/name
+availability cannot be guaranteed by catalog discovery; peering grants private
+reachability rather than per-workload isolation; policy/RBAC can still block writes.
+NetworkPolicy enforcement is none and will remain so. If DNS, capacity, policy or
+command compatibility fails, stop rather than enabling public access, disabling
+TLS, expanding privileges, changing service mode, or spending on a larger SKU.
+
+Normal cleanup deletes only exact synthetic keys/sessions, closes clients, and
+removes validation pods and the temporary Secret. Keep the namespace and intended
+Redis/private-network resources for subsequent Phase 16 work. **Redis remains
+billable while provisioned**; no resource exists or incurs new Redis charges yet.
+Never run FLUSHALL, FLUSHDB, KEYS *, a load test, or an unrelated-data scan.
+
+Rollback is a separately confirmed decommission of only resources recorded as
+created by this task: first remove test clients/Secret and decommission Redis,
+then endpoint/NIC/DNS group, task-owned links/zone and the two named peerings,
+then the new subnet/VNet when empty. Do not delete the AKS managed VNet or either
+resource group, remove unrelated DNS records, unregister a shared provider, or
+leave a service publicly reachable while dismantling its endpoint. On an incomplete
+deployment, report exact residual/billable resources rather than silently deleting
+the service intended for the next phase.
+
+### J6. Stage A validation and status
+
+No application/test/chart/dependency files changed. Only this report is appended;
+historical sections are preserved. Local redis-py version check returned 6.4.0.
+Compile with the requested `/tmp` bytecode cache, Compose validation, Helm lint
+(one informational icon suggestion), and template rendering all exited 0.
+The default rendered manifest is `/tmp/polymind-phase16-redis-rendered.yaml` and
+contains no live credential values. Full pytest: **231 passed in 18.59s**, exit 0.
+`git diff --check`: exit 0. Stage B must repeat relevant checks after its
+operational work; Stage A results do not establish Redis readiness.
+
+Azure resources created/modified: **NONE**. Kubernetes resources created/modified:
+**NONE**. Redis DNS/TCP/TLS/PING/SET/GET/DEL/memory/two-pod validation: **NOT RUN**.
+Secrets printed: **NO**. Public Redis exposure: **NO**. TLS bypass: **NO**.
+Local fallback introduced: **NO**. Branch/commit/push: **NO**.
+
+**Approval gate:** the operator must explicitly supply
+`APPROVE REDIS PROVISIONING` before any Stage B mutation. This gate comes from
+the current task prompt, not from an inferred repository rule. Phase 16's Chroma,
+Prometheus/Adapter, actual application deployment and HPA calibration remain
+separate work.
+
+### J7. Interrupted-run recovery — 2026-10-05
+
+The operator reported a usage-limit interruption. Recovery inspected the working
+tree, complete report diff, saved discovery/pricing outputs and validation
+results before continuing. The saved Stage A discovery and provisioning plan
+were complete; the approval handoff remained pending. No explicit
+`APPROVE REDIS PROVISIONING` occurs in the available session evidence.
+
+A fresh read-only metadata check reconfirmed ECI-Development is Enabled and
+rg-epolymind is Succeeded in Spain Central. Subscription inventories again returned
+no Managed Redis resources, private endpoints or private DNS zones (therefore no
+zone links to inspect). The only observed VNet remains aks-vnet-36185111, with no
+peerings, unchanged subnet ranges/NSG associations, no subnet route-table
+associations, and no custom VNet DNS. AKS remains Succeeded with Azure CNI Overlay,
+the recorded pod/service CIDRs, load-balancer outbound and networkPolicy none.
+Microsoft.Cache remains NotRegistered. Namespace metadata again contains only
+the four default/system namespaces; no PolyMind namespace or task-created
+validation resources exist. No credentials or Secret contents were retrieved.
+
+| Recovered item | Classification |
+| --- | --- |
+| Stage A repository, CLI, service, network and pricing discovery | COMPLETE |
+| Proposed design, cost estimate and saved local validation | COMPLETE |
+| Operator approval handoff | PARTIAL — plan restored; explicit approval pending |
+| Stage B provider registration, Redis and private-network creation | NOT STARTED |
+| Kubernetes namespace, temporary Secret and validation pods | NOT STARTED |
+| Redis DNS/TLS/data-plane/memory/two-pod validation | NOT STARTED |
+| Actual B0 allocation, name reservation and usable memory | UNKNOWN until service-side validation |
+
+Azure resources created or partially configured by this task: none. Kubernetes
+resources created by this task: none. Only this report is modified on master;
+application code is unchanged. Previously completed local checks were retained,
+not rerun solely because execution resumed; the final report diff check was
+rerun. No branch, commit or push occurred. The next safe operation is the operator
+approval handoff for J4, not provisioning. Redis remains PARTIAL / NOT LIVE
+VALIDATED; Phase 16 remains incomplete.
+
+## K. Approved Azure Managed Redis provisioning and private validation — 2026-10-05
+
+The operator explicitly supplied `APPROVE REDIS PROVISIONING` and authorized
+Stage B exactly as planned, with an additional guardrail permitting only the
+peering child on the AKS-managed VNet. Preflight reconfirmed subscription/group
+and absence of duplicate resources. Microsoft.Cache registration was requested;
+Azure Managed Redis `epolymind-redis-dev-970e5901` and its default database were
+created in rg-epolymind, Spain Central. Both subsequently reported Succeeded /
+Running. The resource was first timestamped after creation at
+**2026-10-05T13:47:25Z**; this observation is not an exact billing-start timestamp.
+
+Verified service metadata: Balanced_B0, highAvailability Disabled, minimum TLS
+1.2, publicNetworkAccess Disabled, EnterpriseCluster, Encrypted client protocol,
+port 10000, accessKeysAuthentication Enabled, NoEviction. Persistence, modules and
+geo-replication were unset. The GA catalog evidence and approved retail estimate
+remain those in J1/J3; no larger SKU or preview option was substituted.
+
+The dedicated vnet-epolymind-private-dev and snet-private-endpoints were created,
+then the two approved peering children. The managed-VNet guard initially stopped
+on a nested ETag difference. A recursive comparison of before/after snapshots
+proved that only the peering child and Azure-generated ETags changed; all other
+properties, including nested subnet properties, were identical. No managed VNet,
+subnet, route, NSG or address-space update was issued. Execution resumed only at
+the uncompleted DNS/private-endpoint steps. An earlier read-only database-show
+CLI argument mismatch was corrected before any network resource creation.
+
+At this checkpoint private DNS linking is underway; live validation and cleanup
+are pending. Redis is not yet READY. The provisioned service is billable and will
+be retained for subsequent Phase 16 work. No application files have changed.
+
+### K1. Completed private networking and guardrail verification
+
+The checkpoint above was followed by successful completion of the approved
+network plan. The private endpoint pe-epolymind-redis-dev is Succeeded, with its
+Redis connection Approved. The endpoint uses snet-private-endpoints
+(10.50.0.0/27) in vnet-epolymind-private-dev (10.50.0.0/24). The zone
+privatelink.redis.azure.net contains the service-managed record; both
+link-epolymind-aks and link-epolymind-private report Completed, with registration
+disabled. Both peerings report Connected. Microsoft.Cache reports Registered.
+
+The normal service hostname resolved from AKS into the approved private endpoint
+subnet. The verified path is Azure CNI Overlay pod/node egress → reciprocal VNet
+peering → private endpoint → Azure Managed Redis. CoreDNS configuration was not
+modified. Public Redis access remained Disabled throughout. AKS NetworkPolicy
+remains none: no Kubernetes NetworkPolicy enforcement claim is made.
+
+A final read-only comparison again confirmed every AKS-managed VNet/subnet
+property was unchanged apart from the approved peering child and Azure-generated
+ETags. No AKS cluster/node-pool, existing subnet, address space, NSG or route
+configuration was modified. No Foundry, ACR or unrelated ECI resource was changed.
+There is one intended Redis instance and one intended private endpoint, with no
+duplicate resources. The private DNS zone is global; regional resources are in
+Spain Central, as planned.
+
+### K2. Credential delivery and bounded live results
+
+The active Kubernetes context was verified as epolymind-aks-dev before mutations;
+all Kubernetes writes were limited to the approved PolyMind validation resources.
+The polymind namespace was created. The final polymind-secrets Secret was absent;
+no missing inference/API configuration was fabricated. Instead, the temporary
+polymind-redis-phase16 Secret carried only the redis-url key.
+
+The Redis access key was retrieved only into a protected subprocess pipe/process
+memory, URL-encoded in memory, and sent to Kubernetes as Secret JSON over stdin.
+No credential-bearing file, command argument, report text, rendered manifest or
+log output was produced. No key was regenerated. The URI used the normal
+certificate-valid service hostname, TLS port 10000 and DB 0. No Entra/token-refresh
+code or Azure SDK dependency was added.
+
+Two temporary pods used the existing published image at immutable digest
+`sha256:bce37944a1785f4c56b4afa870e83bddbe9872c6953bacb470a7cce2ff1a5c9b`.
+The initial image reference incorrectly assumed the registry's unqualified name
+was its login-server hostname; Kubernetes reported image-pull DNS failures.
+Read-only ACR metadata supplied the actual generated login-server hostname, and
+only the two temporary pods' image references were corrected, retaining the same
+digest. No AKS DNS, ACR or Azure networking change was made for this correction.
+Both pods then became ready. Runtime redis-py was verified as **6.4.0**.
+
+| Live check | Observed result |
+| --- | --- |
+| Normal Redis hostname resolution inside AKS | PASS; every resolved address in the approved private endpoint subnet |
+| TCP 10000 | PASS |
+| TLS/certificate/hostname verification | PASS; TLS 1.3 negotiated with normal certificate verification, no bypass |
+| Access-key authentication and PING | PASS |
+| Unique synthetic SET with short TTL, GET and value comparison | PASS |
+| DEL exact probe key | PASS |
+| Settings → create_memory_store → RedisMemoryStore | PASS; actual Redis provider selected |
+| Memory PING readiness | ready |
+| Empty synthetic session | PASS |
+| Atomic append, ordered read and trimming | PASS; three exchanges trimmed to four ordered messages |
+| TTL and session isolation | PASS; positive TTL bounded by configured 180 seconds; independent session empty |
+| Clear exact session and client close | PASS |
+| Pod A write → independent Pod B read | PASS |
+| Pod B write → independent Pod A read | PASS; final exact session cleared |
+| Isolated invalid configuration | PASS; pod-only loopback/closed-port TLS endpoint produced memory_unreachable |
+| Bounded failure/no fallback/no credential logging | PASS; readiness plus read failure completed within 30 seconds, FileMemoryStore construction forbidden by the probe, no local memory file created, captured logs contained neither the real URI nor its password |
+
+The synthetic direct probe key used a unique phase16 run prefix and a 120-second
+TTL. Memory sessions used unique Phase 16 IDs, the existing hashed memory key
+scheme and a 180-second TTL. Cleanup touched only those exact keys. No FLUSHALL,
+FLUSHDB, KEYS *, scans, load tests, key rotation or service outage injection ran.
+The failure case never targeted the live service and did not mutate Redis.
+Probe errors were caught and bounded; raw exception bodies and tracebacks were
+suppressed. Clients were closed after each operation group.
+
+These checks exercise the real Redis memory factory/store without starting the
+full application. Settings used local deployment validation mode solely to avoid
+fabricating the other production dependency configuration; memory was explicitly
+redis throughout. This is not a live application HTTP /ready test or final
+multi-replica application Deployment proof. It does establish private shared
+Redis access from two independent AKS pods using the pinned client.
+
+### K3. Cleanup, retained resources and cost
+
+Exact synthetic-key cleanup passed. Both validation pods and the temporary Redis
+Secret were deleted, and final read-only checks confirmed their absence. The
+polymind namespace is retained. No application Deployment, Service, LoadBalancer
+or Helm release was created. The final application Secret still needs safe
+completion during the actual deployment task.
+
+The intended Redis instance/database, dedicated VNet/subnet, reciprocal peerings,
+private endpoint/managed NIC, private DNS zone/links and zone group/record remain
+for the next Phase 16 steps. **Azure Managed Redis remains billable while
+provisioned.** No automatic deletion or scale-up occurred.
+
+The approved 2026-10-05 public retail estimate in J3 remains USD 0.019/hour
+(USD 13.87/month at 730 hours) for Redis, plus one private endpoint at USD
+0.01/hour and a USD 0.50/month DNS zone: **approximately USD 21.67/month fixed**,
+plus traffic/query charges and taxes. This is an estimate, not measured billing
+or a subscription-discount quote. No HA, persistence, geo-replication, paid
+monitoring, DNS resolver appliance or additional paid capacity was enabled.
+
+### K4. Repository validation and final dependency status
+
+No application code, tests, chart, dependency pin or architecture changed. Only
+this report was appended; pre-existing report history is preserved.
+
+| Validation | Result |
+| --- | --- |
+| Full pytest after live validation | 231 passed in 13.91s |
+| Compile with requested /tmp bytecode cache | Exit 0 |
+| docker compose config --quiet | Exit 0 |
+| helm lint deployment/helm/polymind | Exit 0; informational icon recommendation only |
+| helm template to /tmp/polymind-phase16-redis-rendered.yaml | Exit 0; no live credentials supplied |
+| git diff --check | Exit 0 |
+| Final managed-VNet and Kubernetes cleanup verification | PASS |
+
+Self-review confirmed the credential existed only in process memory/Secret
+delivery, temporary scripts contain no actual key/URI, no application fallback
+was introduced, and no unrelated implementation/dependency changes occurred.
+No branch was created; no commit or push occurred. Changes remain uncommitted.
+
+**Redis is READY for the bounded Phase 16 dependency gate. Phase 16 remains
+incomplete.** Remaining work includes Chroma, Prometheus/Adapter, actual
+application configuration/deployment, full application readiness and two-replica
+proof, and HPA calibration. Non-HA/no-persistence durability limitations, static
+credential rotation, the unresolved published B0 usable-memory discrepancy and
+lack of AKS NetworkPolicy enforcement remain recorded limitations.
+
+The published validation image is tagged 036b847, whereas current master is
+f9b47fd and also includes the intervening Foundry compatibility commit. The image
+therefore predates the current source's Foundry/log-sanitization patches. Its
+Redis factory/store contract passed; no streaming path was exercised. Before
+actual application deployment, publish and select an image containing the current
+validated source. This task did not rebuild, push or alter ACR content.
+
+
+## L. Current-master image publication and AKS pull verification — 2026-10-05
+
+### L1. Source, scope and clean build provenance
+
+Published committed `master` at full SHA
+`f9b47fda4658935b64826f1d4abe0488c64f21ae` (short SHA `f9b47fd`). A read-only
+`git ls-remote origin refs/heads/master` returned that same full SHA. The only
+starting working-tree modification was this report (466 existing added lines);
+there were no runtime-relevant dirty or untracked files. All operator report
+content was preserved byte-for-byte before this append.
+
+The build used a temporary `/tmp` directory extracted entirely from
+`git archive --format=tar <full-SHA>`, without a branch, checkout or worktree
+mutation. All 171 archive files came from committed HEAD; the unchanged
+`.dockerignore` excluded documentation, tests, data documents, caches and local
+environment files from the Docker context. The only tracked environment sample
+was `.env.example`; the Helm Secret file was a value-driven template, not a live
+Kubernetes Secret. Archive inspection found no credential/cache directories,
+actual `.env`, private-key files or private-key markers. No host Azure, Docker,
+SSH, Git or Kubernetes authentication files were copied into the context.
+
+The existing Dockerfile and CI production path were retained: Python 3.10 slim,
+pinned CPU Torch and application requirements, revision-pinned model snapshots,
+and non-root UID/GID 10001. No application, dependency, Dockerfile, chart or
+entrypoint changes were made. The two existing AKS nodes both reported
+`linux/amd64`, so the build explicitly selected that platform and reused normal
+Docker cache. No cloud build or new build service was used.
+
+### L2. Required pre-build validation
+
+| Check | Actual result |
+| --- | --- |
+| `python -m pytest -q` | PASS: 231 passed in 19.73s |
+| `PYTHONPYCACHEPREFIX=/tmp/polymind-phase16-image-pycache python -m compileall -q .` | PASS: exit 0 |
+| `docker compose config --quiet` | PASS: exit 0 |
+| `helm lint deployment/helm/polymind` | PASS: exit 0; informational icon recommendation only |
+| `helm template polymind deployment/helm/polymind` | PASS: exit 0; rendered to `/tmp/polymind-phase16-current-master.yaml` |
+| `git diff --check` before build | PASS: exit 0 |
+
+All gates passed before the build. Docker initially reported a missing socket;
+subsequent read-only diagnostics confirmed Docker Desktop was available, and the
+retry succeeded. An inspection template was corrected to handle an absent
+Entrypoint field. Neither issue required a source or infrastructure change.
+
+### L3. Local image and registry publication
+
+Azure metadata, rather than the resource name, supplied the registry hostname:
+`epolymindacrdev-b7bxdheagnerb8ep.azurecr.io`. The active subscription was verified
+as `ECI-Development`. The registry admin account was already disabled and remained
+unchanged. Normal `az acr login` using existing Azure user authentication passed.
+No admin credentials, new identity or role assignment were used.
+
+| Image evidence | Result |
+| --- | --- |
+| Build | PASS; existing Dockerfile, normal cache, clean committed-HEAD context |
+| Repository / version tag | `polymind-api:f9b47fd` |
+| Platform | `linux/amd64` |
+| Docker-reported local image size | 3,022,151,112 bytes |
+| Local image/index ID | `sha256:f81886ebfec049bab446be0513d2ee0c987561272f605bdf4c0506de3e29746c` |
+| Runtime configuration digest | `sha256:93aaefdfb4e9f36794481f65c003c56ed7c785e8611843bfa141235fa71d783f` |
+| Configured user | `10001:10001` |
+| Entrypoint / CMD | No explicit entrypoint; `uvicorn api.app:app --host 0.0.0.0 --port 8001` |
+| Offline local smoke | PASS; exit 0, 60-second alarm, network disabled, read-only root filesystem |
+| redis-py | Exactly `6.4.0` |
+| Push | PASS; exactly one versioned tag |
+| Registry manifest digest | `sha256:fcc9cac926f6527975b3128a8e145d30bbd5f8578e7739b4956764806999f9eb` |
+
+The smoke imported `llm.openai_compatible`, `memory.provider_factory`,
+`memory.memory_store` and `graph.streaming`. It also verified SHA-256 file hashes
+against committed HEAD for all four modules, proving the artifact contains the
+current Foundry-compatible provider and sanitized streaming memory-error code.
+It checked redis-py 6.4.0 and effective UID 10001. Socket connection attempts were
+forbidden by the smoke command; no Foundry, Redis or Chroma call was made and the
+API was not started.
+
+Docker built a local OCI index with an attestation. Publication used
+`docker push --platform linux/amd64` to publish only the runtime platform manifest,
+so the registry reference and Kubernetes imageID can be compared directly.
+The local index ID therefore intentionally differs from the published runtime
+manifest digest; the local attestation was not published. Read-only
+`az acr manifest show-metadata` confirmed the new tag's digest, and
+`docker manifest inspect --verbose` confirmed the registry manifest is
+`linux/amd64`. ACR tags changed from only `036b847` to exactly `036b847` and
+`f9b47fd`. No tag was overwritten, deleted or purged.
+
+The immutable image reference for subsequent Phase 16 deployment work is:
+
+```text
+epolymindacrdev-b7bxdheagnerb8ep.azurecr.io/polymind-api@sha256:fcc9cac926f6527975b3128a8e145d30bbd5f8578e7739b4956764806999f9eb
+```
+
+This records exact committed-source provenance and the resulting immutable image;
+it is not a claim of bit-for-bit future rebuild reproducibility, since the
+unchanged Dockerfile uses a mutable Python base tag. This build resolved that
+base to `sha256:c1aaf3d03e14944a039a1647e0b3f6f34c6bee517bac6ff380215ee099c4e808`.
+
+### L4. AKS pull, smoke and cleanup
+
+The active context was explicitly checked as `epolymind-aks-dev` before pod
+creation and again before deletion; no context switch occurred. The `polymind`
+namespace already existed. Exactly one pod, `polymind-image-verify-f9b47fd`, was
+created there with the new image referenced by digest and `imagePullPolicy: Always`.
+It used no application Secret, environment credentials or service-account token.
+The pod had a 180-second active deadline, bounded resources, non-root execution,
+a read-only root filesystem and a temporary `/tmp` volume. Its overridden Python
+command ran the same bounded module/version/source-hash smoke as the local test.
+
+| AKS evidence | Result |
+| --- | --- |
+| Node | `aks-agentpool-40344793-vmss000001` |
+| Pull by digest and container startup | PASS |
+| Pod phase / exit code | `Succeeded` / 0 |
+| Source hashes, critical module imports, redis-py 6.4.0, UID 10001 | PASS |
+| Kubernetes imageID | Same complete immutable reference shown in L3 |
+| Expected ACR digest equals pulled imageID digest | YES; exact string comparison passed |
+| Temporary pod deleted | YES; deletion completed and subsequent get with `--ignore-not-found` returned no object |
+| Temporary clean build context removed | YES; absence verified |
+| Locally built Docker image retained | YES |
+
+### L5. Security, review and remaining gate
+
+Secrets used in the build: **NO**. Credentials copied into the image: **NO**.
+ACR admin enabled: **NO**. New Azure identities or roles: **NO**. Application
+credentials/Secrets used: **NO**. No credential-bearing build argument, ENV,
+label, mounted file or command literal was supplied. Existing authentication was
+used only outside the build for ACR and Kubernetes operations.
+
+Cloud mutations were limited to the one new ACR image tag and creation/deletion
+of the single temporary verification pod. No Azure infrastructure was created or
+modified. No Redis, Foundry, networking or AKS infrastructure settings changed.
+No application Deployment, Service, HPA, Helm release or LoadBalancer was created.
+No Chroma/BM25 or Prometheus work began.
+
+Self-review and pre-commit review confirmed source/packaging stayed unchanged,
+pre-existing report content was preserved, publication used the intended SHA,
+the digest comparison passed, and cleanup completed. The only repository change
+from this task is this report append. Final `git status`, `git diff --stat` and
+`git diff --check` were run; the latter passed. No branch, staging, commit or Git
+push occurred. All report changes remain uncommitted for operator review.
+
+**The current-master immutable image is READY for later AKS deployment. Redis
+remains READY on the previously recorded evidence; it was not contacted or
+revalidated in this task. Phase 16 is NOT complete.** The next dependency step is
+representative Chroma/BM25 setup and validation. Application deployment remains
+subject to the remaining dependency and Secret/configuration gates.
+
+
+## M. Representative Chroma/BM25 setup and validation — 2026-10-05
+
+### M1. Result, source and scope
+
+**READY FOR BOUNDED PHASE 16 DEPENDENCY GATE. Phase 16 remains incomplete.**
+The real ingestion and retrieval implementations passed against shared Chroma
+HTTP, including independently built BM25 snapshots in two AKS pods using the
+current-master immutable image. This is validation-representative and explicitly
+not production-durable.
+
+Work stayed on `master`, HEAD `f9b47fda4658935b64826f1d4abe0488c64f21ae`.
+Application code, requirements, Docker configuration and Helm chart changed: NO.
+The existing report was already modified (613 added lines relative to HEAD);
+its entire starting content was preserved byte-for-byte before this append.
+No branch, staging, commit or Git push occurred.
+
+Inspection covered AGENTS.md, README, requirements, settings/model inventory,
+all requested vector/ingestion/BM25/retrieval/reranker modules, API readiness,
+Compose, Helm values/documentation, Phase 10 fixtures, Phase 8F/8G reports and
+this report's latest evidence. Tests confirmed deterministic ingestion IDs and
+publication ordering, serving/admin separation, version gating and no fallback.
+The source matches the requested architecture: local Chroma is development-only;
+shared serving uses get_collection without creation/reset; administrative
+publication follows successful chunks; BM25 is an immutable process-local startup
+snapshot built from Chroma and checked against expected/published versions;
+application readiness requires both vector and BM25 readiness. No compatibility
+patch or new image was needed.
+
+### M2. Preflight and retained topology
+
+The active context was `epolymind-aks-dev`, explicitly verified before creation
+and cleanup mutations. The task-specific AKS authorization superseded the
+repository's default Kind-only mutation scope for these exact resources.
+Read-only inspection found no application objects in `polymind`, no existing
+`polymind-dependencies` namespace, and no Chroma Deployment, Service or PVC there.
+Both AKS nodes were Ready, without memory/disk/PID pressure. Each advertised
+3860m allocatable CPU and about 13.3 GiB allocatable memory; initial requested CPU
+was 767m/695m and requested memory 892/676 MiB. This was a scheduling preflight,
+not a capacity or headroom benchmark. AKS reported provisioning Succeeded and
+networkPolicy none.
+
+| Property | Retained configuration |
+| --- | --- |
+| Namespace | `polymind-dependencies` |
+| Deployment / Service | `polymind-chroma-phase16` |
+| Image | `chromadb/chroma:1.5.9` |
+| Observed pulled image digest | `sha256:1e0b73a187a28757c572acba508c46f48c9e8b0acaf5c20e6d95cdedce1acdf6` |
+| Replicas / ready replicas | 1 / 1 |
+| Service | ClusterIP `10.0.137.240`, TCP 8000; no external IP |
+| Shared DNS | `polymind-chroma-phase16.polymind-dependencies.svc.cluster.local` |
+| Data volume | `emptyDir`, 2 GiB sizeLimit, mounted at `/data` |
+| Resource requests | 250m CPU, 512 MiB memory, 256 MiB ephemeral storage |
+| Resource limits | 1 CPU, 2 GiB memory, 3 GiB ephemeral storage |
+| Readiness | HTTP `/api/v2/heartbeat`, 5-second interval, 3-second timeout |
+| Deployment strategy | Recreate; no deliberate restart/replacement tested |
+
+The image's bundled `/config.yaml` was inspected with networking disabled and
+confirmed persist_path `/data`. CPU/memory bounds reuse the repository chart's
+existing modest resource defaults; the Phase 10 fixture supplied the pinned
+image/port and token-free dependency pattern. Chroma drops capabilities and
+disallows privilege escalation; no service-account token is mounted. Namespace
+and pod labels preserve the chart convention, including app.kubernetes.io/name
+chroma. Chroma is operated separately from the application Helm release.
+
+Local and both image-resident Python clients reported chromadb 1.5.9, matching
+the repository pins. A supplementary assertion initially expected the server's
+version endpoint to equal the image release and failed: it returns `1.0.0`.
+This was investigated, not hidden or treated as a runtime upgrade: the official
+[tagged 1.5.9 Rust server source](https://github.com/chroma-core/chroma/blob/1.5.9/rust/frontend/src/server.rs#L628)
+hardcodes that response. Image tag/pulled digest and successful real client
+operations establish the tested artifact/compatibility; the endpoint alone
+cannot identify the release. The external probe assertion was corrected;
+application code and server configuration were unchanged.
+
+### M3. Corpus identity and publication
+
+The following existing repository PDFs were copied into a temporary `/tmp`
+working directory; originals were untouched. Total selected bytes: **8,675,717**.
+The larger rag_using_llm.pdf was excluded. ai_notes.text was not renamed or
+forced through an unsupported loader. No document body is included here.
+
+| Selected source | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `LangGraph_Documentation.pdf` | 4,242 | `f58575a163a9c6ba3decaee1af0fa16529f919a53a52e9b5e893f89f632bd40f` |
+| `information_retrieval_augmented_generation.pdf` | 6,123,585 | `55b72095a74e43184c6e9ee0bde7fab80d3f2dade7b0a102d11d7f010c149ad6` |
+| `original_rag_paper.pdf` | 885,323 | `23e3249e9a1e75418d82efecab0ea8c4d033b89c93742f63208d47ce01f21233` |
+| `rag_survey.pdf` | 1,662,567 | `396a0fadeb4cd40f5c8ccc36b73a0815f6cb4d7f6bfa53b6c48c1f9aba7c7e02` |
+
+Version derivation: sort repository-relative paths lexicographically; for each
+file append its lowercase SHA-256, two ASCII spaces, repository-relative path,
+and one LF. SHA-256 the concatenated UTF-8 manifest, take the first 12 lowercase
+hexadecimal characters, and prefix `phase16-rag-`. Result:
+**`phase16-rag-62f3e0a6f547`**. This satisfies the existing safe 1–64 character
+identifier validation and identifies corpus inputs, not the application image.
+
+The dedicated collection is **`phase16_knowledge`**. Pre-ingestion list_collections
+was empty, so no existing or ambiguous collection was reused/reset. The real
+rag.ingest.ingest_documents/get_vector_store_admin path ran from the temporary
+working directory with the unchanged relative data/docs layout. Existing PDF
+loader, 500-character chunking with 30-character overlap, pinned MiniLM embedding
+and UUIDv5 IDs were used. A clean subprocess environment supplied chroma_http,
+127.0.0.1:18016, SSL false, the collection and exact corpus version. It ran outside
+the repository .env location with only PATH/HOME inherited and explicit task
+variables; no Redis/Foundry/API credentials were supplied. The revision-pinned
+local embedding cache was used with offline flags, without model download.
+
+The temporary kubectl forward bound only 127.0.0.1:18016. Sandbox restrictions
+initially prevented Azure cache access and local ingestion connectivity; the
+execution approval mechanism allowed the same scoped commands outside the
+sandbox. No credential files were copied and no alternate public endpoint used.
+
+Publication PASS: **4 source files, 1,058 chunks/vectors, 127.561 seconds**.
+Per-file chunk counts were LangGraph 5, information_retrieval_augmented_generation
+669, original_rag_paper 150, and rag_survey 234. Every retrieved record had a
+selected source filename, non-negative integer chunk_id, .pdf file_type and
+chunk_length equal to actual content length, bounded at 500. Collection metadata
+was exactly `{polymind_corpus_version: phase16-rag-62f3e0a6f547}`. Heartbeat,
+collection readiness and non-empty count passed. No other collection changed.
+
+Idempotence PASS used one exact existing chunk/ID/embedding/metadata upsert through
+the real admin adapter and verified the count stayed 1,058, supplemented by the
+automated deterministic-ID test. A complete second embedding/ingestion pass was
+not run because the bounded probe covered upsert convergence without repeating
+all 1,058 embedding calls. The timing is diagnostic, not production throughput.
+
+### M4. Two independent AKS clients and retrieval evidence
+
+Pods `polymind-chroma-phase16-a` and `polymind-chroma-phase16-b` used exactly:
+
+```text
+epolymindacrdev-b7bxdheagnerb8ep.azurecr.io/polymind-api@sha256:fcc9cac926f6527975b3128a8e145d30bbd5f8578e7739b4956764806999f9eb
+```
+
+Both pulled imageIDs matched that digest and both Succeeded with exit 0. Pod A
+ran on node suffix 000000; Pod B ran on 000001. Each used UID/GID 10001, read-only
+root filesystem, dropped capabilities, no privilege escalation, runtime-default
+seccomp, no service-account token, a 256 MiB /tmp emptyDir, 300-second active
+deadline and 240-second Python alarm. Each requested 250m CPU/512 MiB memory and
+was limited to 1 CPU/2 GiB memory/512 MiB ephemeral storage. No application
+Deployment or shared BM25 filesystem artifact was created.
+
+Both explicitly selected chroma_http, the shared Service DNS, TCP 8000, SSL false,
+the dedicated collection/version, MODEL_OFFLINE_MODE=true and
+MODEL_ARTIFACT_DIR=/opt/polymind/models. Settings used local deployment validation
+mode only to avoid fabricating unrelated production credentials; the vector
+provider remained shared HTTP. HF/Transformers offline flags were also set.
+
+The actual Settings → create_vector_store → ChromaVectorStore path passed in
+both pods. Guard functions rejected attempted local-client construction or
+serving collection creation/deletion; HTTP reads, embeddings, retrieval and
+reranking were real, not mocked. Both opened the existing collection, passed
+heartbeat/readiness, listed 1,058 records, and built independent BM25 snapshots.
+Expected, published and loaded versions all equaled phase16-rag-62f3e0a6f547.
+BM25 build/readiness/search PASS in both; snapshot count 1,058 each.
+
+| Query topic | Dense top source/chunk, both pods | BM25 top source/chunk, both pods | Reranked top, both pods |
+| --- | --- | --- | --- |
+| Retrieval augmented generation for knowledge intensive NLP tasks | original_rag_paper.pdf / 0 | rag_survey.pdf / 1 | original_rag_paper.pdf / 0 |
+| Dense and sparse retrieval | rag_survey.pdf / 84 | rag_survey.pdf / 84 | rag_survey.pdf / 84 |
+| LangGraph graph orchestration | LangGraph_Documentation.pdf / 0 | LangGraph_Documentation.pdf / 0 | LangGraph_Documentation.pdf / 0 |
+
+Corpus extraction confirmed the relevant terminology before query selection.
+The existing retrieve, bm25_search, hybrid_retrieve and rerank functions produced
+non-empty results with valid selected-source/chunk identities for all three
+queries. RRF scores and finite cross-encoder scores were present. Top identities
+matched across both pods for dense, sparse, hybrid and reranked results. This is
+bounded relevance evidence, not a broad retrieval-quality evaluation.
+
+Both used baked /opt/polymind/models/embedding and /opt/polymind/models/reranker
+artifacts with local_files_only enabled. Offline artifact use YES; runtime model
+download NO; Foundry/generation call NO. A canonical content fingerprint over
+sorted source/chunk/document-hash tuples matched between pods and a final local
+read: `05fe45281965cb2fb10ce2a66986db0f3bf91b651c177bff88c0ed353083da3c`.
+No transactional consistency beyond these observations is claimed.
+
+Diagnostic BM25 build durations were 0.113s (A) and 0.089s (B). Initial dense
+queries, including lazy model load, took 5.428s/4.366s; subsequent dense queries
+were 0.014–0.024s and sparse queries 0.001–0.003s. These are single-operation
+observations, not load tests, percentiles, capacity/headroom or HPA guidance.
+
+### M5. Negative checks and cleanup
+
+Each pod launched an isolated subprocess with expected version
+phase16-intentionally-stale. Real build_bm25 raised BM25SnapshotUnavailable;
+readiness was false/bm25_uninitialized because the rejected startup never loaded
+a snapshot. Valid-version readiness was reconfirmed in the parent afterwards.
+No Chroma version metadata was modified and no corpus was reset.
+
+Each also tested chroma_http against its own loopback closed port 9, with an outer
+20-second alarm. Actual check_vector_store_readiness returned sanitized
+vector_unreachable in 0.113s (A) and 0.096s (B). Local-client construction guards
+were never reached, no ./chroma_db directory appeared, and captured output had
+no traceback. No real-service outage was injected. Final version, count and
+content fingerprint remained unchanged. Application /health semantics were not
+modified or represented as a full live API health test.
+
+Both temporary pods were deleted and a final polymind pod listing was empty.
+Negative subprocesses ended with their parent pods. The exact temporary
+port-forward process was stopped. Temporary corpus copies, helper scripts,
+manifests, logs, rendered Helm YAML and compile cache were removed after report
+preparation; no source corpus or retained Chroma data was deleted. Namespace,
+Chroma Deployment, ClusterIP Service and published collection/version remain
+for subsequent Phase 16 work. Final retained-service checks found one healthy
+replica with zero restarts. No restart/rescheduling recovery test was performed.
+
+### M6. Security and durability boundary
+
+| Boundary | Result |
+| --- | --- |
+| Public Chroma exposure / public DNS | NO |
+| NodePort / LoadBalancer / Ingress | NO / NO / NO |
+| New Azure infrastructure | NO |
+| PVC / Azure Disk / paid storage provisioned | NO |
+| Foundry/Redis/API credentials used in ingestion or probes | NO |
+| New application Secret | NO |
+| NetworkPolicy enforcement claimed | NO; AKS networkPolicy remains none |
+| Internal transport | Plain HTTP, unauthenticated, ClusterIP reachability |
+
+Existing operator Azure/Kubernetes authentication was needed for control-plane
+operations; “no credentials” refers to application/dependency credentials, not
+anonymous AKS administration. No Foundry, Redis, ACR or AKS network configuration
+changed. No Prometheus, Adapter, HPA, application Deployment or Azure resource was
+created. The current meaningful boundary is cluster-internal Service reachability;
+this is not the final production authentication/TLS posture.
+
+The emptyDir corpus can be lost on Chroma pod replacement. Chroma HA, durable
+restart recovery, rescheduling recovery, backups/restore and production vector
+capacity remain unproven. Do not roll/recreate this dependency assuming retained
+corpus durability. Later operators must resolve persistence separately.
+
+### M7. Repository validation, review and remaining sequence
+
+| Validation | Actual result |
+| --- | --- |
+| python -m pytest -q | 231 passed in 14.24s |
+| Compile with /tmp/polymind-phase16-chroma-pycache | Exit 0 |
+| docker compose config --quiet | Exit 0 |
+| helm lint deployment/helm/polymind | Exit 0; informational icon recommendation only |
+| helm template polymind deployment/helm/polymind | Exit 0; default placeholders, no live values or credentials injected |
+| git diff --check | Exit 0 |
+
+Self-review checked source/image provenance, real retrieval calls, independent
+snapshots, deterministic identities, failure paths, collection non-mutation,
+offline artifacts and bounded resources. The only corrected probe issue was the
+supplementary server-version assumption described in M2. No application defect
+requiring a compatibility patch was found. Pre-commit review found no runtime
+source/dependency/chart edits, secrets, document bodies, generated artifacts or
+unrelated additions. All historical report content remains intact; only this
+section was appended. Changes are uncommitted for operator review.
+
+Foundry READY, Redis READY and current-master image READY retain their earlier
+recorded evidence; Foundry and Redis were not revalidated here. Chroma/BM25 is now
+READY FOR BOUNDED PHASE 16 DEPENDENCY GATE. **Phase 16 complete: NO.**
+The remaining sequence, not started in this task, is:
+
+1. Prometheus plus Prometheus Adapter/custom-metrics setup.
+2. Prepare final application configuration and Secret safely.
+3. Deploy exactly two fixed PolyMind replicas with autoscaling disabled.
+4. Validate full application /health and /ready.
+5. Prove shared Redis, shared Chroma and independent BM25 across actual replicas.
+6. Establish the monitoring/custom-metric path.
+7. Only then perform bounded HPA/capacity calibration.
+
+## N. Prometheus + Adapter/custom-metrics setup — 2026-10-06
+
+### N1. Outcome and source provenance
+
+**PARTIAL — stopped at the explicit adapter-render RBAC gate before any Kubernetes
+mutation. Monitoring is NOT READY FOR ACTUAL APPLICATION INTEGRATION.** Neither
+Prometheus nor Adapter was installed. This is a preflight/offline-validation
+result, not a failed live pipeline test and not completion of Phase 16.
+
+Branch remained `master`; full HEAD was
+`f9b47fda4658935b64826f1d4abe0488c64f21ae` (short `f9b47fd`), matching the source
+represented by the supplied immutable image. Initial status had only this report
+modified: 877 existing added lines relative to HEAD. No runtime, application,
+monitoring, chart, dependency or configuration source was dirty. Application code
+changed: NO. Monitoring contract changed: NO. Adapter mapping changed: NO.
+No branch, commit, push, reset, staging or history operation occurred.
+
+Before appending, all 184,501 bytes of the existing report were preserved and
+compared with a temporary baseline. Its SHA-256 was
+`e7551429561329672d706daae693b3e4a0b0c10d3343efc798c1f1b323d3b7f9`.
+The final prefix comparison passed; prior content was not rewritten.
+
+Inspection covered AGENTS.md, relevant README and observability guidance,
+llm.metrics, API metric/query/stream integration, canonical rules/tests/mapping,
+Phase 14/15 fixtures and reports, Helm deployment/HPA/defaults, monitoring and
+Helm contract tests, and the latest Phase 16 Chroma/BM25 evidence. The canonical
+contract remains:
+
+```text
+active_application_requests{operation="query"}
+  -> polymind:active_query_requests:sum_by_pod
+  -> pods/polymind_active_query_requests
+```
+
+The rule retains namespace/pod labels and its `up == 1` guard, with no blanket
+zero fill. Stream requests remain separate. Fresh registries eagerly initialize
+query and stream zeros. HPA remains disabled by default and uses Pods/AverageValue
+when explicitly enabled. No live HPA was created.
+
+### N2. Fresh cluster preflight
+
+Current context was exactly `epolymind-aks-dev`. Both nodes were Ready on v1.35.7.
+Namespaces, pods, Deployments, Services, HPAs, APIServices, ClusterRole and
+ClusterRoleBinding names, and Helm releases were inspected. There was no
+monitoring namespace, Prometheus/Adapter Deployment or release, or custom-metrics
+APIService. Existing `system:prometheus` RBAC is AKS-managed and was left untouched;
+it is not a PolyMind collector installation.
+
+The only non-system workload was the retained healthy Chroma Deployment in
+polymind-dependencies. The polymind namespace had no pods, Deployments or HPAs.
+Helm listed only the AKS-managed overlay and workload-identity releases.
+Metrics Server had two Ready pods, zero restarts, and
+`v1beta1.metrics.k8s.io` Available=True. `kubectl top nodes` succeeded (143m/115m
+CPU and 1,365Mi/1,394Mi memory at that observation); these are diagnostic samples,
+not capacity/headroom evidence. Final Metrics Server conditions still reported
+Available=True, reason Passed, message "all checks passed".
+
+Initial sandbox reads could not use Azure CLI's session cache; the normal
+execution approval mechanism enabled the same scoped commands. No credential
+cache was copied, no application credential was supplied, and no Secret was read.
+
+### N3. Prometheus preparation and offline validation
+
+A temporary AKS manifest was derived from the existing Phase 14 fixture. It was
+validated but never applied. Planned resources were monitoring namespace,
+polymind-prometheus ServiceAccount, pod-only get/list/watch Role and RoleBinding
+in polymind, two monitoring ConfigMaps, one Deployment and one ClusterIP Service.
+The cross-namespace RoleBinding subjects the monitoring ServiceAccount; no
+Prometheus ClusterRole or broader discovery access was proposed.
+
+The configuration discovers annotated pods only in polymind. It preserves path,
+port, scrape-enabled and namespace/pod relabeling. The old Kind fixture did not
+contain scheme relabeling; the temporary adaptation adds the requested
+prometheus.io/scheme mapping with an http/https match. Global scrape/evaluation
+intervals remain 5s. The unchanged canonical recording group explicitly has a
+30s interval, which overrides global evaluation for that group; it was preserved.
+The rule ConfigMap copied the complete repository file directly, including all
+15 recording/candidate-alert rules. Candidate alerts are not a deployed alerting
+service; no Alertmanager or kube-state-metrics was installed.
+
+| Prepared setting (not deployed) | Value |
+| --- | --- |
+| Namespace / name | monitoring / polymind-prometheus |
+| Repository-pinned image | prom/prometheus:v3.5.5 |
+| Replicas | 1 |
+| Service | ClusterIP, TCP 9090 |
+| Retention / storage | 1h / emptyDir, sizeLimit 512Mi |
+| Requests / limits | 50m CPU, 128Mi / 500m CPU, 512Mi |
+| Security | UID/GID/fsGroup 65534, non-root, RuntimeDefault, no privilege escalation, ALL capabilities dropped |
+| Pod name label | app.kubernetes.io/name: prometheus |
+| Rules ConfigMap | polymind-prometheus-rules, exact canonical file |
+| Config ConfigMap | polymind-prometheus-config, temporary AKS adaptation |
+
+No suitable local promtool was found. The pinned Docker image ran `check config`
+with the exact temporary config and canonical rules mounted at their deployment
+paths: SUCCESS. Separate `check rules`: SUCCESS, 15 rules. Existing `test rules`
+ran from the correct mounted working directory: SUCCESS. No rule was changed.
+There is no deployed Prometheus image digest, readiness, endpoint or target result.
+
+### N4. Exact chart render and blocking RBAC finding
+
+Chart `prometheus-community/prometheus-adapter` version **5.3.0** was obtained
+successfully from the official chart repository and rendered from that local
+package. Package SHA-256:
+`aa6752b6207ed788522714c3ef7f67f27d423eb4d9512fecb52dc641b6434f31`.
+No newer chart was substituted. `helm show values` confirmed the actual keys.
+The temporary overlay contained only Prometheus URL/port, replicas and resources;
+the canonical repository mapping supplied the sole custom rule.
+
+Resolved image: `registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.12.0`.
+Planned release: polymind-prometheus-adapter in monitoring, one replica, requests
+50m CPU/64Mi and limits 250m CPU/256Mi. Rendered Prometheus URL:
+`http://polymind-prometheus.monitoring.svc:9090`. The chart default
+`metricsRelistInterval: 1m` was retained, not shortened or production-tuned.
+
+Every rendered object was reviewed:
+
+| Scope | Objects |
+| --- | --- |
+| monitoring | ServiceAccount, ConfigMap, ClusterIP Service (443 to 6443), Deployment, all named polymind-prometheus-adapter |
+| ClusterRole | prometheus-adapter-resource-reader; prometheus-adapter-server-resources |
+| ClusterRoleBinding | prometheus-adapter-system-auth-delegator; prometheus-adapter-resource-reader; prometheus-adapter-hpa-controller |
+| kube-system RoleBinding | prometheus-adapter-auth-reader |
+| APIService | v1beta1.custom.metrics.k8s.io |
+
+The **blocking** rendered ClusterRole `prometheus-adapter-server-resources` grants:
+
+```yaml
+apiGroups: [custom.metrics.k8s.io]
+resources: ['*']
+verbs: ['*']
+```
+
+Its chart-created binding targets the adapter ServiceAccount. This is confined
+to the custom-metrics group: it is not cluster-admin and does not grant mutation
+of core pods/nodes/Secrets. Nevertheless wildcard verbs authorize mutation verbs
+in that API group, contrary to task section 13's explicit no-wildcard-mutation
+render gate. The chart template hardcodes `verbs: ["*"]`; its supported
+`rbac.customMetrics.resources` value can narrow resources but cannot narrow verbs.
+Installation was therefore stopped as instructed, before either stack component
+was applied. No task-created broken APIService needs rollback.
+
+Other rendered permissions were read-only get/list/watch on namespaces, pods,
+services and ConfigMaps cluster-wide; delegated authentication through the
+existing system:auth-delegator role (create tokenreviews and subjectaccessreviews);
+and the existing kube-system extension-apiserver-authentication-reader Role.
+The live latter Role permits get/list/watch only of the named
+extension-apiserver-authentication ConfigMap. No application Secret read, node
+mutation, namespace deletion or Azure permission was rendered. No new Role,
+CRD, cert-manager controller, certificate Secret or Helm hook was rendered.
+Effective post-install permissions and ServiceAccount impersonation checks are
+not available because the accounts were never created.
+
+Default certificate handling renders `/tmp/cert` for adapter-generated serving
+material on emptyDir and `insecureSkipTLSVerify: true` in the APIService. This is
+the chart's validation default, not certificate-verified aggregation TLS. No TLS
+or availability test was performed. The initial offline Helm capability set chose
+apiregistration.k8s.io/v1beta1; re-rendering with the cluster's observed
+apiregistration.k8s.io/v1 capability correctly emitted the v1 APIService object.
+Its served custom-metrics group version remains v1beta1. That render adjustment
+does not resolve the independent wildcard RBAC blocker.
+
+A concrete follow-up option is a reviewed temporary Helm post-renderer that
+narrows this one ClusterRole to read verbs and the intended custom metric resource,
+while retaining the exact chart package and canonical mapping. It would require
+explicit scope resolution because this task said to stop on this finding and
+allowed only environment-operational values in the temporary overlay. No
+post-renderer, patched chart or permanent AKS profile was introduced here.
+
+### N5. Live metric gates, security and cleanup
+
+No metric probe pods, runner ConfigMap, temporary Service or port-forward were
+created. The supplied immutable image remains
+`epolymindacrdev-b7bxdheagnerb8ep.azurecr.io/polymind-api@sha256:fcc9cac926f6527975b3128a8e145d30bbd5f8578e7739b4956764806999f9eb`,
+but was NOT launched in this task. Real llm.metrics registry use, two UP targets,
+raw/recorded A=1/B=0, adapter discovery, wildcard/individual queries, A=0/B=0
+return, and live missing-target behavior are all **NOT RUN**, not PASS. Source
+inspection confirms the intended zero/stream/up-guard semantics only.
+
+Public exposure NO; application credentials used NO; Azure resources created NO;
+PVC/Azure Disk/paid storage created NO; AKS networking/node pools changed NO;
+NetworkPolicy enforcement claimed NO. The prior report records networkPolicy
+none; no fresh Azure network-setting query or policy change was performed.
+Foundry, Redis, Chroma data/corpus and ACR content were untouched.
+
+Final polymind resource listing was empty and monitoring namespace was absent.
+There are no task-created probes, ConfigMaps, forwards, collector, adapter, or
+APIService to remove or retain. The temporary downloaded chart, overlay, rendered
+manifests, config, local report baseline and compile cache were removed after
+recording evidence and checking report-prefix preservation. No unrelated
+resources or files were deleted. Prometheus retained: NO; Adapter retained: NO.
+
+### N6. Validation, review and readiness
+
+| Validation | Actual result |
+| --- | --- |
+| Pinned promtool check config | PASS, exact temporary config and canonical rules |
+| Pinned promtool check rules | PASS, 15 rules |
+| Pinned promtool test rules | PASS |
+| python -m pytest -q | 231 passed in 14.92s |
+| Monitoring + Helm contract tests | 17 passed in 1.01s |
+| PYTHONPYCACHEPREFIX=/tmp/polymind-phase16-monitoring-pycache python -m compileall -q . | Exit 0 |
+| docker compose config --quiet | Exit 0 |
+| helm lint deployment/helm/polymind | Exit 0, 1 chart, informational icon recommendation |
+| helm template polymind deployment/helm/polymind | Exit 0, no live credentials |
+| Adapter local render with observed v1 APIService capability | Exit 0; RBAC policy gate FAIL as explained above |
+| git diff --check | Exit 0 |
+
+Self-review distinguished offline configuration correctness from live readiness,
+identified the chart wildcard grant and group-specific 30s evaluation interval,
+and verified no metric/API contract changed. Pre-commit review checked the report
+append and repository status: no application sources, credentials, generated
+manifests, dependency additions or unrelated edits were introduced. The only
+repository change is this appended report section, on top of its pre-existing
+operator content. It remains uncommitted for review.
+
+Foundry READY, Redis READY, immutable image READY and Chroma/BM25 READY refer to
+prior Phase 16 evidence and were not revalidated here. Monitoring infrastructure:
+**PARTIAL / BLOCKED AT RENDER REVIEW**. Actual application deployed NO; HPA enabled
+NO; calibration performed NO; Phase 16 complete NO. The immediate next step is
+resolution of the adapter RBAC render gate and completion of this monitoring task.
+Final application configuration + Secret preparation remains the next planned
+Phase 16 task only after monitoring reaches READY FOR ACTUAL APPLICATION
+INTEGRATION. Actual two-replica scraping/custom-metric validation remains pending;
+no claim of ACTUAL POLYMIND METRIC PATH FULLY VALIDATED is made.
+
+### N7. Focused Adapter RBAC-resolution continuation — 2026-10-06
+
+**RESOLVED — SAFE TO CONTINUE MONITORING INSTALLATION**, in a separate authorized
+task. This decision resolves the local render/RBAC gate only. Installation remained
+explicitly unauthorized, and no Kubernetes or Azure mutation occurred. No live
+adapter, aggregation, metric-probe or HPA test was performed in this continuation.
+
+The operator explicitly authorized the temporary post-renderer, exact-chart
+reproduction, analysis, local validation and report append. Branch remained
+`master`, HEAD `f9b47fda4658935b64826f1d4abe0488c64f21ae`. Only this report was dirty
+on entry (1,103 existing added lines versus HEAD); all application, runtime,
+monitoring and Helm source files were clean. The pre-append baseline contained
+197,605 bytes, SHA-256
+`eb4527d66edccf13559c4f5cfe2d2fb0b5a7aa9ca5a083d1ce9a14b029bfea51`.
+All those bytes were preserved exactly, including section N's historical stop.
+
+**Chart and reproduced binding.** The official repository supplied chart
+prometheus-adapter **5.3.0** again. Its package SHA-256 exactly matched:
+`aa6752b6207ed788522714c3ef7f67f27d423eb4d9512fecb52dc641b6434f31`.
+The upstream package was never patched or vendored. The canonical PolyMind mapping
+was merged with a temporary operational overlay: Prometheus URL
+`http://polymind-prometheus.monitoring.svc`, port 9090, one replica, requests
+50m CPU/64Mi, limits 250m CPU/256Mi. The verified chart default relist interval
+remained 1m. Both renders explicitly supplied apiregistration.k8s.io/v1 capability.
+Image remained `registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.12.0`.
+
+Actual packaged templates, rather than binding names alone, established:
+
+- ClusterRole `prometheus-adapter-server-resources` contains one rule:
+  apiGroups `[custom.metrics.k8s.io]`, resources `['*']`, verbs `['*']`.
+- ClusterRoleBinding `prometheus-adapter-hpa-controller` references that role and
+  binds ServiceAccount `monitoring/polymind-prometheus-adapter`.
+- Both templates are conditional on rbac.create and custom/default metric rules.
+  The chart provides a generic custom-metric API access grant when such rules are
+  enabled; its README describes serving metrics for HPA consumers but gives no
+  technical justification for wildcard verbs. The binding's name is misleading:
+  it does not bind the kube-controller-manager or an HPA controller ServiceAccount.
+
+This is a metric-consumer permission granted to the adapter identity, not the
+permission that allows an aggregation server to publish an APIService or perform
+delegated authentication. Serving a metric does not intrinsically require the
+server identity to read its own custom-metric endpoint. Keeping a narrowly scoped
+read grant preserves the chart object/binding under the authorized one-rule scope;
+we do not claim that self-read is an indispensable server permission. Future
+clients/HPA identities need their own authorization; this binding grants them
+nothing. No such identities or bindings were modified here.
+
+**Least-privilege analysis.** The hardened target rule is:
+
+```yaml
+apiGroups:
+  - custom.metrics.k8s.io
+resources:
+  - pods/polymind_active_query_requests
+verbs:
+  - get
+```
+
+The exact [Adapter v0.12.0 dependency manifest](https://github.com/kubernetes-sigs/prometheus-adapter/blob/v0.12.0/go.mod)
+pins custom-metrics-apiserver v1.30.0 and apiserver v0.30.0. Its
+[custom metric route installer](https://github.com/kubernetes-sigs/custom-metrics-apiserver/blob/v1.30.0/pkg/apiserver/installer/cmhandlers.go)
+registers GET on `namespaces/{namespace}/{resource}/{name}/{subresource}`.
+The [storage handler](https://github.com/kubernetes-sigs/custom-metrics-apiserver/blob/v1.30.0/pkg/registry/custom_metrics/reststorage.go)
+selects individual versus wildcard retrieval internally. The HTTP response may
+be MetricValueList, and the internal handler is named List; neither determines
+the RBAC verb.
+
+The inspected [adapter-side request parser](https://github.com/kubernetes/apiserver/blob/v0.30.0/pkg/endpoints/request/requestinfo.go)
+and [Kubernetes 1.35 request parser](https://github.com/kubernetes/kubernetes/blob/v1.35.0/staging/src/k8s.io/apiserver/pkg/endpoints/request/requestinfo.go)
+assign GET requests verb get, extract resource/name/subresource, and convert to
+list/watch only when the name is absent. Both an individual pod name and literal
+`*` occupy that name slot. Thus both intended pod-metric query forms authorize
+as get on resource pods, subresource polymind_active_query_requests. Label
+selectors do not change this. The [RBAC authorizer](https://github.com/kubernetes/kubernetes/blob/v1.35.0/plugin/pkg/auth/authorizer/rbac/rbac.go)
+combines resource/subresource, and its [resource matcher](https://github.com/kubernetes/kubernetes/blob/v1.35.0/pkg/apis/rbac/v1/evaluation_helpers.go)
+accepts an exact match. The slash-separated resource above is valid; dynamic pod
+names do not require resources `*`. No resourceNames restriction is added, so
+both individual and wildcard names remain usable. This ClusterRole grant remains
+cluster-scoped; namespace-scoping its binding would exceed the one-rule task.
+
+| Verb in this custom-metrics rule | Required for the intended queries? |
+| --- | --- |
+| get | YES, individual and wildcard pod-metric GET routes |
+| list | NO, wildcard occupies the name segment; this is not a nameless collection request |
+| watch | NO, not part of the supported metric query contract |
+| create, update, patch, delete, deletecollection | NO, no metric mutation route is needed |
+
+API discovery is separate non-resource authorization, not list on the metric.
+The existing Phase 15 report proves the original chart's broader configuration
+worked in Kind; it does not prove wildcard/list/watch rights are necessary or
+constitute live evidence for this new narrowed rule. The technical sufficiency
+conclusion here is source-based, backed by local manifest tests, not a live SAR
+or a newly deployed API test.
+
+**Post-renderer and exact diff.** The executable Python post-renderer existed only
+under `/tmp/polymind-phase16-rbac/`, using already-installed PyYAML. It parsed the
+complete input with duplicate-key rejection, rejected YAML aliases, required
+exactly one target ClusterRole with the expected API version and one exact
+original rule, and rejected unexpected top-level/RBAC fields. It used YAML node
+source offsets to replace only the resources and verbs scalar values. Before
+emitting any stdout, it reparsed the result and compared against a deep copy
+with only those two intended fields changed. Errors return nonzero with empty
+stdout. Zero/duplicate targets, wrong kind/version/group/resource/verbs, extra
+rules/keys, aggregation rules, duplicate keys, aliases, already-hardened input and
+malformed YAML were exercised as rejection cases. It deliberately rejects a
+second hardening pass rather than silently accepting unexpected input.
+
+Helm rendered both original and hardened YAML from the same exact package and
+values. Of **11 objects**, **one** changed, at `rules[0].resources[0]` and
+`rules[0].verbs[0]`. Unified diff showed only `'*'` to the exact metric resource
+and `"*"` to `"get"`. A byte comparison proved the entire output was identical
+apart from those two replacements. Deployment, Service, ServiceAccount,
+ConfigMap/mapping, APIService/TLS settings, Prometheus URL, image, resources,
+all other roles and every binding were unchanged. No unexpected differences.
+
+Evidence SHA-256 values, before required temporary cleanup:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Original render | `0a31142420a4a72c95ab6db4802f4a98ec059f4f4d2ea8edea3e6425c2e2b2aa` |
+| Hardened render | `efc58a7da6ae1917275e83a5ee24b0b7c2d75796ec41612cfde79fcbef289d7d` |
+| Temporary post-renderer | `8cf730e8e155556662e6e2f581161f3fe1a2d6c724c43dff54033bb2c0a51d30` |
+| Temporary policy tests | `43790a9dc5a3aee3fc9c01a3d0d2d003900547242b60d2e00fc02da5346e77ca` |
+
+**Complete RBAC/security review.** The target rule has no wildcard resources,
+wildcard verbs or mutation verbs. The other rendered ClusterRole retains
+get/list/watch on the explicit core resources namespaces, pods, services and
+ConfigMaps; it does not include Secrets. There is no cluster-admin binding,
+wildcard core-resource grant, Pod/Node/Namespace/Deployment mutation, or
+Azure/cloud permission. These conclusions concern this render and its identified
+role references, not an audit of every pre-existing cluster binding.
+
+The unchanged system:auth-delegator binding allows create of TokenReview and
+SubjectAccessReview requests. Those are expected delegated authentication and
+authorization checks, distinct from metric or workload mutation. The unchanged
+kube-system RoleBinding references extension-apiserver-authentication-reader for
+reads of the named authentication ConfigMap, as inspected in N4. This follows the
+[Kubernetes aggregation authorization model](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/).
+No broad mutation grant was added. Chart-default insecureSkipTLSVerify remains
+unchanged, as already documented in N4; this continuation does not claim verified
+serving-certificate TLS. No Secret contents or application credentials were used.
+
+**Validation and review.** No new dependencies were installed. Temporary policy
+tests verified target uniqueness/exact rule, all other objects unchanged, no
+mutation/wildcard verbs, canonical metric mapping, APIService identity/version,
+image, interval, URL, resources and binding subject, plus 14 fail-closed cases.
+
+| Check | Actual result |
+| --- | --- |
+| Exact chart checksum | MATCH |
+| Original + post-rendered Helm templates | PASS |
+| Temporary static policy/failure tests | 16 passed in 1.58s |
+| python -m pytest -q | 231 passed in 13.90s |
+| pytest -q tests/unit/test_monitoring_contract.py tests/unit/test_helm_chart.py | 17 passed in 1.08s |
+| Compile using /tmp/polymind-phase16-rbac-pycache | Exit 0 |
+| docker compose config --quiet | Exit 0 |
+| helm lint deployment/helm/polymind | Exit 0; 1 chart, icon recommendation only |
+| helm template polymind deployment/helm/polymind | Exit 0, no live credentials |
+| git diff --check | Exit 0 |
+
+No client/server Kubernetes dry-run or live authorization request was necessary.
+No kubectl, Helm install/upgrade, Azure mutation, probe or application deployment
+was executed. Self-review checked the GET-versus-List distinction, binding subject,
+remaining delegated-auth permissions, failure behavior and complete diff.
+Pre-commit review confirmed only a report append, preserved prior bytes, no
+source/contract change, credentials, vendored chart or generated repo artifacts.
+
+After recording this evidence, the downloaded chart, overlay, post-renderer,
+original/hardened YAML, temporary tests/source downloads, report baseline, compile
+cache and application render were removed from /tmp. No repository file was
+deleted. No branch, commit or push occurred; the report remains uncommitted.
+
+**Next:** resume the full Prometheus + Adapter setup and live metric validation
+in a separate Codex task, recreating and verifying this narrowly scoped
+post-renderer before installation. Fresh cluster ownership/context checks and
+all original monitoring gates still apply. Nothing has been installed or made
+live-ready by this RBAC-only continuation; Phase 16 is not complete.
+
+## O. Final AKS Application Validation and Phase 16 Closure — 2026-10-07
+
+### O1. Evidence authority, scope and reconciliation
+
+**Phase 16: PASS — PHASE CLOSED. AKS DEPLOYMENT / RUNTIME VALIDATION:
+COMPLETE / PASS.** The operator completed the final live deployment and validation
+and supplied the authoritative results below. This closure task only reconciles
+documentation; Codex did not repeat live checks or tests, inspect secret values,
+change resources, or independently remeasure these results. Validation-time
+observations are not a claim of continuous health after that window.
+
+Repository preflight confirmed branch master and HEAD
+`f9b47fda4658935b64826f1d4abe0488c64f21ae`. Only this report was already modified.
+All prior evidence was retained; the former top-level current-status heading was
+reclassified as historical and a new closure summary was inserted. This section
+supersedes the initial/AKS-continuation blockers, dependency readiness checkpoints
+in K–M, N1–N6's uninstalled monitoring status, and N7's pending-installation handoff.
+The operator's later live evidence now establishes real deployment and monitoring
+integration. Prior proposed Secret/configuration/deployment work is no longer the
+next phase; no Secret names, values or delivery mechanism are inferred here.
+
+The original broad capacity/HPA ambition is reconciled with the operator's final
+acceptance decision: bounded target-cluster baseline and dependency-limit evidence
+are complete, while full AKS HPA calibration is explicitly deferred and is not
+required to close Phase 16. Historical statements about incomplete gates remain
+accurate for their original checkpoints only.
+
+### O2. Real application deployment and runtime readiness
+
+| Validation-time property | Operator-provided result |
+| --- | --- |
+| AKS context | epolymind-aks-dev |
+| Helm release / namespace | polymind / polymind |
+| Deployment | polymind-polymind |
+| Replicas | 2/2 Ready, 2 available, zero restarts |
+| Observed pods | polymind-polymind-7c5ddd8764-l748p; polymind-polymind-7c5ddd8764-sqvfr |
+| Observed node placement | Distributed across aks-agentpool-40344793-vmss000000 and aks-agentpool-40344793-vmss000001 |
+| Application Service | polymind-polymind, ClusterIP, 10.0.222.129:8001 |
+| Public exposure | No external IP, no Ingress, no public application exposure introduced |
+| HPA / final replica posture | Absent/disabled; two fixed replicas |
+
+The pod names are observations, not permanent architecture requirements. The
+supplied evidence establishes distribution across both nodes without assigning
+a particular listed pod to a particular node. Application image tag:
+
+```text
+epolymindacrdev-b7bxdheagnerb8ep.azurecr.io/polymind-api:f9b47fd
+```
+
+Both replicas' observed imageID was:
+
+```text
+epolymindacrdev-b7bxdheagnerb8ep.azurecr.io/polymind-api@sha256:fcc9cac926f6527975b3128a8e145d30bbd5f8578e7739b4956764806999f9eb
+```
+
+Thus both real replicas ran the expected immutable digest, even though the
+application image reference used a tag. Both returned HTTP 200 for `/health`,
+`/ready` and `/metrics`. The composite `/ready` result validates the configured
+Foundry, Redis, Chroma HTTP and BM25 snapshot/version readiness checks. `/health`
+alone does not check those dependencies. Multi-node placement and these health
+results do not establish production HA or disruption/recovery behavior.
+
+### O3. Foundry inference and Redis cross-replica persistence
+
+The real authenticated direct query returned HTTP 200, route `direct`,
+model_role `general`, model `epolymind-gpt-54-mini`, and exact response
+`POLYMIND_AKS_QUERY_OK`. This proves real application-to-Foundry generation.
+
+| Foundry property | Validated configuration |
+| --- | --- |
+| Resource | epolymind-foundry-dev-susanta |
+| Deployment | epolymind-gpt-54-mini |
+| Model / version | gpt-5.4-mini / 2026-03-17 |
+| SKU / capacity | GlobalStandard / 10 |
+| Observed deployment limits | 10 requests per 60 seconds; 10,000 tokens per 60 seconds |
+| Subscription quota tier | Tier 1 |
+
+The direct exchange used a unique synthetic session. After one replica wrote the
+exchange, the other independently read two history messages: the user request
+and assistant response `POLYMIND_AKS_QUERY_OK`. This validates shared Redis-backed
+conversation memory across the real application replicas. The session was later
+cleaned. No Redis credential or reconstructed connection URI is recorded.
+
+### O4. Real RAG, shared Chroma and independent BM25
+
+A real authenticated request asked: "Answer from uploaded documents: What is
+retrieval augmented generation for knowledge intensive NLP tasks?" The result
+was HTTP 200, route `rag`, model `epolymind-gpt-54-mini`, and one source:
+`original_rag_paper.pdf`, chunk_id 0, rerank_score 5.1913838386535645. The returned
+answer was grounded in the retrieved paper context. Reading that session through
+the other replica returned HTTP 200 and two history items; the session was later
+cleared.
+
+This validates the live application path through semantic routing, Chroma dense
+retrieval, BM25, hybrid/RRF, cross-encoder reranking, Foundry generation, Redis
+persistence and a cross-replica memory read. It is one bounded end-to-end example,
+not broad RAG quality validation.
+
+Section M's corpus evidence remains authoritative: collection `phase16_knowledge`,
+version `phase16-rag-62f3e0a6f547`, four PDFs and 1,058 chunks/vectors. Earlier
+independent client validation proved heartbeat/readiness, record visibility,
+independent BM25 snapshots, matching expected/published/loaded versions, dense
+and sparse retrieval, hybrid retrieval and reranking. The final application
+request adds actual deployed-path evidence to those earlier component checks.
+Chroma remains emptyDir-backed and volatile. Corpus durability/recovery across
+Chroma pod replacement or restart is NOT validated; no restart was performed
+for this closure.
+
+### O5. Live monitoring and custom-metrics delivery
+
+Prometheus `polymind-prometheus` and Adapter release
+`polymind-prometheus-adapter` run in monitoring. Both monitoring pods were Running
+with zero restarts during validation. Services remained ClusterIP-only with no
+public exposure. Adapter chart is prometheus-community/prometheus-adapter 5.3.0;
+the previously verified package SHA-256 is
+`aa6752b6207ed788522714c3ef7f67f27d423eb4d9512fecb52dc641b6434f31`.
+Both `v1beta1.custom.metrics.k8s.io` and `v1beta1.metrics.k8s.io` reported
+Available=True. The operator verified the live hardened rule exactly:
+
+```yaml
+apiGroups:
+- custom.metrics.k8s.io
+resources:
+- pods/polymind_active_query_requests
+verbs:
+- get
+```
+
+Both real application pods were scraped and exposed through the custom-metrics
+API. Idle values were 0/0. During C2, one observed sample was 2/0; the evidence
+does not assign those values to permanent pod identities or establish balanced
+request distribution. After completion, values eventually returned to 0/0.
+No exact propagation latency is claimed.
+
+The actual application metric path is now validated:
+
+```text
+PolyMind Pods: active_application_requests{operation="query"}
+  -> Prometheus scraping
+  -> polymind:active_query_requests:sum_by_pod
+  -> Prometheus Adapter
+  -> custom.metrics.k8s.io: pods/polymind_active_query_requests
+```
+
+This supersedes the probe-only/uninstalled limitations in N for the real
+application path. Streams remain excluded from the primary signal. A final
+post-deletion missing-series check was NOT captured in this Azure environment;
+no PASS is claimed for it. The APIService retains insecureSkipTLSVerify=true,
+which is a validation-environment limitation, not production TLS posture.
+
+### O6. Bounded target-cluster C1/C2 capacity baseline
+
+HPA stayed disabled throughout the operator's calibration. Both workloads were
+direct queries against the fixed two-replica application deployment.
+
+| Measurement | C1 | Correct C2 |
+| --- | ---: | ---: |
+| Concurrency | 1 | 2 |
+| Requested requests | 6 | 12 |
+| Completed requests | 6 | 12 |
+| Successes / failures | 6 / 0 | 11 / 1 |
+| Duration (s) | 5.795326 | 4.488056 |
+| Successful throughput (req/s) | 1.035317 | 2.45095 |
+| p50 latency (s) | 0.847064 | 0.739507 |
+| p95 latency (s) | 1.510164 | 1.074616 |
+| p99 latency (s) | 1.510164 | 1.074616 |
+| Benchmark failure category | None | http_error |
+
+An accidental second C1-equivalent run occurred because a sed-based manifest
+transformation did not change concurrency/request arguments. It is not C2 evidence;
+only the corrected C2 measurements above are used for that classification.
+Successful-request latency does not establish C2 production safety: one request
+failed. These small bounded runs are not production capacity ceilings, SLOs or
+HPA sizing recommendations.
+
+Post-C1 application resource samples were approximately Pod A 8m CPU/404 MiB and
+Pod B 17m CPU/392 MiB. Post-C2 samples were approximately Pod A 15m CPU/406 MiB and
+Pod B 6m CPU/394 MiB. These are post-run samples, not measured peaks or proof of
+production headroom. Both replicas remained healthy/Ready with zero restarts.
+
+### O7. C2 failure attribution and inference-capacity boundary
+
+The operator's application logs definitively correlated request
+`phase13-direct-11` with an OpenAI-compatible provider failure: role general,
+model epolymind-gpt-54-mini, upstream status 429; then normalized category
+`overloaded`; then `POST /query` HTTP 503 Service Unavailable. The failure was
+Azure Foundry rate limiting, normalized by PolyMind to overloaded/503. It was not
+AKS saturation, Redis/Chroma/BM25 failure or an application crash.
+
+Provider/application counters on the affected replica supported the diagnosis:
+
+| Observed counter | Value |
+| --- | ---: |
+| Inference generate success / error | 15 / 1 |
+| Inference error category overloaded | 1 |
+| Direct application success | 14 |
+| RAG application success | 1 |
+| Application error route unknown | 1 |
+
+Redis reads/appends remained successful; the other replica showed no inference
+errors. These are observed counters across the validation window, not counters
+asserted to equal the C2-only request totals.
+
+Read-only Foundry inspection confirmed capacity 10, GlobalStandard, Tier 1,
+10 requests/60 seconds and 10,000 tokens/60 seconds. Available Azure Monitor
+metrics included ModelRequests, AzureOpenAIRequests, InputTokens, OutputTokens,
+TotalTokens, AzureOpenAIAvailabilityRate, AzureOpenAITimeToResponse,
+AzureOpenAINormalizedTTFTInMS, AzureOpenAINormalizedTBTInMS and
+AzureOpenAITokenPerSecond. A narrow recent query yielded limited/lagged data:
+one visible HTTP 200 request and TotalTokens=901. That is not an exhaustive
+application request count. The application/provider logs and counters are the
+authoritative evidence of the real 429.
+
+### O8. HPA decision and acceptance boundary
+
+**HPA TARGET-CLUSTER SCALE-UP/SCALE-DOWN CALIBRATION: DEFERRED / NOT REQUIRED TO
+CLOSE PHASE 16.** The current external Foundry deployment reaches its rate limit
+before a meaningful higher-load AKS autoscaling experiment can be completed.
+This is a dependency-capacity limitation, not an AKS runtime validation failure.
+
+The HPA control-plane architecture retains Phase 15 validation, and Phase 16 now
+validates the real AKS custom-metrics delivery path. Neither AKS scale-up nor
+AKS scale-down is claimed to have passed. No production autoscaling is enabled;
+no calibrated target, maximum replica count or scaling policy is established.
+Final state stays two fixed real replicas, HPA absent/disabled, and Foundry
+capacity unchanged at 10. Capacity was not increased merely to force an HPA test.
+
+### O9. Retained security, durability and production limitations
+
+- AKS networkPolicy provider is **NONE**. No Kubernetes NetworkPolicy enforcement
+  or namespace-isolation claim is made. The application chart NetworkPolicy was
+  intentionally disabled for this deployment because no provider enforces it and
+  default chart topology assumptions do not match external Azure Redis/Foundry.
+- Redis Private Link/private networking does not provide per-workload Kubernetes
+  isolation. Chroma, Prometheus and Adapter are ClusterIP-only but lack an enforced
+  namespace-level NetworkPolicy boundary.
+- Adapter aggregation uses insecureSkipTLSVerify=true; production certificate
+  verification remains deferred.
+- Chroma emptyDir storage is volatile. Persistence, recovery after replacement or
+  restart, backups and production HA are unproven.
+- Azure Managed Redis remains non-HA/no-persistence dev/test infrastructure.
+- Foundry access-key-style credentials are the Phase 16 validation posture;
+  workload identity integration has not been completed.
+- Broad RAG quality, production HA/readiness and higher-load autoscaling are not
+  established by the bounded acceptance evidence. The Azure post-deletion
+  missing-series test remains unproven.
+
+These are retained limitations and deferred production work, not concealed PASS
+claims. The phase's acceptance boundary is a working target-environment control
+plane and dependency/monitoring integration with a bounded capacity baseline.
+
+### O10. Cleanup, retained resources and cost posture
+
+The operator cleaned the unique direct-test session and the synthetic RAG session.
+Benchmark sessions `phase13-direct-0` through `phase13-direct-11` were also
+explicitly cleared and verified empty. Earlier cleanup evidence in K–N remains
+historical evidence; this closure does not infer removal of any other final-run
+probe, benchmark pod, port-forward or artifact whose removal was not supplied.
+No cleanup or resource operation was executed during this documentation task.
+
+The two application replicas and supporting Phase 16 resources are retained.
+No Foundry capacity increase or additional paid infrastructure was intentionally
+provisioned to force autoscaling validation. Existing Azure resources remain
+billable while retained. No new cost calculation is made; prior estimates remain
+historical estimates. Future cost optimization or resource cleanup is an operator
+decision, not an action performed by closure.
+
+### O11. Documentation review and verification
+
+Documentation-only validation checked `git diff --check`, reviewed
+`git diff -- docs/codex/reports/phase_16_report.md`, and compared the closure edits
+with the pre-task report baseline. The previous report body was preserved except
+for reclassifying its old current-status heading as historical. Status and diff
+scope confirmed only this already-modified report changed. A non-printing scan
+of the report and diff checked obvious credential/private-key/token/credential-URL
+and subscription-ID patterns; no exposed values were identified.
+
+Review confirmed PASS/CLOSED, AKS runtime COMPLETE, HPA calibration DEFERRED,
+Foundry 10 RPM as the limiting dependency, HPA disabled, and explicit emptyDir,
+networkPolicy NONE and production-readiness limitations. Earlier pending and
+incomplete statuses are explicitly superseded, not erased. No runtime code,
+configuration, tests, Helm assets or dependency contracts changed. No additional
+pytest, Helm, cluster/cloud inspection, load test or capacity change was run;
+earlier validation counts remain evidence of their dated tasks only. No secrets
+were inspected, no Azure or Kubernetes mutation occurred, and no commit or push
+was performed. The report remains uncommitted for operator review.
+
+### O12. Document Digestion roadmap handoff and final verdict
+
+Next: **Phase 17 — Production Document Digestion & Intelligence**.
+Beginning with **Phase 17A — Architecture, Cost & Risk Assessment**.
+Phase 17A is a design/read-only assessment for the 200–1000+ page
+document-digestion capability, not an implementation or provisioning phase.
+The planned sequence remains:
+
+| Phase | Planned scope |
+| --- | --- |
+| Phase 17A | Architecture, Cost & Risk Assessment |
+| Phase 17B | Canonical Document Model, Object Storage & Extraction Plane |
+| Phase 17C | Durable Job Orchestration, Idempotency & Recovery |
+| Phase 17D | Hierarchical Evidence-Grounded Digestion |
+| Phase 17E | Managed Inference Integration |
+| Phase 17F | RAG Publication, Provenance & Interactive Document Analysis |
+| Phase 17G | Multi-User Security, Quotas & Cost Governance |
+| Phase 17H | 200–1000+ Page Reliability, Failure & Quality Validation |
+| Phase 17I | External User Verification |
+
+Phase 16 Foundry work is preparatory infrastructure relevant to future Phase 17E;
+it does not mean Phase 17E has started or completed. The next activity is
+Phase 17A, not Phase 17B or Phase 17E. This closure does not start any Document
+Digestion work.
+
+**Phase 16 PASS / CLOSED.** The Azure/AKS target environment has validated the real
+PolyMind application control plane and its required Phase 16 dependencies:
+Foundry, Redis, Chroma/BM25, monitoring and the custom-metrics delivery path. The
+two-replica AKS deployment was healthy and operational for validation. Full AKS
+HPA scale-up/scale-down calibration is deliberately deferred because the current
+Foundry GlobalStandard deployment is limited to 10 requests per 60 seconds and
+became the bottleneck during bounded C2 testing. This does not block Phase 16
+closure. Production hardening remains outside the Phase 16 acceptance boundary.
