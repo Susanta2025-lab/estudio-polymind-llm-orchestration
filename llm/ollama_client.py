@@ -254,3 +254,44 @@ class OllamaClient:
         completion = values[1] if type(values[1]) is int and values[1] >= 0 else None
         total = prompt + completion if prompt is not None and completion is not None else None
         return InferenceUsage(prompt, completion, total)
+
+    def execute(self, request):
+        """Additive bounded generation using the same Ollama transport and role map."""
+        from llm.bounded_http import request_json, result_text, validate_request
+        from llm.structured import GenerationResult
+        validate_request(request)
+        cap = request.capability
+        model = self.model_id(request.role)
+        options = {'num_predict': request.output_tokens, 'num_ctx': cap.context_tokens}
+        if cap.temperature is not None:
+            options['temperature'] = cap.temperature
+        payload = {'model': model, 'stream': False, 'options': options,
+                   'messages': [{'role': 'system', 'content': request.system},
+                                {'role': 'user', 'content': request.data}]}
+        if cap.structured_output != 'prompt':
+            payload['format'] = request.schema if cap.structured_output == 'json_schema' else 'json'
+        observation = self.metrics.inference(self.name, request.role, model, 'generate')
+        error = None
+        usage = None
+        try:
+            value = request_json(self.http_client, self.url, headers={}, payload=payload,
+                                 timeout=self.timeout, total_seconds=request.total_seconds,
+                                 max_bytes=request.response_bytes * 6 + 8192)
+            try:
+                content = value['message']['content']
+                returned = value.get('model')
+                if value.get('done') is not True or returned not in (None, model, *cap.response_models):
+                    raise ValueError()
+                reason = value.get('done_reason')
+            except (KeyError, TypeError, ValueError):
+                raise InferenceResponseError('Inference provider returned an invalid response.') from None
+            usage = self._usage(value)
+            observation.observe_usage(usage)
+            return GenerationResult(result_text(content, request, reason), usage, returned or model, reason)
+        except BaseException as exc:
+            error = exc
+            if isinstance(exc, InferenceResponseError) or getattr(exc, 'category', None) == 'output_limit':
+                exc.usage = usage
+            raise
+        finally:
+            observation.finish(error)

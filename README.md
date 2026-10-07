@@ -968,6 +968,56 @@ make dev
 
 ---
 
+## Phase 16 — PASS / CLOSED
+
+The [authoritative Phase 16 closure](docs/codex/reports/phase_16_report.md#o12-document-digestion-roadmap-handoff-and-final-verdict)
+records real AKS application, Foundry, Redis, Chroma/BM25 and monitoring validation.
+Two fixed replicas were retained; HPA remained disabled. Foundry rate limiting
+constrained capacity calibration. Production HA, storage durability and network
+isolation remain unresolved; this is not a production-readiness claim.
+
+## Phase 17 — Production Document Digestion & Intelligence
+
+Current subphase: **Phase 17E — Managed Inference Integration — PASS** (local contracts;
+Foundry live validation blocked by unavailable local configuration).
+The [assessment report](docs/codex/reports/phase_17a_report.md) defines the
+architecture, cost drivers, risks and dependency gates for 200–1,000+ page
+processing. The [Phase 17B report](docs/codex/reports/phase_17b_report.md) documents
+implemented local canonical models, immutable objects and page/text extraction.
+The [Phase 17C report](docs/codex/reports/phase_17c_report.md) documents local durable
+jobs, idempotency, leases/fencing, retry, cancellation, outbox and recovery around
+those primitives. The [Phase 17D report](docs/codex/reports/phase_17d_report.md)
+documents deterministic structural planning, bounded hierarchical fake inference,
+original-source evidence inheritance, coverage/partial outcomes and durable resume.
+The [Phase 17E report](docs/codex/reports/phase_17e_report.md) documents the managed
+adapter using existing inference providers, versioned prompts/capabilities, bounded
+structured output, durable usage and shared reference admission with interactive
+headroom. It includes configuration and worker composition guidance. OpenAI-style
+and external-vLLM protocol contracts pass locally; no live provider was called.
+SQLite remains a local/reference ledger and admission authority, not shared AKS
+production state. Production database/queue infrastructure, OCR integration,
+real-model quality validation and RAG publication remain future work.
+Phase 17F has not started.
+
+| Subphase | Scope | Status |
+| --- | --- | --- |
+| Phase 17A | Architecture, Cost & Risk Assessment | ✅ Complete |
+| Phase 17B | Canonical Document Model, Object Storage & Extraction Plane | ✅ Complete |
+| Phase 17C | Durable Job Orchestration, Idempotency & Recovery | ✅ Complete |
+| Phase 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
+| Phase 17E | Managed Inference Integration | ✅ Complete (live Foundry blocked) |
+| Phase 17F | RAG Publication, Provenance & Interactive Document Analysis | Planned |
+| Phase 17G | Multi-User Security, Quotas & Cost Governance | Planned |
+| Phase 17H | 200–1000+ Page Reliability, Failure & Quality Validation | Planned |
+| Phase 17I | External User Verification | Planned |
+
+Implementation proceeds through the dependency gates in the report. Tenant and
+provenance fields must be designed from Phase 17B; external users wait until
+Phase 17G controls and Phase 17H validation pass. No future service is provisioned
+by this roadmap.
+
+---
+
 # 📸 Screenshots
 
 ### Streamlit Interface

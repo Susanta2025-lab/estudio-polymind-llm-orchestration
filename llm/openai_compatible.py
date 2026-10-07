@@ -363,3 +363,44 @@ class OpenAICompatibleProvider:
             )
             if response is not None:
                 response.close()
+
+    def execute(self, request):
+        """Bounded non-streaming JSON generation; never changes interactive settings."""
+        from llm.bounded_http import request_json, result_text, validate_request
+        from llm.structured import GenerationResult
+        validate_request(request)
+        cap = request.capability
+        model = self.model_id(request.role)
+        payload = {'model': model, 'stream': False,
+                   'messages': [{'role': 'system', 'content': request.system},
+                                {'role': 'user', 'content': request.data}],
+                   cap.output_parameter: request.output_tokens}
+        if cap.temperature is not None:
+            payload['temperature'] = cap.temperature
+        if cap.structured_output == 'json_object':
+            payload['response_format'] = {'type': 'json_object'}
+        elif cap.structured_output == 'json_schema':
+            payload['response_format'] = {'type': 'json_schema', 'json_schema': {
+                'name': 'stage_result', 'strict': False, 'schema': request.schema}}
+        observation = self.metrics.inference(self.name, request.role, model, 'generate')
+        error = None
+        usage = None
+        try:
+            value = request_json(self.http_client, self.url, headers=self.headers, payload=payload,
+                                 timeout=self.timeout, total_seconds=request.total_seconds,
+                                 max_bytes=request.response_bytes * 6 + 8192)
+            usage = self._usage(value)
+            observation.observe_usage(usage)
+            content = self._completion_content(value)
+            returned = value.get('model')
+            if returned is not None and returned not in (model, *cap.response_models):
+                raise InferenceResponseError('Inference response model mismatch.')
+            reason = value['choices'][0].get('finish_reason')
+            return GenerationResult(result_text(content, request, reason), usage, returned or model, reason)
+        except BaseException as exc:
+            error = exc
+            if isinstance(exc, InferenceResponseError) or getattr(exc, 'category', None) == 'output_limit':
+                exc.usage = usage
+            raise
+        finally:
+            observation.finish(error)

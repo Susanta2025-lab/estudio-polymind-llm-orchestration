@@ -55,6 +55,22 @@ class InferenceRateLimitError(InferenceConnectionError):
 
     category = "overloaded"
 
+    def __init__(self, message="Inference provider is temporarily unavailable.", *, retry_after=None):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class InferenceConfigurationError(InferenceError):
+    category = "configuration_failure"
+
+
+class InferenceOutputLimitError(InferenceError):
+    category = "output_limit"
+
+
+class InferenceContextError(InferenceConfigurationError):
+    category = "context_exceeded"
+
 
 class InferenceModelUnavailableError(InferenceError):
     """The requested or configured model is not available."""
