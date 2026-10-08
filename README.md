@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-> **Current status:** Phase 17A–17E of the Production Document Digestion & Intelligence roadmap are complete. Phase 17F — **RAG Publication, Provenance & Interactive Document Analysis** — is next. The Phase 17E application contracts passed the complete local suite with **543 tests**. Live Foundry document-digestion validation remains pending because the Phase 17E execution environment did not contain the required endpoint/model/key configuration.
+> **Current status:** Phase 17A–17F of the Production Document Digestion & Intelligence roadmap are complete. Phase 17F adds coherent retrieval publication and canonical citations; the complete local suite passed **590 tests**. Phase 17G — **Multi-User Security, Quotas & Cost Governance** — is next. Live Foundry document-digestion validation remains pending because the Phase 17E execution environment did not contain the required endpoint/model/key configuration.
 
 ---
 
@@ -91,7 +91,7 @@ Final Response
 
 ## 2. Document-intelligence plane
 
-Implemented through Phase 17E:
+Implemented through Phase 17F:
 
 ```text
 PDF / Text
@@ -121,7 +121,10 @@ Managed provider-neutral inference
 Immutable document digest + evidence lineage
    │
    ▼
-Phase 17F: controlled RAG publication (next)
+Versioned RAG publication + canonical citations
+   │
+   ▼
+Selected-document interactive analysis
 ```
 
 The canonical document plane is intentionally separate from Chroma, BM25 and conversation memory. **Chroma is derived retrieval state, not the authoritative document store.**
@@ -187,6 +190,7 @@ FastAPI exposes:
 
 - `POST /query` — non-streaming response;
 - `POST /query/stream` — NDJSON streaming;
+- `POST /documents/analyze` — selected-document analysis with canonical citations (requires explicit service composition);
 - `GET /health` — process liveness;
 - `GET /ready` — dependency readiness;
 - `GET /metrics` — Prometheus-format metrics.
@@ -335,17 +339,15 @@ Protocol/application integration is complete; real-model quality remains a later
 
 # RAG publication model
 
-The existing RAG publication mechanism currently:
+Legacy ingestion retains its deterministic upserts, `BM25_CORPUS_VERSION` gating and controlled replica rollout.
 
-1. performs deterministic Chroma upserts;
-2. publishes `BM25_CORPUS_VERSION` only after all ingestion upserts succeed;
-3. builds one immutable process-local BM25 snapshot for that expected/published version;
-4. makes replicas unready on version mismatch;
-5. relies on controlled replica rollout to load a new sparse snapshot.
+Phase 17F adds an isolated document collection with generation-filtered dense retrieval and one matching process-local BM25 snapshot. Immutable ObjectStore manifests preserve canonical provenance; a local transactional publication authority validates candidates and fences logical activation using the expected generation and a monotonically increasing epoch.
 
-This provides version gating but **does not claim atomic multi-document publication, automatic BM25 refresh or blue/green vector publication**.
+Implemented lifecycle behavior includes idempotent retry, durable candidate recovery, supersession, retrieval revocation and validated rollback. Candidate writes are physically incremental; **logical activation does not claim a transaction across Chroma and object storage**. Stale replicas remain alive but unready, and admitted requests retain one intact generation throughout retrieval and citation resolution. No request-time BM25 rebuild occurs.
 
-Phase 17F is specifically intended to add coherent publication generations, canonical provenance, reprocessing/revocation/rollback semantics and interactive document analysis without allowing generated summaries to masquerade as original evidence.
+The first retrieval profile publishes **COMPLETE original-source material only**, with explicit tokenizer bounds. Generated qualifications/conflicts remain separately labelled derived context. Selected-document analysis reuses the existing provider and returns application-controlled citations resolved to canonical PDF pages or text spans. **Provenance validity is not semantic entailment certification, and document filtering is not authorization.**
+
+The document-analysis service is opt-in through trusted application composition; the default application does not create runtime stores or publish documents. See the [Phase 17F report](docs/codex/reports/phase_17f_report.md#37-interactive-analysis-architecture-and-composition) for composition, generation rollout and reference-adapter limitations. Legacy `/query` and streaming behavior remain unchanged.
 
 ---
 
@@ -573,7 +575,7 @@ GitHub Actions currently performs:
 4. Docker Compose configuration validation;
 5. Docker image build.
 
-Phase 17E closure recorded **543 passing tests** locally.
+Phase 17F closure recorded **590 passing tests** locally, including 47 new publication and analysis cases.
 
 ---
 
@@ -592,7 +594,7 @@ Phase 17E closure recorded **543 passing tests** locally.
 | 17C | Durable Job Orchestration, Idempotency & Recovery | ✅ Complete |
 | 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
 | 17E | Managed Inference Integration | ✅ Complete — live Foundry digestion pending |
-| 17F | RAG Publication, Provenance & Interactive Document Analysis | ⏭ Next |
+| 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
 | 17G | Multi-User Security, Quotas & Cost Governance | Planned |
 | 17H | 200–1000+ Page Reliability, Failure & Quality Validation | Planned |
 | 17I | External User Verification | Planned |
@@ -613,6 +615,7 @@ Current key reports:
 - [Phase 17C — Durable Job Orchestration](docs/codex/reports/phase_17c_report.md)
 - [Phase 17D — Hierarchical Evidence-Grounded Digestion](docs/codex/reports/phase_17d_report.md)
 - [Phase 17E — Managed Inference Integration](docs/codex/reports/phase_17e_report.md)
+- [Phase 17F — RAG Publication, Provenance & Interactive Document Analysis](docs/codex/reports/phase_17f_report.md)
 
 The reports distinguish verified behavior from deferred production claims.
 
@@ -632,7 +635,8 @@ The repository should **not** currently be interpreted as claiming:
 - self-hosted vLLM/GPU infrastructure;
 - OCR/image understanding;
 - 1000-page real-model production certification;
-- Phase 17 RAG publication;
+- production distributed publication authority or automatic replica refresh;
+- semantic citation entailment certification;
 - full production HA/DR.
 
 These are explicit roadmap items rather than hidden assumptions.
@@ -682,8 +686,8 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17F next
+**Current milestone:** Phase 17F complete; Phase 17G next
 
-The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, and managed inference integration.
+The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 
 If you find the project useful, consider starring the repository.

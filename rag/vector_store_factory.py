@@ -87,3 +87,11 @@ def close_vector_store() -> None:
         if _admin_store is not None:
             _admin_store.close()
             _admin_store = None
+
+
+def create_publication_vector_store(configuration: Settings = settings, *, administrative: bool = False):
+    """Separate Phase 17 collection; legacy unfiltered readers never see candidates."""
+    publication_configuration = configuration.model_copy(update={
+        'VECTOR_STORE_COLLECTION': configuration.VECTOR_STORE_COLLECTION + '_documents',
+    })
+    return create_vector_store(publication_configuration, administrative=administrative)

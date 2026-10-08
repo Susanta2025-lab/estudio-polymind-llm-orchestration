@@ -110,3 +110,26 @@ def hybrid_retrieve(
         ]
 
     return unique_results[:top_k]
+
+
+def record_identity(item):
+    """Publication IDs take precedence; legacy display identity remains compatible."""
+    if item.get('record_id'):
+        return ('publication', item['record_id'])
+    return ('legacy', item.get('source'), item.get('chunk_id'))
+
+
+def fuse_rankings(dense, sparse, *, rrf_k=60):
+    """RRF without discarding one side of conflicting evidence by text similarity."""
+    fused = {}
+    for ranking in (dense, sparse):
+        seen = set()
+        for rank, item in enumerate(ranking, 1):
+            key = record_identity(item)
+            if key in seen:
+                continue
+            seen.add(key)
+            if key not in fused:
+                fused[key] = {**item, 'rrf_score': 0.0}
+            fused[key]['rrf_score'] += 1 / (rrf_k + rank)
+    return sorted(fused.values(), key=lambda item: (-item['rrf_score'], str(record_identity(item))))

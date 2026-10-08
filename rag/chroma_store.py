@@ -4,7 +4,7 @@ import time
 from typing import Any, Dict, List, Sequence
 
 from llm.metrics import metrics
-from rag.vector_store import VectorDocument, VectorMatch, VectorReadiness, VectorStoreError
+from rag.vector_store import VectorDocument, VectorFilter, VectorMatch, VectorReadiness, VectorStoreError
 
 
 def _category(error: BaseException, operation: str) -> str:
@@ -68,11 +68,20 @@ class ChromaVectorStore:
             collection.modify(metadata=metadata)
         self._observe("publish_version", publish)
 
-    def similarity_search(self, embedding: Sequence[float], limit: int) -> List[VectorMatch]:
+    @staticmethod
+    def _where(scope):
+        if scope is None:
+            return {}
+        generation = {"generation": {"$eq": scope.generation}}
+        if scope.document_ids:
+            return {"where": {"$and": [generation, {"document_id": {"$in": list(scope.document_ids)}}]}}
+        return {"where": generation}
+
+    def similarity_search(self, embedding: Sequence[float], limit: int, *, scope: VectorFilter | None = None) -> List[VectorMatch]:
         def query():
             result = self._get_collection().query(
                 query_embeddings=[list(embedding)], n_results=limit,
-                include=["documents", "metadatas", "distances"],
+                include=["documents", "metadatas", "distances"], **self._where(scope),
             )
             documents = result["documents"][0]
             metadatas = result["metadatas"][0]
@@ -82,9 +91,9 @@ class ChromaVectorStore:
             return [VectorMatch(doc, dict(meta or {}), float(distance)) for doc, meta, distance in zip(documents, metadatas, distances)]
         return self._observe("query", query)
 
-    def list_documents(self) -> List[VectorDocument]:
+    def list_documents(self, *, scope: VectorFilter | None = None) -> List[VectorDocument]:
         def get():
-            result = self._get_collection().get(include=["documents", "metadatas"])
+            result = self._get_collection().get(include=["documents", "metadatas"], **self._where(scope))
             documents, metadatas = result["documents"], result["metadatas"]
             if len(documents) != len(metadatas):
                 raise ValueError("inconsistent vector response")

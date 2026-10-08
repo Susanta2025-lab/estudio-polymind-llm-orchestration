@@ -21,6 +21,8 @@ from rag.vector_store import VectorStoreError
 from rag.vector_store_factory import check_vector_store_readiness, close_vector_store
 from rag.bm25 import build_bm25, check_bm25_readiness, clear_bm25_snapshot
 from utils.logger import log_request
+from documents.publication.analysis import AnalysisRequest
+from documents.publication.models import PublicationError
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +43,20 @@ async def lifespan(_app: FastAPI):
         )
     finally:
         metrics.observe_bm25_build(time.perf_counter() - started, successful)
+    document_analysis = getattr(_app.state, "document_analysis", None)
+    if document_analysis is not None:
+        try:
+            document_analysis.replica.load()
+        except Exception:
+            logger.warning("Document publication startup snapshot unavailable")
     try:
         yield
     finally:
         clear_bm25_snapshot()
         close_memory_store()
         close_vector_store()
+        if document_analysis is not None:
+            document_analysis.replica.reader.vectors.close()
         close_provider = getattr(inference_provider, "close", None)
         if close_provider is not None:
             close_provider()
@@ -142,6 +152,10 @@ def readiness():
     )
     for component, component_ready, _status in components:
         metrics.set_component_readiness(component, component_ready)
+    document_analysis = getattr(app.state, "document_analysis", None)
+    if document_analysis is not None:
+        publication_ready = document_analysis.replica.ready()
+        components += (("document_publication", publication_ready, "publication_generation_mismatch"),)
     ready = all(component_ready for _, component_ready, _ in components)
     overall_status = "ready" if ready else next(status for _, ok, status in components if not ok)
     content = {
@@ -157,6 +171,13 @@ def readiness():
         },
         "models": dict(result.models),
     }
+    if document_analysis is not None:
+        snapshot = document_analysis.replica.snapshot
+        content["document_publication"] = {
+            "status": "ready" if publication_ready else "publication_generation_mismatch",
+            "expected_version": document_analysis.replica.expected_version,
+            "loaded_version": str(snapshot[0].generation) if snapshot else None,
+        }
     return JSONResponse(status_code=200 if ready else 503, content=content)
 
 
@@ -217,3 +238,18 @@ def query_stream(req: QueryRequest):
 @app.get("/memory/{session_id}")
 def memory(session_id: str = Path(min_length=1, max_length=256)):
     return {"session_id": session_id, "history": memory_store.get_history(session_id)}
+
+
+@app.exception_handler(PublicationError)
+async def publication_error_handler(_request: Request, exc: PublicationError):
+    status = 422 if exc.category == "retrieval_scope_invalid" else 503
+    return JSONResponse(status_code=status, content={"detail": "Document analysis is unavailable.", "category": exc.category})
+
+
+@app.post("/documents/analyze")
+def analyze_documents(req: AnalysisRequest):
+    # Trusted functional selection only. Phase 17G must add document authorization.
+    service = getattr(app.state, "document_analysis", None)
+    if service is None:
+        raise PublicationError("publication_unavailable")
+    return service.analyze(req)
