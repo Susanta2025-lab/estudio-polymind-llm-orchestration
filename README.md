@@ -2,13 +2,21 @@
 
 ### Multi-LLM RAG, Agent Orchestration & Document Intelligence Platform
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)]()
-[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green.svg)]()
-[![Streamlit](https://img.shields.io/badge/Streamlit-UI-red.svg)]()
-[![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-orange.svg)]()
-[![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-purple.svg)]()
-[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLMs-black.svg)]()
-[![CI](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/workflows/ci.yml/badge.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C?logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_DB-FFDE59?logo=chroma&logoColor=000000)](https://www.trychroma.com/)
+[![Redis](https://img.shields.io/badge/Redis-Shared_Memory-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+
+[![Azure](https://img.shields.io/badge/Azure-AKS_%2B_Foundry-0078D4?logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestration-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Helm](https://img.shields.io/badge/Helm-Deployment-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Observability-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![vLLM](https://img.shields.io/badge/vLLM-OpenAI--Compatible-5A67D8)](https://docs.vllm.ai/)
+[![GitHub Actions](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/workflows/ci.yml/badge.svg)](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/workflows/ci.yml)
 
 Estudio PolyMind is a production-style AI engineering platform for **multi-LLM orchestration**, **hybrid RAG**, **semantic routing**, **streaming inference**, **conversation memory**, and a growing **evidence-grounded document-intelligence pipeline**.
 
