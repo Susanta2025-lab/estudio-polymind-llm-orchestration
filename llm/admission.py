@@ -86,6 +86,7 @@ class SQLiteInferenceAdmission:
                 'CREATE INDEX calls_window ON inference_calls(quota,started)',
             )
             version = db.execute('PRAGMA user_version').fetchone()[0]
+            self._expected_schema = {s.split()[2]: s for s in schema}
             entries = {r['name']: r['sql'] for r in db.execute(
                 "SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'")}
             if version == 0 and not entries:
@@ -186,3 +187,14 @@ class SQLiteInferenceAdmission:
             return tuple(dict(r) for r in db.execute(
                 'SELECT * FROM inference_calls WHERE quota=? AND scope=? AND job=? ORDER BY started,rowid',
                 (self.quota_key, scope, str(job))))
+
+    def ready(self):
+        try:
+            with self._transaction() as db:
+                entries = {r['name']: r['sql'] for r in db.execute(
+                    "SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'")}
+                return (db.execute('PRAGMA user_version').fetchone()[0] == 1
+                        and entries == self._expected_schema
+                        and db.execute('PRAGMA quick_check').fetchone()[0] == 'ok')
+        except Exception:
+            return False

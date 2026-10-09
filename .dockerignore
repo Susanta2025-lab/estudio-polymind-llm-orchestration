@@ -39,3 +39,9 @@ media/
 results/
 
 experiments/
+
+# Local authorization/accounting authorities and their SQLite sidecars.
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*

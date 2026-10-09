@@ -57,6 +57,11 @@ class ManagedSettings(BaseSettings):
 
 
 def classify_managed(error):
+    from governance.ledger import GovernanceError
+    from security.models import SecurityError
+    if isinstance(error,(GovernanceError,SecurityError)):
+        return Failure(category='governance_denied' if isinstance(error,GovernanceError) else 'security_denied',
+                       classification='NON_RETRYABLE')
     if not isinstance(error, InferenceError):
         return classify_digestion(error)
     mapping = {
@@ -83,9 +88,10 @@ class ExecutionContext:
 
 class ManagedSynthesisInference:
     def __init__(self, provider: StructuredInferenceProvider, settings: ManagedSettings,
-                 admission: InferenceAdmissionPort, *, context=None, stage='chunk'):
+                 admission: InferenceAdmissionPort, *, context=None, stage='chunk', governance=None):
         self.provider, self.settings, self.admission = provider, settings, admission
         self.context, self.stage = context, stage
+        self.governance = governance
         self.profiles = {p.stage: p for p in settings.profiles}
         if not callable(getattr(provider, 'execute', None)):
             raise InferenceConfigurationError('Provider lacks bounded generation support.')
@@ -103,7 +109,7 @@ class ManagedSynthesisInference:
 
     def bind(self, context, stage):
         bound = ManagedSynthesisInference(self.provider, self.settings, self.admission,
-                                           context=context, stage=stage)
+                                           context=context, stage=stage, governance=self.governance)
         if bound.config != self.config:
             raise DigestionError('incompatible_checkpoint')
         return bound
@@ -176,6 +182,18 @@ class ManagedSynthesisInference:
         if self.context is None:
             raise InferenceConfigurationError('Durable execution context required.')
         self.context.check_active()
+        from config.settings import settings as application_settings
+        if self.governance is not None:
+            result = self.governance.execute(generation,identity=self.context.identity,
+                check_active=self.context.check_active,workload='DOCUMENT_BACKGROUND')
+            self.governance.authority.revalidate(self.governance.snapshot)
+            raw=result.text.encode('utf-8')
+            if len(raw)>request.profile.max_result_characters:
+                from llm.inference import InferenceOutputLimitError
+                raise InferenceOutputLimitError('Inference output limit exceeded.')
+            return raw
+        if application_settings.GOVERNANCE_ENABLED:
+            raise InferenceConfigurationError('Governed background execution context required.')
         ticket = self.admission.acquire(self.context.identity, estimate, generation.output_tokens)
         # Durable unknown observation precedes any network call. A crash retains it.
         usage, outcome = None, 'unknown'
@@ -200,6 +218,15 @@ class ManagedSynthesisInference:
 
 class ManagedDigestionHandler(DigestionHandler):
     def __call__(self, job, step, store):
+        governance = self.inference.governance
+        if governance is not None:
+            from security.models import Action, SecurityError
+            snapshot=governance.snapshot
+            if (snapshot.principal.scope != job.admission.scope
+                    or job.admission.document_id not in {d for d,s,e in snapshot.documents}
+                    or snapshot.action != Action.DOCUMENT_DELETE):
+                raise SecurityError()
+            governance.authority.revalidate(snapshot)
         plan, _ = self._load(store, job.admission.scope, job.admission.profile.max_artifact_bytes)
         if plan.profile.inference_config != self.inference.config:
             raise DigestionError('incompatible_checkpoint')

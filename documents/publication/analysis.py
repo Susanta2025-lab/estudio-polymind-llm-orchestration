@@ -41,13 +41,18 @@ class DocumentAnalysis:
         self.replica, self.provider, self.capability = replica, provider, capability
         self.input_bytes, self.output_tokens, self.reranker = input_bytes, output_tokens, reranker
 
-    def analyze(self, request):
+    def analyze(self, request, *, authorization=None, executor=None):
+        from config.settings import settings
+        if settings.authentication_mode == 'oidc_jwt' and (authorization is None or executor is None):
+            from security.models import SecurityError
+            raise SecurityError()
         request = AnalysisRequest.model_validate(request.model_dump())
-        pin = self.replica.pin(request.document_ids)
+        pin = self.replica.pin(request.document_ids, authorization=authorization)
         hits = self.replica.retrieve(request.query, pin, reranker=self.reranker)
         citations = self.replica.citations(pin, hits)
         generation = pin.snapshot[0].generation
         if not citations:
+            self.replica.validate_pin(pin)
             return {'generation': str(generation), 'answer': 'No relevant source evidence was retrieved.',
                     'evidence_status': 'insufficient', 'citations': [], 'semantic_support': 'not_evaluated'}
         data = canonical({'question': request.query,
@@ -58,7 +63,7 @@ class DocumentAnalysis:
         if (estimate > self.input_bytes or estimate + self.output_tokens + self.capability.overhead_tokens
                 + self.capability.safety_tokens > self.capability.context_tokens):
             raise PublicationError('analysis_limit')  # No silent removal of qualifications/conflicts.
-        result = self.provider.execute(GenerationRequest(system=SYSTEM, data=data, role=ModelRole.GENERAL,
+        result = (executor or self.provider).execute(GenerationRequest(system=SYSTEM, data=data, role=ModelRole.GENERAL,
             capability=self.capability, output_tokens=self.output_tokens, response_bytes=12000,
             schema=schema, total_seconds=60))
         try:
@@ -71,7 +76,7 @@ class DocumentAnalysis:
                 or (output.evidence_status == 'available' and not output.citation_ids)):
             raise PublicationError('citation_invalid')
         # Revalidate before returning in case immutable external state has disappeared.
-        self.replica.reader.validate(generation)
+        self.replica.validate_pin(pin)
         return {'generation': str(generation), 'answer': output.answer, 'evidence_status': output.evidence_status,
                 'citations': [allowed[c].model_dump(mode='json') for c in output.citation_ids],
                 'semantic_support': 'not_evaluated'}

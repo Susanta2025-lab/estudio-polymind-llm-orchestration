@@ -1,5 +1,6 @@
 """Read-only replica snapshots, pinned hybrid retrieval and canonical citations."""
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Literal
 from uuid import UUID
 
@@ -38,12 +39,15 @@ class Citation(FrozenModel):
 class PinnedRequest:
     snapshot: object
     document_ids: tuple[UUID, ...]
+    authorization: object = None
+    sparse_indexes: object = None
 
 
 class PublicationReplica:
     def __init__(self, reader, expected_version):
         self.reader, self.expected_version = reader, str(expected_version)
         self.snapshot = None
+        self.sparse_indexes = None
 
     def load(self):
         """Controlled startup operation only; requests/readiness never call this."""
@@ -53,9 +57,15 @@ class PublicationReplica:
         manifest = self.reader.validate(active.generation)
         corpus = [tokenize(r.text) for r in manifest.records]
         index = BM25Okapi(corpus) if corpus and any(corpus) else None
+        isolated = {}
+        for doc in manifest.documents:
+            positions = tuple(i for i,r in enumerate(manifest.records) if r.document_id == doc.document_id)
+            tokens = [corpus[i] for i in positions]
+            isolated[doc.document_id] = (positions, BM25Okapi(tokens) if any(tokens) else None)
         if self.reader.authority.active() != active:
             raise PublicationError('publication_generation_mismatch')
         self.snapshot = (manifest, index)
+        self.sparse_indexes = MappingProxyType(isolated)
 
     def ready(self):
         try:
@@ -64,19 +74,43 @@ class PublicationReplica:
         except Exception:
             return False
 
-    def pin(self, document_ids=None):
+    def pin(self, document_ids=None, *, authorization=None):
         snapshot = self.snapshot
         active = self.reader.authority.active()
         if (snapshot is None or str(active.generation) != self.expected_version
                 or snapshot[0].generation != active.generation):
             raise PublicationError('publication_generation_mismatch')
         # Detect active inventory/artifact loss. Validation never repairs or builds snapshots.
-        self.reader.validate(active.generation)
+        if authorization is None:
+            self.reader.validate(active.generation)
+        else:
+            authority, auth = authorization
+            authority.revalidate(auth)
+            if (not document_ids or set(document_ids) != {d for d,s,e in auth.documents}
+                    or any(s != snapshot[0].scope for d,s,e in auth.documents)):
+                from security.models import SecurityError
+                raise SecurityError()
         available = {d.document_id for d in snapshot[0].documents}
         selected = available if document_ids is None else set(document_ids)
         if document_ids is not None and (not selected or not selected <= available):
             raise PublicationError('retrieval_scope_invalid')
-        return PinnedRequest(snapshot, tuple(sorted(selected, key=str)))
+        return PinnedRequest(snapshot, tuple(sorted(selected, key=str)), authorization, self.sparse_indexes)
+
+    def validate_pin(self, pin):
+        from config.settings import settings
+        if pin.authorization is None:
+            if settings.authentication_mode == 'oidc_jwt':
+                from security.models import SecurityError
+                raise SecurityError()
+            return self.reader.validate(pin.snapshot[0].generation)
+        authority, auth = pin.authorization
+        authority.revalidate(auth)
+        if (set(pin.document_ids) != {d for d,s,e in auth.documents}
+                or any(s != pin.snapshot[0].scope for d,s,e in auth.documents)):
+            from security.models import SecurityError
+            raise SecurityError()
+        return self.reader.validate(pin.snapshot[0].generation, document_ids=pin.document_ids,
+                                    pinned_manifest=pin.snapshot[0])
 
     def retrieve(self, query, pin, *, top_k=8, reranker=None):
         manifest, index = pin.snapshot
@@ -86,7 +120,7 @@ class PublicationReplica:
         if not 1 <= top_k <= 32:
             raise PublicationError('retrieval_scope_invalid')
         # A pinned old generation may finish, but only while it remains intact.
-        self.reader.validate(manifest.generation)
+        self.validate_pin(pin)
         scope = VectorFilter(str(manifest.generation), tuple(str(d) for d in pin.document_ids))
         by_id = {str(r.record_id): r for r in manifest.records}
         dense = []
@@ -98,7 +132,17 @@ class PublicationReplica:
             if match.distance < 1:
                 dense.append({**match.metadata, 'text': match.document, 'score': max(0., 1-match.distance)})
         sparse = []
-        if index:
+        if pin.authorization is not None:
+            ranked = []
+            for doc in pin.document_ids:
+                positions, isolated = pin.sparse_indexes[doc]
+                if isolated:
+                    scores = isolated.get_scores(tokenize(query))
+                    ranked.extend((positions[i], float(score)) for i,score in enumerate(scores) if score > 0)
+            for i,score in sorted(ranked, key=lambda item:(-item[1],str(manifest.records[item[0]].record_id)))[:top_k]:
+                record = manifest.records[i]
+                sparse.append({**vector_metadata(manifest, record), 'text':record.text, 'score':score})
+        elif index:
             scores = index.get_scores(tokenize(query))
             ranking = sorted((i for i,r in enumerate(manifest.records) if r.document_id in selected),
                              key=lambda i: (-scores[i], str(manifest.records[i].record_id)))
@@ -126,6 +170,7 @@ class PublicationReplica:
         return result
 
     def citations(self, pin, results):
+        self.validate_pin(pin)
         manifest, _ = pin.snapshot
         by_id = {str(r.record_id): r for r in manifest.records}
         docs = {d.document_id: d for d in manifest.documents}
@@ -162,6 +207,7 @@ class PublicationReplica:
 
     def annotations(self, pin):
         """Generated annotations remain derived; preserve both sides and qualifications."""
+        self.validate_pin(pin)
         manifest, _ = pin.snapshot
         result = []
         for d in manifest.documents:

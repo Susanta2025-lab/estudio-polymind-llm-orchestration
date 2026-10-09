@@ -29,6 +29,8 @@ def stream_rag_response(
     """Run one request and yield structured events from that same execution."""
     route = "unknown"
     try:
+        from graph.generation import _legacy_only
+        _legacy_only()
         provider = provider or create_inference_provider()
         memory_store = memory_store or get_memory_store()
         if route_query is None:
@@ -74,10 +76,9 @@ def stream_rag_response(
         persist_exchange(query, answer, session_id, memory_store)
         yield {"type": "done", "response": answer}
     except InferenceError as exc:
-        logger.exception(
-            "Inference failed request_id=%s session=%s route=%s provider=%s category=%s",
+        logger.error(
+            "Inference failed request_id=%s route=%s provider=%s category=%s",
             request_id(),
-            session_id,
             route,
             getattr(provider, "name", "unknown"),
             exc.category,
@@ -97,5 +98,5 @@ def stream_rag_response(
         )
         yield {"type": "error", "message": "Knowledge retrieval is unavailable."}
     except Exception:
-        logger.exception("Streaming request failed for session=%s route=%s", session_id, route)
+        logger.error("Streaming request failed route=%s", route)
         yield {"type": "error", "message": "Request processing failed."}

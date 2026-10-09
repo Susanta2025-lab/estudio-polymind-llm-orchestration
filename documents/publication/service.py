@@ -31,19 +31,28 @@ class PublicationReader:
         except Exception:
             raise PublicationError('publication_validation_failed') from None
 
-    def validate(self, generation, *, sparse=False):
+    def validate(self, generation, *, sparse=False, document_ids=None, pinned_manifest=None):
         try:
-            manifest = self.manifest(generation)
+            manifest = pinned_manifest or self.manifest(generation)
+            if manifest.generation != generation or manifest.scope != self.scope:
+                raise PublicationError('provenance_invalid')
+            selected = set(document_ids) if document_ids is not None else {d.document_id for d in manifest.documents}
+            if not selected <= {d.document_id for d in manifest.documents}:
+                raise PublicationError('retrieval_scope_invalid')
+            selected_records = tuple(r for r in manifest.records if r.document_id in selected)
             expected = []
             for d in manifest.documents:
+                if d.document_id not in selected:
+                    continue
                 verified, artifact, digest, plan = accepted(self.jobs, self.objects, self.scope, d.job_id)
                 if verified != d:
                     raise PublicationError('provenance_invalid')
                 expected.extend(records(d, artifact, digest, plan, self.encoder))
-            if {r.record_id: r for r in expected} != {r.record_id: r for r in manifest.records}:
+            if {r.record_id: r for r in expected} != {r.record_id: r for r in selected_records}:
                 raise PublicationError('provenance_invalid')
-            inventory = self.vectors.list_documents(scope=VectorFilter(str(generation)))
-            wanted = {str(r.record_id): (r.text, vector_metadata(manifest, r)) for r in manifest.records}
+            inventory = self.vectors.list_documents(scope=VectorFilter(str(generation),
+                tuple(str(d) for d in document_ids) if document_ids is not None else ()))
+            wanted = {str(r.record_id): (r.text, vector_metadata(manifest, r)) for r in selected_records}
             actual = {r.metadata.get('record_id'): (r.document, r.metadata) for r in inventory}
             if len(inventory) != len(wanted) or actual != wanted:
                 raise PublicationError('publication_validation_failed')
@@ -59,7 +68,20 @@ class PublicationReader:
 
 
 class PublicationService(PublicationReader):
-    def plan(self, job_ids):
+    def _manage(self, authorization):
+        from config.settings import settings
+        from security.models import Action, SecurityError
+        if authorization is None:
+            if settings.authentication_mode == 'oidc_jwt':
+                raise SecurityError()
+            return
+        authority, principal = authorization
+        authority.authorize(principal, Action.PUBLICATION_MANAGE)
+        if principal.scope.tenant != self.scope.tenant:
+            raise SecurityError()
+
+    def plan(self, job_ids, *, authorization=None):
+        self._manage(authorization)
         base = self.authority.active()
         previous = self.manifest(base.generation, compatible=False) if base.generation else None
         candidate = plan_publication(self.jobs, self.objects, self.scope, job_ids, base, self.encoder, previous)
@@ -76,8 +98,9 @@ class PublicationService(PublicationReader):
         self.authority.register(candidate, ref)
         return candidate
 
-    def prepare(self, generation, *, checkpoint=lambda _point: None):
+    def prepare(self, generation, *, checkpoint=lambda _point: None, authorization=None):
         """Resume by deterministic upsert; no physical exactly-once claim."""
+        self._manage(authorization)
         manifest = self.manifest(generation)
         _, state, base = self.authority.candidate(generation)
         if state == 'ACCEPTED':
@@ -88,6 +111,7 @@ class PublicationService(PublicationReader):
         try:
             checkpoint('before_writes')
             for record in manifest.records:
+                self._manage(authorization)
                 self.vectors.upsert([physical_id(generation, record.record_id)], [record.text],
                     [self.encoder.embed(record.text)], [vector_metadata(manifest, record)])
                 checkpoint('after_write')
@@ -100,15 +124,18 @@ class PublicationService(PublicationReader):
             self.authority.mark(generation, 'FAILED', 'publication_write_failure')
             raise PublicationError('publication_write_failure') from None
 
-    def activate(self, generation, *, checkpoint=lambda _point: None):
+    def activate(self, generation, *, checkpoint=lambda _point: None, authorization=None):
+        self._manage(authorization)
         self.validate(generation, sparse=True)
         _, _, base = self.authority.candidate(generation)
         checkpoint('before_activation')
+        self._manage(authorization)
         result = self.authority.activate(generation, base)
         checkpoint('after_activation')
         return result
 
-    def revoke(self, document_ids, *, checkpoint=lambda _point: None):
+    def revoke(self, document_ids, *, checkpoint=lambda _point: None, authorization=None):
+        self._manage(authorization)
         active = self.authority.active()
         if active.generation is None:
             raise PublicationError('retrieval_scope_invalid')
@@ -116,19 +143,22 @@ class PublicationService(PublicationReader):
         selected = set(document_ids)
         if not selected or not selected <= {d.document_id for d in current.documents}:
             raise PublicationError('retrieval_scope_invalid')
-        candidate = self.plan([d.job_id for d in current.documents if d.document_id not in selected])
-        self.prepare(candidate.generation, checkpoint=checkpoint)
-        return self.activate(candidate.generation, checkpoint=checkpoint)
+        candidate = self.plan([d.job_id for d in current.documents if d.document_id not in selected], authorization=authorization)
+        self.prepare(candidate.generation, checkpoint=checkpoint, authorization=authorization)
+        return self.activate(candidate.generation, checkpoint=checkpoint, authorization=authorization)
 
-    def rollback(self, generation, expected, *, checkpoint=lambda _point: None):
+    def rollback(self, generation, expected, *, checkpoint=lambda _point: None, authorization=None):
+        self._manage(authorization)
         self.validate(generation, sparse=True)
         checkpoint('before_activation')
+        self._manage(authorization)
         result = self.authority.activate(generation, expected, rollback=True)
         checkpoint('after_activation')
         return result
 
-    def reconcile(self):
+    def reconcile(self, *, authorization=None):
         """Diagnostic only. Inactive physical rows need no deletion for correctness."""
+        self._manage(authorization)
         known = self.authority.inventory()
         physical = {r.metadata.get('generation') for r in self.vectors.list_documents()}
         active = self.authority.active()

@@ -5,6 +5,14 @@ from llm.openai_compatible import OpenAICompatibleProvider
 
 
 def create_inference_provider(config: Settings = settings) -> InferenceProvider:
+    provider = _create_inference_provider(config)
+    if config.GOVERNANCE_ENABLED:
+        from governance.execution import RestrictedProvider
+        return RestrictedProvider(provider)
+    return provider
+
+
+def _create_inference_provider(config):
     if config.INFERENCE_PROVIDER == "ollama":
         return OllamaClient(
             url=config.OLLAMA_URL,

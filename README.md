@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-> **Current status:** Phase 17A–17F of the Production Document Digestion & Intelligence roadmap are complete. Phase 17F adds coherent retrieval publication and canonical citations; the complete local suite passed **590 tests**. Phase 17G — **Multi-User Security, Quotas & Cost Governance** — is next. Live Foundry document-digestion validation remains pending because the Phase 17E execution environment did not contain the required endpoint/model/key configuration.
+> **Current status:** Phase 17A–17F of the Production Document Digestion & Intelligence roadmap are complete. Phase 17F adds coherent retrieval publication and canonical citations; its complete local suite passed **590 tests**. Phase 17G — **Multi-User Security, Quotas & Cost Governance** — has a local reference implementation with **PARTIAL** acceptance pending final verification. A Phase 17G full-suite run passed **650 tests before later edits**; see the [report](docs/codex/reports/phase_17g_report.md) for exact evidence and gaps. Live Foundry document-digestion validation remains blocked/pending.
 
 ---
 
@@ -347,7 +347,7 @@ Implemented lifecycle behavior includes idempotent retry, durable candidate reco
 
 The first retrieval profile publishes **COMPLETE original-source material only**, with explicit tokenizer bounds. Generated qualifications/conflicts remain separately labelled derived context. Selected-document analysis reuses the existing provider and returns application-controlled citations resolved to canonical PDF pages or text spans. **Provenance validity is not semantic entailment certification, and document filtering is not authorization.**
 
-The document-analysis service is opt-in through trusted application composition; the default application does not create runtime stores or publish documents. See the [Phase 17F report](docs/codex/reports/phase_17f_report.md#37-interactive-analysis-architecture-and-composition) for composition, generation rollout and reference-adapter limitations. Legacy `/query` and streaming behavior remain unchanged.
+The document-analysis service is opt-in through trusted application composition; the default application does not create runtime stores or publish documents. See the [Phase 17F report](docs/codex/reports/phase_17f_report.md#37-interactive-analysis-architecture-and-composition) for composition, generation rollout and reference-adapter limitations. Legacy `/query` and streaming behavior remain unchanged in disabled/static-bearer modes; OIDC restrictions are described below.
 
 ---
 
@@ -405,9 +405,26 @@ See:
 
 Current application protections include bounded request IDs, sanitized provider failures, production bearer-token support, secret-safe logging, read-only serving vector access and Helm security controls.
 
-However, the Phase 17 document plane does **not yet claim production multi-user authorization**. Tenant/owner scope is currently trusted application metadata rather than proof of identity.
+Phase 17G adds verified OIDC access tokens, immutable server-derived principals,
+SQLite ownership/grant/security-epoch authority, same-tenant sharing, authorized
+document analysis, scoped memory, owner/tenant reservations, operator-supplied
+decimal pricing, and usage reconciliation through the existing provider admission
+boundary. It does **not claim production multi-user deployment or public-user
+readiness**. Final acceptance remains PARTIAL.
 
-**Phase 17G** is reserved for real document ownership, authorization, tenant isolation, retention/deletion policy, per-owner quotas and cost governance.
+Legacy disabled/static-bearer workflows remain available. In OIDC mode,
+`/query` and `/query/stream` fail closed because the legacy corpus and generation
+paths lack the required authorization/accounting contract. Selected-document
+analysis requires explicit authorized service composition; mixed-owner selections
+are rejected. Sharing retains canonical ownership and the owner's publication.
+
+Tombstones override publication rollback. Tracked physical deletion remains
+`PURGE_PENDING`: current adapters cannot establish complete safe per-document
+purge. Unknown provider usage retains reservations across restart; it is never
+converted to zero. SQLite authorities remain single-host reference adapters.
+See the [Phase 17G operator contract](docs/security/phase_17g.md) for authentication
+modes, required configuration/pricing, memory isolation, quotas, audit, readiness,
+purge and deployment limitations.
 
 ---
 
@@ -595,7 +612,7 @@ Phase 17F closure recorded **590 passing tests** locally, including 47 new publi
 | 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
 | 17E | Managed Inference Integration | ✅ Complete — live Foundry digestion pending |
 | 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
-| 17G | Multi-User Security, Quotas & Cost Governance | Planned |
+| 17G | Multi-User Security, Quotas & Cost Governance | Partial — reference implementation; final verification pending |
 | 17H | 200–1000+ Page Reliability, Failure & Quality Validation | Planned |
 | 17I | External User Verification | Planned |
 
@@ -616,6 +633,7 @@ Current key reports:
 - [Phase 17D — Hierarchical Evidence-Grounded Digestion](docs/codex/reports/phase_17d_report.md)
 - [Phase 17E — Managed Inference Integration](docs/codex/reports/phase_17e_report.md)
 - [Phase 17F — RAG Publication, Provenance & Interactive Document Analysis](docs/codex/reports/phase_17f_report.md)
+- [Phase 17G — Multi-User Security, Quotas & Cost Governance](docs/codex/reports/phase_17g_report.md)
 
 The reports distinguish verified behavior from deferred production claims.
 
@@ -686,7 +704,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17F complete; Phase 17G next
+**Current milestone:** Phase 17F complete; Phase 17G partial, awaiting final acceptance
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

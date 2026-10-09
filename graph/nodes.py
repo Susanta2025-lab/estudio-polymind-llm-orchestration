@@ -8,6 +8,10 @@ from memory.memory_store import ConversationMemoryStore
 
 
 def router_node(state):
+    from config.settings import settings
+    if settings.authentication_mode == 'oidc_jwt':
+        from security.models import SecurityError
+        raise SecurityError('unsupported_execution')
     state["route"] = semantic_route(state["query"])
     return state
 

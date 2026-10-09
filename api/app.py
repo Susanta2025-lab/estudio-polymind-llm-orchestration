@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Path, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
 
 from api.security import ApplicationSecurityMiddleware, documentation_urls
@@ -23,12 +24,20 @@ from rag.bm25 import build_bm25, check_bm25_readiness, clear_bm25_snapshot
 from utils.logger import log_request
 from documents.publication.analysis import AnalysisRequest
 from documents.publication.models import PublicationError
+from security.models import SecurityError
+from governance.ledger import GovernanceError
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    if settings.authentication_mode == 'oidc_jwt' and getattr(_app.state,'security_runtime',None) is None:
+        from security.runtime import SecurityRuntime
+        try:
+            _app.state.security_runtime=SecurityRuntime(settings)
+        except Exception:
+            logger.error('Required security authority unavailable')
     logger.info("Service startup initialization beginning")
     started = time.perf_counter()
     successful = False
@@ -73,12 +82,43 @@ app = FastAPI(
     redoc_url=redoc_url,
     openapi_url=openapi_url,
 )
-app.add_middleware(ApplicationSecurityMiddleware, configuration=settings)
+app.add_middleware(ApplicationSecurityMiddleware, configuration=settings,
+                   runtime_getter=lambda:getattr(app.state,'security_runtime',None))
+
+
+@app.exception_handler(RequestValidationError)
+async def bounded_validation_error(_request: Request, _exc: RequestValidationError):
+    return JSONResponse(status_code=422,content={'detail':'Invalid request.'})
 
 
 class QueryRequest(BaseModel):
     query: str
     session_id: str = Field(default="default", min_length=1, max_length=256)
+
+
+@app.exception_handler(SecurityError)
+async def security_error_handler(_request: Request, exc: SecurityError):
+    status = 503 if exc.category in {'security_unavailable','security_configuration','unsupported_execution'} else 403
+    return JSONResponse(status_code=status,content={'detail':'Access unavailable.'})
+
+
+@app.exception_handler(GovernanceError)
+async def governance_error_handler(_request: Request, exc: GovernanceError):
+    return JSONResponse(status_code=429,content={'detail':'Resource admission denied.'})
+
+
+def principal_context(request):
+    if request is None or not getattr(request.state,'principal',None):
+        raise SecurityError('authentication_required')
+    runtime=getattr(app.state,'security_runtime',None)
+    if runtime is None:
+        raise SecurityError('security_unavailable')
+    return request.state.principal,runtime
+
+
+def legacy_query_guard():
+    if settings.authentication_mode == 'oidc_jwt':
+        raise SecurityError('unsupported_execution')
 
 
 @app.exception_handler(InferenceError)
@@ -150,6 +190,11 @@ def readiness():
         ("vector_store", vector_result.ready, vector_result.status),
         ("bm25", bm25_result.ready, bm25_result.status),
     )
+    if settings.authentication_mode == 'oidc_jwt':
+        runtime=getattr(app.state,'security_runtime',None)
+        secured=getattr(app.state,'authorized_analysis',None)
+        ok=runtime is not None and runtime.ready() and secured is not None and secured.ready()
+        components += (('security_governance',ok,'security_unavailable'),)
     for component, component_ready, _status in components:
         metrics.set_component_readiness(component, component_ready)
     document_analysis = getattr(app.state, "document_analysis", None)
@@ -188,6 +233,7 @@ def application_metrics():
 
 @app.post("/query")
 def query(req: QueryRequest):
+    legacy_query_guard()
     started = time.perf_counter()
     route = "unknown"
     outcome = "error"
@@ -214,6 +260,7 @@ def query(req: QueryRequest):
 
 @app.post("/query/stream")
 def query_stream(req: QueryRequest):
+    legacy_query_guard()
     def encode_events():
         started = time.perf_counter()
         metadata = {}
@@ -236,7 +283,11 @@ def query_stream(req: QueryRequest):
 
 
 @app.get("/memory/{session_id}")
-def memory(session_id: str = Path(min_length=1, max_length=256)):
+def memory(session_id: str = Path(min_length=1, max_length=256), request: Request = None):
+    if settings.authentication_mode == 'oidc_jwt':
+        from security.memory import ScopedMemory
+        principal,runtime=principal_context(request)
+        return {'session_id':session_id,'history':ScopedMemory(memory_store,runtime.authority,principal).get_history(session_id)}
     return {"session_id": session_id, "history": memory_store.get_history(session_id)}
 
 
@@ -247,9 +298,57 @@ async def publication_error_handler(_request: Request, exc: PublicationError):
 
 
 @app.post("/documents/analyze")
-def analyze_documents(req: AnalysisRequest):
-    # Trusted functional selection only. Phase 17G must add document authorization.
+def analyze_documents(req: AnalysisRequest, request: Request = None):
+    if settings.authentication_mode == 'oidc_jwt':
+        principal,runtime=principal_context(request)
+        service=getattr(app.state,'authorized_analysis',None)
+        if service is None or service.authority is not runtime.authority:
+            raise SecurityError('security_unavailable')
+        result,snapshot=service.analyze(principal,req)
+        request.state.release_snapshot=snapshot
+        return result
     service = getattr(app.state, "document_analysis", None)
     if service is None:
         raise PublicationError("publication_unavailable")
     return service.analyze(req)
+
+
+from uuid import UUID
+from documents.models import FrozenModel
+
+
+class ShareRequest(FrozenModel):
+    grantee_id: UUID
+
+
+@app.post('/documents/{document_id}/shares')
+def share_document(document_id: UUID, body: ShareRequest, request: Request):
+    principal,runtime=principal_context(request)
+    return {'grant_id':runtime.authority.share(principal,document_id,body.grantee_id)}
+
+
+@app.delete('/documents/{document_id}/shares/{grantee_id}')
+def revoke_share(document_id: UUID, grantee_id: UUID, request: Request):
+    principal,runtime=principal_context(request)
+    runtime.authority.share(principal,document_id,grantee_id,revoke=True)
+    return {'status':'revoked'}
+
+
+@app.delete('/documents/{document_id}')
+def delete_document(document_id: UUID, request: Request):
+    principal,runtime=principal_context(request)
+    return {'state':runtime.authority.tombstone(principal,document_id)}
+
+
+@app.delete('/memory/{session_id}')
+def delete_session(session_id: str, request: Request):
+    from security.memory import ScopedMemory
+    principal,runtime=principal_context(request)
+    ScopedMemory(memory_store,runtime.authority,principal).clear_session(session_id)
+    return {'session_id':session_id,'status':'deleted'}
+
+
+@app.get('/usage')
+def usage(request: Request, limit: int = 100, offset: int = 0):
+    principal,runtime=principal_context(request)
+    return {'records':runtime.governance.usage(principal,runtime.authority,limit=limit,offset=offset)}

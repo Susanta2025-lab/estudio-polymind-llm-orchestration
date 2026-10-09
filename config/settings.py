@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     API_PORT: int = 8001
     API_AUTH_ENABLED: bool = False
     API_AUTH_TOKEN: Optional[SecretStr] = None
+    # None preserves the historical API_AUTH_ENABLED contract.
+    API_AUTH_MODE: Optional[Literal['disabled', 'static_bearer', 'oidc_jwt']] = None
+    OIDC_CONFIGURATION: Optional[Dict[str, Any]] = None
+    SECURITY_AUTHORITY_PATH: Optional[str] = None
+    GOVERNANCE_ENABLED: bool = False
+    GOVERNANCE_AUTHORITY_PATH: Optional[str] = None
+    GOVERNANCE_POLICY: Optional[Dict[str, Any]] = None
+    GOVERNANCE_PRICING: Optional[Dict[str, Any]] = None
+    GOVERNANCE_PROVIDER_PATH: Optional[str] = None
+    GOVERNANCE_PROVIDER_KEY: Optional[str] = None
+    GOVERNANCE_PROVIDER_POLICY: Optional[Dict[str, Any]] = None
     API_DOCS_ENABLED: bool = True
     MAX_REQUEST_BYTES: int = Field(default=1_048_576, ge=1, le=10_485_760)
 
@@ -98,8 +109,33 @@ class Settings(BaseSettings):
     # =========================
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    @property
+    def authentication_mode(self):
+        return self.API_AUTH_MODE or ('static_bearer' if self.API_AUTH_ENABLED else 'disabled')
+
     @model_validator(mode="after")
     def validate_inference_configuration(self):
+        mode = self.authentication_mode
+        if (self.API_AUTH_MODE == 'disabled' and self.API_AUTH_ENABLED
+                or mode == 'oidc_jwt' and (self.API_AUTH_ENABLED or self.API_AUTH_TOKEN is not None)):
+            raise ValueError('Conflicting legacy and explicit authentication configuration')
+        if mode == 'oidc_jwt':
+            from security.identity import OIDCSettings
+            OIDCSettings.model_validate(self.OIDC_CONFIGURATION)
+            if not self.SECURITY_AUTHORITY_PATH or not self.GOVERNANCE_ENABLED:
+                raise ValueError('OIDC requires security authority and governance')
+        elif self.OIDC_CONFIGURATION is not None or self.GOVERNANCE_ENABLED:
+            raise ValueError('OIDC configuration/governance requires oidc_jwt mode')
+        if self.GOVERNANCE_ENABLED:
+            from governance.ledger import QuotaPolicy, PricingCatalog
+            from llm.admission import AdmissionPolicy
+            QuotaPolicy.model_validate(self.GOVERNANCE_POLICY)
+            PricingCatalog.model_validate(self.GOVERNANCE_PRICING)
+            AdmissionPolicy.model_validate(self.GOVERNANCE_PROVIDER_POLICY)
+            from pathlib import Path
+            paths = (self.SECURITY_AUTHORITY_PATH, self.GOVERNANCE_AUTHORITY_PATH, self.GOVERNANCE_PROVIDER_PATH)
+            if not self.GOVERNANCE_PROVIDER_KEY or any(not p or not Path(p).is_absolute() for p in paths) or len(set(paths)) != 3:
+                raise ValueError('Distinct absolute authority paths and provider quota key required')
         required = {"general", "coding", "summarization", "fast"}
         name, model_map = (
             ("OLLAMA_MODEL_MAP", self.OLLAMA_MODEL_MAP)
@@ -176,7 +212,7 @@ class Settings(BaseSettings):
             invalid = [name for name, host in endpoints.items() if host in loopback]
             if invalid:
                 raise ValueError(f"production external services must not use loopback hosts: {sorted(invalid)}")
-            if not self.API_AUTH_ENABLED:
+            if mode == 'disabled':
                 raise ValueError("production requires API_AUTH_ENABLED=true")
             if self.API_DOCS_ENABLED:
                 raise ValueError("production requires API_DOCS_ENABLED=false")
@@ -188,7 +224,7 @@ class Settings(BaseSettings):
             if not Path(self.MODEL_ARTIFACT_DIR).is_absolute():
                 raise ValueError("MODEL_ARTIFACT_DIR must be an absolute path")
 
-        if self.API_AUTH_ENABLED:
+        if mode == 'static_bearer':
             token = self.API_AUTH_TOKEN.get_secret_value() if self.API_AUTH_TOKEN else ""
             if len(token) < 32 or token != token.strip() or any(character.isspace() for character in token):
                 raise ValueError(

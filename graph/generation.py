@@ -10,6 +10,7 @@ from tools.datetime_tool import current_time
 
 
 def conversation_history(session_id: str, memory_store: ConversationMemoryStore = None) -> str:
+    _legacy_only()
     store = memory_store or get_memory_store()
     history = store.get_history(session_id)
     return "".join(
@@ -29,6 +30,7 @@ def rag_prompt_and_sources(
     rerank_documents: Callable = None,
     memory_store: ConversationMemoryStore = None,
 ) -> Tuple[str, str, List[Dict]]:
+    _legacy_only()
     if retrieve is None:
         from rag.hybrid_retriever import hybrid_retrieve
 
@@ -54,7 +56,14 @@ def tool_answer(query: str) -> str:
 
 
 def persist_exchange(query: str, answer: str, session_id: str, memory_store: ConversationMemoryStore = None) -> None:
+    _legacy_only()
     (memory_store or get_memory_store()).append_exchange(session_id, query, answer)
+
+
+def _legacy_only():
+    if settings.authentication_mode == 'oidc_jwt':
+        from security.models import SecurityError
+        raise SecurityError('unsupported_execution')
 
 
 def public_sources(documents: List[Dict]) -> List[Dict]:

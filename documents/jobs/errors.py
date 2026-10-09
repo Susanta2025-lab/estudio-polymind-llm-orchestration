@@ -13,6 +13,7 @@ CATEGORIES = frozenset(get_args(Category)) | frozenset({
     'inference_rate_limited', 'inference_timeout', 'inference_unavailable',
     'inference_authentication', 'inference_configuration', 'inference_invalid_response',
     'inference_context_exceeded', 'inference_output_limit', 'inference_unknown',
+    'governance_denied', 'security_denied',
 })
 
 
