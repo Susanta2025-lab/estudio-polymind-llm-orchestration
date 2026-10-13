@@ -1,0 +1,16 @@
+{
+  "version": "phase17h/1",
+  "seed": 1708,
+  "pages": [4, 200, 500, 1000, 1001],
+  "lines_per_page": 6,
+  "max_fixture_bytes": 16000000,
+  "max_seconds": 180,
+  "max_address_bytes": 2147483648,
+  "max_disk_bytes": 1073741824,
+  "max_files": 5000,
+  "query_samples": 3,
+  "concurrency": [1, 2, 4],
+  "worker_timeout_seconds": 120,
+  "provider_concurrent": 5,
+  "provider_interactive_slots": 1
+}

@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-> **Current status:** Phase 17A–17F of the Production Document Digestion & Intelligence roadmap are complete. Phase 17F adds coherent retrieval publication and canonical citations; its complete local suite passed **590 tests**. Phase 17G — **Multi-User Security, Quotas & Cost Governance** — has a local reference implementation with **PARTIAL** acceptance pending final verification. A Phase 17G full-suite run passed **650 tests before later edits**; see the [report](docs/codex/reports/phase_17g_report.md) for exact evidence and gaps. Live Foundry document-digestion validation remains blocked/pending.
+> **Current status:** Phases 17A–17F have completed application contracts. Phase 17G is **PASS within local/reference scope**, with **690 tests passed in 94.03 seconds** at closure; see its [authoritative report](docs/codex/reports/phase_17g_report.md). Phase 17H implements bounded physical-PDF reliability and quality evaluation and remains **PARTIAL** pending representative real-model/expert quality and separately authorized live Foundry validation. See the [17H report](docs/codex/reports/phase_17h_report.md) for measured local evidence and limits.
 
 ---
 
@@ -410,7 +410,7 @@ SQLite ownership/grant/security-epoch authority, same-tenant sharing, authorized
 document analysis, scoped memory, owner/tenant reservations, operator-supplied
 decimal pricing, and usage reconciliation through the existing provider admission
 boundary. It does **not claim production multi-user deployment or public-user
-readiness**. Final acceptance remains PARTIAL.
+readiness**. Phase 17G passed its accepted local/reference scope; distributed and public-user gates remain open.
 
 Legacy disabled/static-bearer workflows remain available. In OIDC mode,
 `/query` and `/query/stream` fail closed because the legacy corpus and generation
@@ -592,7 +592,9 @@ GitHub Actions currently performs:
 4. Docker Compose configuration validation;
 5. Docker image build.
 
-Phase 17F closure recorded **590 passing tests** locally, including 47 new publication and analysis cases.
+Phase 17F closure recorded **590 passing tests** locally, including 47 new publication and analysis cases. Phase 17G closure recorded **690 passing tests**.
+
+Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs/evaluation/phase_17h.md). Real 4/200/500/1000-page low-density PDFs completed with fake inference; 1001 pages were safely refused by the unchanged limit. Native completeness does not certify OCR, visual fidelity or semantic support. Large cases stay outside default pytest; generated PDFs and databases stay outside Git.
 
 ---
 
@@ -612,8 +614,8 @@ Phase 17F closure recorded **590 passing tests** locally, including 47 new publi
 | 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
 | 17E | Managed Inference Integration | ✅ Complete — live Foundry digestion pending |
 | 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
-| 17G | Multi-User Security, Quotas & Cost Governance | Partial — reference implementation; final verification pending |
-| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | Planned |
+| 17G | Multi-User Security, Quotas & Cost Governance | ✅ PASS — local/reference scope |
+| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | PARTIAL — local evidence implemented; real-model quality/live validation pending |
 | 17I | External User Verification | Planned |
 
 After Phase 17, the planned direction is broader Azure productionization of the document pipeline, including durable cloud storage/state, distributed worker/admission infrastructure, identity hardening and production reliability controls.
@@ -634,6 +636,7 @@ Current key reports:
 - [Phase 17E — Managed Inference Integration](docs/codex/reports/phase_17e_report.md)
 - [Phase 17F — RAG Publication, Provenance & Interactive Document Analysis](docs/codex/reports/phase_17f_report.md)
 - [Phase 17G — Multi-User Security, Quotas & Cost Governance](docs/codex/reports/phase_17g_report.md)
+- [Phase 17H — Large-Document Reliability & Quality Evaluation](docs/codex/reports/phase_17h_report.md)
 
 The reports distinguish verified behavior from deferred production claims.
 
@@ -704,7 +707,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17F complete; Phase 17G partial, awaiting final acceptance
+**Current milestone:** Phase 17G local/reference PASS; Phase 17H PARTIAL pending real-model quality/live validation
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

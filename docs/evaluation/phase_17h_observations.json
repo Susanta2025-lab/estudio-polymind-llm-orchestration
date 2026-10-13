@@ -1,0 +1,1268 @@
+{
+  "version": "phase17h-observations/1",
+  "starting_head": "45555394c350da7dfc18ed9409569dedefc8e789",
+  "scope": "offline synthetic; no semantic certification",
+  "environment": {
+    "cpu_count": 8,
+    "disk": {
+      "free": 875781222400,
+      "total": 1081101176832,
+      "used": 150327599104
+    },
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "profile_sha256": "1f43f175cd0dec53d23a3227dee45a38a5926f4477b1fbf4e00361658f66d3d1",
+    "pypdf": "6.12.2",
+    "python": "3.10.13",
+    "started_utc": "2026-10-12T06:13:35.223437+00:00"
+  },
+  "page_cases": [
+    {
+      "concurrency": 1,
+      "cpu_seconds": 0.5603613999999999,
+      "digest": {
+        "accepted_steps": 5,
+        "attempts": 5,
+        "bytes": 5315,
+        "checkpoint_count": 3,
+        "contradictions": 0,
+        "coverage": 1.0,
+        "evidence": 4,
+        "included": 4,
+        "provider_calls": 3,
+        "qualifications": 0,
+        "sqlite_bytes": 131072,
+        "status": "COMPLETE"
+      },
+      "disk": {
+        "bytes": 201047,
+        "files": 16
+      },
+      "elapsed_seconds": 0.6538716190000287,
+      "embedding": "constant fake",
+      "extraction": {
+        "accounted_pages": 4,
+        "artifact_bytes": 8331,
+        "characters": 1491,
+        "sha256": "ff044b041a17f668e1c4c44808e9a365e3c57deffb181eea52be597a9c7fc6ba",
+        "unit_statuses": {
+          "native_text": 4
+        }
+      },
+      "failures": [],
+      "fixture": {
+        "lines_per_page": 6,
+        "physical_pages": 4,
+        "seed": 1708,
+        "sha256": "1be99e19a56040fb55c74682a19f874d4d4573f18d9f52a9a7ae19c8158ea92d",
+        "source_bytes": 3537,
+        "version": "phase17h-pdf/1"
+      },
+      "model": "deterministic fake",
+      "object_io_before_publication": {
+        "inspect_calls": 10,
+        "put_calls": 10,
+        "read_bytes": 42854,
+        "read_calls": 10
+      },
+      "object_io_total": {
+        "inspect_calls": 55,
+        "put_calls": 11,
+        "read_bytes": 771389,
+        "read_calls": 153
+      },
+      "objects": {
+        "bytes": 40189,
+        "files": 10
+      },
+      "pages": 4,
+      "parent_elapsed_seconds": 1.2048772389998703,
+      "peak_rss_bytes": 72331264,
+      "phase": "readiness",
+      "plan": {
+        "bytes": 6847,
+        "chunks": 1,
+        "depth": 2,
+        "eligible": 4,
+        "max_estimated_input": 9790,
+        "max_fan_in": 1,
+        "profile": {
+          "allow_partial": false,
+          "capability": "structured-output",
+          "chunk_characters": 3200,
+          "chunking_profile": "analysis-chunks/1",
+          "context_tokens": 60000,
+          "estimator": "json-characters/1",
+          "inference_config": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "inference_profile": "deterministic/1",
+          "max_annotations": 8,
+          "max_artifact_bytes": 32000000,
+          "max_chunks": 900,
+          "max_claim_characters": 256,
+          "max_claims": 8,
+          "max_depth": 32,
+          "max_failed_units": 0,
+          "max_fan_in": 4,
+          "max_result_characters": 6000,
+          "max_source_units": 5000,
+          "max_steps": 1000,
+          "minimum_coverage": 1.0,
+          "output_schema": "stage-result/1",
+          "overlap_characters": 0,
+          "prompt_profile": "structured-data/1",
+          "reducer_profile": "lineage-reduction/1",
+          "reserved_output_tokens": 6000,
+          "role": "summarization",
+          "structure_profile": "source-structure/1",
+          "template_tokens": 64,
+          "version": "digestion/1"
+        },
+        "reducers": 2,
+        "steps": 5,
+        "structure_bytes": 1577
+      },
+      "publication": {
+        "citations": {
+          "max_seconds": 0.02017325300016637,
+          "median_seconds": 0.019053438999890204,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "dense_fake": {
+          "max_seconds": 1.5518000054726144e-05,
+          "median_seconds": 1.3532999901144649e-05,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "embedding_calls": 11,
+        "failures": 0,
+        "manifest_bytes": 9751,
+        "pin": {
+          "max_seconds": 0.018044685999939247,
+          "median_seconds": 0.017376875999843833,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "records": 8,
+        "retrieval": {
+          "max_seconds": 0.022435526999970534,
+          "median_seconds": 0.018028265999873838,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "vector_rows": 8,
+        "warmup": "generation loaded; no query discarded"
+      },
+      "run_count": 1,
+      "status": "PASS",
+      "timings": {
+        "admission": 0.01793137000004208,
+        "digestion": 0.15549319899992042,
+        "extraction": 0.019273847000022215,
+        "fixture": 0.001981597999929363,
+        "generation_load": 0.018972872999938772,
+        "planning": 0.009157989999948768,
+        "publication_activation": 0.02367316900017613,
+        "publication_plan": 0.02870195699983924,
+        "publication_prepare": 0.026049750999845855,
+        "readiness": 0.01705623300017578
+      },
+      "version": "phase17h/1"
+    },
+    {
+      "concurrency": 1,
+      "cpu_seconds": 10.9444687,
+      "digest": {
+        "accepted_steps": 35,
+        "attempts": 35,
+        "bytes": 131227,
+        "checkpoint_count": 33,
+        "contradictions": 1,
+        "coverage": 1.0,
+        "evidence": 200,
+        "included": 200,
+        "provider_calls": 33,
+        "qualifications": 2,
+        "sqlite_bytes": 233472,
+        "status": "COMPLETE"
+      },
+      "disk": {
+        "bytes": 1870474,
+        "files": 46
+      },
+      "elapsed_seconds": 10.807546295000066,
+      "embedding": "constant fake",
+      "extraction": {
+        "accounted_pages": 200,
+        "artifact_bytes": 350275,
+        "characters": 69611,
+        "sha256": "a86a8906aca1a69a5d1c44f88d0e64246d6e6f41776240203bec6c00c4b1d051",
+        "unit_statuses": {
+          "native_text": 200
+        }
+      },
+      "failures": [],
+      "fixture": {
+        "lines_per_page": 6,
+        "physical_pages": 200,
+        "seed": 1708,
+        "sha256": "e0e6cc4d5e3227898bbade6abcb8466be1372035801a6e1eb2c33801646b180f",
+        "source_bytes": 153221,
+        "version": "phase17h-pdf/1"
+      },
+      "model": "deterministic fake",
+      "object_io_before_publication": {
+        "inspect_calls": 40,
+        "put_calls": 40,
+        "read_bytes": 1381377,
+        "read_calls": 70
+      },
+      "object_io_total": {
+        "inspect_calls": 85,
+        "put_calls": 41,
+        "read_bytes": 26794918,
+        "read_calls": 633
+      },
+      "objects": {
+        "bytes": 1361076,
+        "files": 40
+      },
+      "pages": 200,
+      "parent_elapsed_seconds": 11.254972063999958,
+      "peak_rss_bytes": 96239616,
+      "phase": "readiness",
+      "plan": {
+        "bytes": 207943,
+        "chunks": 23,
+        "depth": 4,
+        "eligible": 200,
+        "max_estimated_input": 30862,
+        "max_fan_in": 4,
+        "profile": {
+          "allow_partial": false,
+          "capability": "structured-output",
+          "chunk_characters": 3200,
+          "chunking_profile": "analysis-chunks/1",
+          "context_tokens": 60000,
+          "estimator": "json-characters/1",
+          "inference_config": "5e37cf0257981e364ee05219f2c1f7cc95d91b2b27b1606543af66cbb6bf5c1f",
+          "inference_profile": "deterministic/1",
+          "max_annotations": 8,
+          "max_artifact_bytes": 32000000,
+          "max_chunks": 900,
+          "max_claim_characters": 256,
+          "max_claims": 8,
+          "max_depth": 32,
+          "max_failed_units": 0,
+          "max_fan_in": 4,
+          "max_result_characters": 6000,
+          "max_source_units": 5000,
+          "max_steps": 1000,
+          "minimum_coverage": 1.0,
+          "output_schema": "stage-result/1",
+          "overlap_characters": 0,
+          "prompt_profile": "structured-data/1",
+          "reducer_profile": "lineage-reduction/1",
+          "reserved_output_tokens": 6000,
+          "role": "summarization",
+          "structure_profile": "source-structure/1",
+          "template_tokens": 64,
+          "version": "digestion/1"
+        },
+        "reducers": 10,
+        "steps": 35,
+        "structure_bytes": 25879
+      },
+      "publication": {
+        "citations": {
+          "max_seconds": 0.558954846000006,
+          "median_seconds": 0.5296198949999962,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "dense_fake": {
+          "max_seconds": 0.00017462499999965075,
+          "median_seconds": 0.00014017500006957562,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "embedding_calls": 403,
+        "failures": 0,
+        "manifest_bytes": 401471,
+        "pin": {
+          "max_seconds": 0.5272032099999251,
+          "median_seconds": 0.5243978339999558,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "records": 400,
+        "retrieval": {
+          "max_seconds": 0.5460845059999428,
+          "median_seconds": 0.5414458590000777,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "vector_rows": 400,
+        "warmup": "generation loaded; no query discarded"
+      },
+      "run_count": 1,
+      "status": "PASS",
+      "timings": {
+        "admission": 0.30522767000002204,
+        "digestion": 1.6071857070000988,
+        "extraction": 0.3404027199999291,
+        "fixture": 0.08279884499984291,
+        "generation_load": 0.5478794970001672,
+        "planning": 0.22323671599997397,
+        "publication_activation": 0.5048784949999572,
+        "publication_plan": 0.6548735009998836,
+        "publication_prepare": 0.6249286620000021,
+        "readiness": 0.5847311559998616
+      },
+      "version": "phase17h/1"
+    },
+    {
+      "concurrency": 1,
+      "cpu_seconds": 31.942954599999997,
+      "digest": {
+        "accepted_steps": 78,
+        "attempts": 78,
+        "bytes": 319670,
+        "checkpoint_count": 76,
+        "contradictions": 1,
+        "coverage": 1.0,
+        "evidence": 500,
+        "included": 500,
+        "provider_calls": 76,
+        "qualifications": 2,
+        "sqlite_bytes": 401408,
+        "status": "COMPLETE"
+      },
+      "disk": {
+        "bytes": 4428375,
+        "files": 89
+      },
+      "elapsed_seconds": 30.662275905000115,
+      "embedding": "constant fake",
+      "extraction": {
+        "accounted_pages": 500,
+        "artifact_bytes": 874675,
+        "characters": 174311,
+        "sha256": "45bec48d7c04c2f0c72e2f2672502a35a1af6ef55bfa437773da40b427020a42",
+        "unit_statuses": {
+          "native_text": 500
+        }
+      },
+      "failures": [],
+      "fixture": {
+        "lines_per_page": 6,
+        "physical_pages": 500,
+        "seed": 1708,
+        "sha256": "fc44b02d2fde92cf4494c3048dfc1b696bebaf75d12a4c8ce072b0fb7c62b66a",
+        "source_bytes": 383033,
+        "version": "phase17h-pdf/1"
+      },
+      "model": "deterministic fake",
+      "object_io_before_publication": {
+        "inspect_calls": 83,
+        "put_calls": 83,
+        "read_bytes": 3412018,
+        "read_calls": 156
+      },
+      "object_io_total": {
+        "inspect_calls": 128,
+        "put_calls": 84,
+        "read_bytes": 66474729,
+        "read_calls": 1321
+      },
+      "objects": {
+        "bytes": 3373030,
+        "files": 83
+      },
+      "pages": 500,
+      "parent_elapsed_seconds": 31.082139017999907,
+      "peak_rss_bytes": 132354048,
+      "phase": "readiness",
+      "plan": {
+        "bytes": 515756,
+        "chunks": 56,
+        "depth": 4,
+        "eligible": 500,
+        "max_estimated_input": 30862,
+        "max_fan_in": 4,
+        "profile": {
+          "allow_partial": false,
+          "capability": "structured-output",
+          "chunk_characters": 3200,
+          "chunking_profile": "analysis-chunks/1",
+          "context_tokens": 60000,
+          "estimator": "json-characters/1",
+          "inference_config": "fe84657177bd064bffef1a918f6e5f420744efe36538780981ea2ae3edbb9059",
+          "inference_profile": "deterministic/1",
+          "max_annotations": 8,
+          "max_artifact_bytes": 32000000,
+          "max_chunks": 900,
+          "max_claim_characters": 256,
+          "max_claims": 8,
+          "max_depth": 32,
+          "max_failed_units": 0,
+          "max_fan_in": 4,
+          "max_result_characters": 6000,
+          "max_source_units": 5000,
+          "max_steps": 1000,
+          "minimum_coverage": 1.0,
+          "output_schema": "stage-result/1",
+          "overlap_characters": 0,
+          "prompt_profile": "structured-data/1",
+          "reducer_profile": "lineage-reduction/1",
+          "reserved_output_tokens": 6000,
+          "role": "summarization",
+          "structure_profile": "source-structure/1",
+          "template_tokens": 64,
+          "version": "digestion/1"
+        },
+        "reducers": 20,
+        "steps": 78,
+        "structure_bytes": 63379
+      },
+      "publication": {
+        "citations": {
+          "max_seconds": 1.9757347199999913,
+          "median_seconds": 1.6854550059999838,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "dense_fake": {
+          "max_seconds": 0.000827451999839468,
+          "median_seconds": 0.0003983399999469839,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "embedding_calls": 1003,
+        "failures": 0,
+        "manifest_bytes": 1001471,
+        "pin": {
+          "max_seconds": 1.6995982359999289,
+          "median_seconds": 1.4715830700001789,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "records": 1000,
+        "retrieval": {
+          "max_seconds": 1.4795995360000234,
+          "median_seconds": 1.4719114389999959,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "vector_rows": 1000,
+        "warmup": "generation loaded; no query discarded"
+      },
+      "run_count": 1,
+      "status": "PASS",
+      "timings": {
+        "admission": 0.744876116000114,
+        "digestion": 4.068808565999916,
+        "extraction": 0.9403364600000259,
+        "fixture": 0.17254267899988918,
+        "generation_load": 2.011837645000014,
+        "planning": 0.6894824040000458,
+        "publication_activation": 1.4612271270000292,
+        "publication_plan": 1.5394429589998708,
+        "publication_prepare": 1.729533278999952,
+        "readiness": 1.8131091300001572
+      },
+      "version": "phase17h/1"
+    },
+    {
+      "concurrency": 1,
+      "cpu_seconds": 87.30478219999999,
+      "digest": {
+        "accepted_steps": 153,
+        "attempts": 153,
+        "bytes": 635208,
+        "checkpoint_count": 151,
+        "contradictions": 1,
+        "coverage": 1.0,
+        "evidence": 1000,
+        "included": 1000,
+        "provider_calls": 151,
+        "qualifications": 2,
+        "sqlite_bytes": 692224,
+        "status": "COMPLETE"
+      },
+      "disk": {
+        "bytes": 8714076,
+        "files": 164
+      },
+      "elapsed_seconds": 82.75806811400003,
+      "embedding": "constant fake",
+      "extraction": {
+        "accounted_pages": 1000,
+        "artifact_bytes": 1748679,
+        "characters": 348812,
+        "sha256": "03d96573cca24b1002180f026bd2047c77e262d05deb8a860292a275a50a7a42",
+        "unit_statuses": {
+          "native_text": 1000
+        }
+      },
+      "failures": [],
+      "fixture": {
+        "lines_per_page": 6,
+        "physical_pages": 1000,
+        "seed": 1708,
+        "sha256": "e32ce6ba164d62277def0f94257f2e325f33b8c7f3047945625828afefaeb082",
+        "source_bytes": 768035,
+        "version": "phase17h-pdf/1"
+      },
+      "model": "deterministic fake",
+      "object_io_before_publication": {
+        "inspect_calls": 158,
+        "put_calls": 158,
+        "read_bytes": 6810193,
+        "read_calls": 306
+      },
+      "object_io_total": {
+        "inspect_calls": 203,
+        "put_calls": 159,
+        "read_bytes": 132740934,
+        "read_calls": 2521
+      },
+      "objects": {
+        "bytes": 6735894,
+        "files": 158
+      },
+      "pages": 1000,
+      "parent_elapsed_seconds": 83.43907162999994,
+      "peak_rss_bytes": 192651264,
+      "phase": "readiness",
+      "plan": {
+        "bytes": 1029680,
+        "chunks": 112,
+        "depth": 5,
+        "eligible": 1000,
+        "max_estimated_input": 30862,
+        "max_fan_in": 4,
+        "profile": {
+          "allow_partial": false,
+          "capability": "structured-output",
+          "chunk_characters": 3200,
+          "chunking_profile": "analysis-chunks/1",
+          "context_tokens": 60000,
+          "estimator": "json-characters/1",
+          "inference_config": "f510460f9bf0e0a05c16d005c0bfe3881caed2930c1c0d74082ecfbd9417096c",
+          "inference_profile": "deterministic/1",
+          "max_annotations": 8,
+          "max_artifact_bytes": 32000000,
+          "max_chunks": 900,
+          "max_claim_characters": 256,
+          "max_claims": 8,
+          "max_depth": 32,
+          "max_failed_units": 0,
+          "max_fan_in": 4,
+          "max_result_characters": 6000,
+          "max_source_units": 5000,
+          "max_steps": 1000,
+          "minimum_coverage": 1.0,
+          "output_schema": "stage-result/1",
+          "overlap_characters": 0,
+          "prompt_profile": "structured-data/1",
+          "reducer_profile": "lineage-reduction/1",
+          "reserved_output_tokens": 6000,
+          "role": "summarization",
+          "structure_profile": "source-structure/1",
+          "template_tokens": 64,
+          "version": "digestion/1"
+        },
+        "reducers": 39,
+        "steps": 153,
+        "structure_bytes": 125882
+      },
+      "publication": {
+        "citations": {
+          "max_seconds": 4.097891036999954,
+          "median_seconds": 4.079268517999935,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "dense_fake": {
+          "max_seconds": 0.0008407180000631342,
+          "median_seconds": 0.0008353460000307678,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "embedding_calls": 2003,
+        "failures": 0,
+        "manifest_bytes": 2001473,
+        "pin": {
+          "max_seconds": 4.036743000000115,
+          "median_seconds": 3.8345624820001376,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "records": 2000,
+        "retrieval": {
+          "max_seconds": 3.7855436769998505,
+          "median_seconds": 3.3665893419999975,
+          "n": 3,
+          "p95_seconds": null,
+          "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+        },
+        "vector_rows": 2000,
+        "warmup": "generation loaded; no query discarded"
+      },
+      "run_count": 1,
+      "status": "PASS",
+      "timings": {
+        "admission": 1.7771319180001228,
+        "digestion": 12.234684475999984,
+        "extraction": 1.9053316700001233,
+        "fixture": 0.4204795370001193,
+        "generation_load": 4.19153786999982,
+        "planning": 1.358281629999965,
+        "publication_activation": 4.426025430999971,
+        "publication_plan": 10.105958151999857,
+        "publication_prepare": 6.323439679999865,
+        "readiness": 3.6424626460000127
+      },
+      "version": "phase17h/1"
+    },
+    {
+      "concurrency": 1,
+      "cpu_seconds": 0.6310555000000001,
+      "disk": {
+        "bytes": 1264387,
+        "files": 4
+      },
+      "elapsed_seconds": 0.5681087099999331,
+      "embedding": "constant fake",
+      "failures": [],
+      "fixture": {
+        "lines_per_page": 6,
+        "physical_pages": 1001,
+        "seed": 1708,
+        "sha256": "c477773653977d5fd3ef684a8e588601f04cab37e0d63b32ba8e4f0a37a5c075",
+        "source_bytes": 768806,
+        "version": "phase17h-pdf/1"
+      },
+      "model": "deterministic fake",
+      "pages": 1001,
+      "parent_elapsed_seconds": 1.2031513199999608,
+      "peak_rss_bytes": 68812800,
+      "phase": "extraction",
+      "refusal": "page_limit_exceeded",
+      "run_count": 1,
+      "status": "EXPECTED_REFUSAL",
+      "timings": {
+        "fixture": 0.3649133700000675
+      },
+      "version": "phase17h/1"
+    }
+  ],
+  "corpus_cases": [
+    {
+      "citations": {
+        "max_seconds": 0.020833649999985937,
+        "median_seconds": 0.020411909999893396,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense": {
+        "max_seconds": 0.003024269999968965,
+        "median_seconds": 0.002671559999726014,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "disk": {
+        "bytes": 658857,
+        "files": 18
+      },
+      "documents": 1,
+      "failures": 0,
+      "fake_embedding_calls": 14,
+      "generation": "b28abb58-d175-5d95-96e2-a8f928e5401a",
+      "identity_reranker": {
+        "max_seconds": 6.300001587078441e-07,
+        "median_seconds": 5.400002009992022e-07,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "peak_rss_bytes": 122855424,
+      "physical_pages": 4,
+      "query_object_io": {
+        "inspect_calls": 35,
+        "read_bytes": 455214,
+        "read_calls": 96
+      },
+      "ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "records": 8,
+      "reranking_impact": "identity; no quality inference",
+      "retained_chroma_rows": 8,
+      "retrieval": {
+        "max_seconds": 0.024831719999838242,
+        "median_seconds": 0.0215991899999608,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "rrf": {
+        "max_seconds": 3.30299999404815e-05,
+        "median_seconds": 2.8529999781312654e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "selected_documents": 1,
+      "sparse": {
+        "max_seconds": 9.341999975731596e-05,
+        "median_seconds": 4.8150000111490954e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "sparse_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "timings": {
+        "activate": 0.02844468000012057,
+        "load": 0.02089782000030027,
+        "plan": 0.029352600000038365,
+        "prepare": 0.15656588999991072,
+        "ready": 0.020478869999806193,
+        "validate": 0.02282363999984227
+      },
+      "unauthorized_documents": 0
+    },
+    {
+      "citations": {
+        "max_seconds": 0.05034105000004274,
+        "median_seconds": 0.03223170000001119,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense": {
+        "max_seconds": 0.0037001699997745163,
+        "median_seconds": 0.003545460000168532,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "disk": {
+        "bytes": 1542699,
+        "files": 83
+      },
+      "documents": 8,
+      "failures": 0,
+      "fake_embedding_calls": 85,
+      "generation": "135fc328-4b76-5356-b015-4d8ad468e038",
+      "identity_reranker": {
+        "max_seconds": 1.9799999790848233e-06,
+        "median_seconds": 5.399997462518513e-07,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "multiple_selected_hits": 8,
+      "peak_rss_bytes": 129409024,
+      "physical_pages": 32,
+      "query_object_io": {
+        "inspect_calls": 35,
+        "read_bytes": 455214,
+        "read_calls": 96
+      },
+      "ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "records": 64,
+      "reranking_impact": "identity; no quality inference",
+      "retained_chroma_rows": 72,
+      "retrieval": {
+        "max_seconds": 0.06561953999971593,
+        "median_seconds": 0.03304845000002388,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "rrf": {
+        "max_seconds": 0.0001210499999615422,
+        "median_seconds": 3.735000018423307e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "selected_documents": 1,
+      "sparse": {
+        "max_seconds": 0.0001148400001511618,
+        "median_seconds": 8.40599996081437e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "sparse_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "timings": {
+        "activate": 0.17148825000003853,
+        "load": 0.15061031999994157,
+        "plan": 0.1604338199999802,
+        "prepare": 1.4735585700000229,
+        "ready": 0.15418584000008195,
+        "validate": 0.19595339999978023
+      },
+      "unauthorized_documents": 7
+    },
+    {
+      "citations": {
+        "max_seconds": 0.04872626999986096,
+        "median_seconds": 0.03711393000003227,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense": {
+        "max_seconds": 0.006106050000198593,
+        "median_seconds": 0.004101929999706044,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "dense_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "disk": {
+        "bytes": 4842895,
+        "files": 300
+      },
+      "documents": 32,
+      "failures": 0,
+      "fake_embedding_calls": 349,
+      "generation": "925c9751-0bb7-5ed0-8b0d-6d784795720c",
+      "identity_reranker": {
+        "max_seconds": 7.20000116416486e-07,
+        "median_seconds": 6.300001587078441e-07,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "multiple_selected_hits": 8,
+      "peak_rss_bytes": 150953984,
+      "physical_pages": 128,
+      "query_object_io": {
+        "inspect_calls": 35,
+        "read_bytes": 455214,
+        "read_calls": 96
+      },
+      "ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "records": 256,
+      "reranking_impact": "identity; no quality inference",
+      "retained_chroma_rows": 328,
+      "retrieval": {
+        "max_seconds": 0.05086152000012589,
+        "median_seconds": 0.039330900000095426,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "rrf": {
+        "max_seconds": 8.217000004151487e-05,
+        "median_seconds": 4.265999996277969e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "selected_documents": 1,
+      "sparse": {
+        "max_seconds": 8.378999973501777e-05,
+        "median_seconds": 6.381000002875226e-05,
+        "n": 5,
+        "p95_seconds": null,
+        "p95_status": "NOT ESTABLISHED: fewer than 100 samples"
+      },
+      "sparse_ranking": {
+        "k": 8,
+        "precision": {
+          "denominator": 8,
+          "numerator": 2,
+          "rate": 0.25
+        },
+        "recall": {
+          "denominator": 2,
+          "numerator": 2,
+          "rate": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "relevant": 2,
+        "returned": 8
+      },
+      "timings": {
+        "activate": 0.7256776499998523,
+        "load": 1.1817126000000826,
+        "plan": 0.8463295799997468,
+        "prepare": 7.924054707999858,
+        "ready": 0.9370214999999007,
+        "validate": 0.6643982700002198
+      },
+      "unauthorized_documents": 31
+    }
+  ],
+  "interactive_cases": [
+    {
+      "active_background_jobs": 0,
+      "background_jobs_completed": 0,
+      "failures": [],
+      "max_seconds": 0.14688309499979368,
+      "median_seconds": 0.09354863549970105,
+      "n": 100,
+      "p95_seconds": 0.11119742999972004,
+      "p95_status": "observed nearest-rank",
+      "provider_slots": 5,
+      "reserved_interactive_slots": 1,
+      "target_20_percent": "NOT ESTABLISHED for representative workload",
+      "warmup": "publication loaded; no requests discarded",
+      "workload": "held fake upstream inference; real authorized analysis and shared accounting"
+    },
+    {
+      "active_background_jobs": 1,
+      "background_jobs_completed": 1,
+      "failures": [],
+      "max_seconds": 0.20318571300003896,
+      "median_seconds": 0.11018057299997963,
+      "n": 100,
+      "p95_seconds": 0.1381688999999824,
+      "p95_status": "observed nearest-rank",
+      "provider_slots": 5,
+      "reserved_interactive_slots": 1,
+      "target_20_percent": "NOT ESTABLISHED for representative workload",
+      "warmup": "publication loaded; no requests discarded",
+      "workload": "held fake upstream inference; real authorized analysis and shared accounting"
+    },
+    {
+      "active_background_jobs": 4,
+      "background_jobs_completed": 4,
+      "failures": [],
+      "max_seconds": 0.2163858869998876,
+      "median_seconds": 0.11161905749986545,
+      "n": 100,
+      "p95_seconds": 0.1355570880000414,
+      "p95_status": "observed nearest-rank",
+      "provider_slots": 5,
+      "reserved_interactive_slots": 1,
+      "target_20_percent": "NOT ESTABLISHED for representative workload",
+      "warmup": "publication loaded; no requests discarded",
+      "workload": "held fake upstream inference; real authorized analysis and shared accounting"
+    }
+  ],
+  "concurrency_cases": [
+    {
+      "concurrent_jobs": 1,
+      "peak_fake_provider_calls": 1,
+      "provider_limit": 5,
+      "reserved_interactive_slots": 1,
+      "elapsed_seconds": 0.8771852700001546,
+      "jobs": [
+        {
+          "owner": "93ed8ef4-786a-5f83-b200-21108d911aee",
+          "tenant": "7e6047cf-b12d-522d-9119-4ab1d889ab4b",
+          "seconds": 0.6025599899999179,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        }
+      ],
+      "fairness": "all progressed in this controlled sample; no general guarantee",
+      "cost": "synthetic catalog arithmetic; no billing",
+      "failures": 0
+    },
+    {
+      "concurrent_jobs": 2,
+      "peak_fake_provider_calls": 2,
+      "provider_limit": 5,
+      "reserved_interactive_slots": 1,
+      "elapsed_seconds": 1.1461858200000279,
+      "jobs": [
+        {
+          "owner": "93ed8ef4-786a-5f83-b200-21108d911aee",
+          "tenant": "7e6047cf-b12d-522d-9119-4ab1d889ab4b",
+          "seconds": 0.9097205399998529,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        },
+        {
+          "owner": "08da1b25-6e7b-5c2b-9ee5-fae4f93857e1",
+          "tenant": "cf958987-7a3e-5ae1-9ceb-c71f8b01f82b",
+          "seconds": 0.8936263799996595,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        }
+      ],
+      "fairness": "all progressed in this controlled sample; no general guarantee",
+      "cost": "synthetic catalog arithmetic; no billing",
+      "failures": 0
+    },
+    {
+      "concurrent_jobs": 4,
+      "peak_fake_provider_calls": 4,
+      "provider_limit": 5,
+      "reserved_interactive_slots": 1,
+      "elapsed_seconds": 2.4100703100002647,
+      "jobs": [
+        {
+          "owner": "93ed8ef4-786a-5f83-b200-21108d911aee",
+          "tenant": "7e6047cf-b12d-522d-9119-4ab1d889ab4b",
+          "seconds": 1.6102204200001324,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        },
+        {
+          "owner": "08da1b25-6e7b-5c2b-9ee5-fae4f93857e1",
+          "tenant": "cf958987-7a3e-5ae1-9ceb-c71f8b01f82b",
+          "seconds": 1.9594564199996967,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        },
+        {
+          "owner": "6f60ce5f-bc82-5188-8ff5-b3c939d4b2d9",
+          "tenant": "7e6047cf-b12d-522d-9119-4ab1d889ab4b",
+          "seconds": 1.6392167100002553,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        },
+        {
+          "owner": "f8066a45-2b42-5955-a9b3-a5fcc8cd413c",
+          "tenant": "cf958987-7a3e-5ae1-9ceb-c71f8b01f82b",
+          "seconds": 1.8701608500000475,
+          "calls": 3,
+          "status": "COMPLETE",
+          "attempts": 5
+        }
+      ],
+      "fairness": "all progressed in this controlled sample; no general guarantee",
+      "cost": "synthetic catalog arithmetic; no billing",
+      "failures": 0
+    }
+  ],
+  "quality": {
+    "accepted_digest": {
+      "abstention_correctness": {
+        "denominator": 0,
+        "numerator": 0,
+        "rate": null
+      },
+      "annotation_sources": [
+        "engineer-authored synthetic labels; not expert-reviewed model observations"
+      ],
+      "case_count": 4,
+      "categories": [
+        "synthetic"
+      ],
+      "citation_validity": {
+        "denominator": 4,
+        "numerator": 4,
+        "rate": 1.0
+      },
+      "claim_support": {
+        "denominator": 4,
+        "numerator": 4,
+        "rate": 1.0
+      },
+      "contradiction_qualification_preservation": {
+        "denominator": 2,
+        "numerator": 2,
+        "rate": 1.0
+      },
+      "critical_unsupported_conclusions": 0,
+      "real_model_certification": "PENDING: metrics alone do not establish representative expert sampling",
+      "required_finding_coverage": {
+        "denominator": 4,
+        "numerator": 4,
+        "rate": 1.0
+      },
+      "rubric_version": "phase17h-rubric/1"
+    },
+    "authorization_scope": "trusted offline owning scope; live authorization is separately tested",
+    "dataset_sha256": "22f8f3345152bf655a9a7e9e3a08f56cc0bd32d754f6bee32d6111313c7b2f2d",
+    "dataset_version": "phase17h-ground-truth/1",
+    "document_version": "e5075268-3edf-52b0-8d93-fd7d27c54bda",
+    "expert_sampling": "NOT VALIDATED",
+    "negative_control": {
+      "abstention_correctness": {
+        "denominator": 0,
+        "numerator": 0,
+        "rate": null
+      },
+      "annotation_sources": [
+        "engineer-authored adversarial control"
+      ],
+      "case_count": 1,
+      "categories": [
+        "synthetic"
+      ],
+      "citation_validity": {
+        "denominator": 1,
+        "numerator": 1,
+        "rate": 1.0
+      },
+      "claim_support": {
+        "denominator": 1,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "contradiction_qualification_preservation": {
+        "denominator": 0,
+        "numerator": 0,
+        "rate": null
+      },
+      "critical_unsupported_conclusions": 1,
+      "real_model_certification": "PENDING: metrics alone do not establish representative expert sampling",
+      "required_finding_coverage": {
+        "denominator": 1,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "rubric_version": "phase17h-rubric/1"
+    },
+    "question_answer_evaluation": "PENDING: no actual model answers supplied",
+    "source_sha256": "e0e6cc4d5e3227898bbade6abcb8466be1372035801a6e1eb2c33801646b180f"
+  },
+  "historical_runs": {
+    "page_run1": "4 and 200 PASS; 500 HARNESS_INTERRUPTED (journal stat race); fixed and rerun",
+    "latency_run1": "100 samples per condition; other test activity; retained outside Git, final run repeated without competing tests",
+    "type_matrix_initial": "columns line segmentation assumption failed; native text retained, unsupported layout documented"
+  }
+}

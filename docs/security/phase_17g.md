@@ -255,9 +255,10 @@ logging claim is made. Detailed accounting is not placed in Prometheus labels.
 `/health` remains independent liveness. `/ready` retains existing dependency gates
 and additionally requires configured authorized publications, usable authority
 databases, available audit capacity and a fresh verified JWKS cache. Missing
-security components deny serving. The final added readiness paths have an
-explicit verification gap recorded in the report; no live IdP check was run.
+security components deny serving. The final Phase 17G closure verified the added readiness paths and schema-drift
+checks; see the authoritative report. No live IdP check was run.
 
 Live Azure Foundry document-digestion validation remains **BLOCKED / PENDING**.
-Phase 17H reliability/quality certification and Phase 17I external verification
-remain future gates; this work authorizes neither.
+Phase 17H local reliability/evaluation evidence is recorded in its
+[report](../codex/reports/phase_17h_report.md); real-model semantic certification
+and Phase 17I external verification remain gated. This work authorizes neither.
