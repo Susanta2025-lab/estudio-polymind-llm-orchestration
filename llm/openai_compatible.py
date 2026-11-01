@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import time
 from typing import Any, Iterator, Mapping, Optional
 
@@ -29,6 +30,7 @@ class OpenAICompatibleProvider:
         base_url: str,
         model_map: Mapping[str, str],
         api_key: Optional[str] = None,
+        authentication_header: str = 'Authorization',
         connect_timeout: float = 5.0,
         read_timeout: float = 120.0,
         generation_parameters: Optional[Mapping[str, Any]] = None,
@@ -39,6 +41,8 @@ class OpenAICompatibleProvider:
         http_client=None,
         metric_store: Optional[Metrics] = None,
     ):
+        if authentication_header not in {'Authorization', 'api-key'}:
+            raise ValueError('Unsupported authentication header')
         self.base_url = base_url.rstrip("/")
         self.url = f"{self.base_url}/chat/completions"
         self.models_url = f"{self.base_url}/models"
@@ -61,7 +65,7 @@ class OpenAICompatibleProvider:
         self.http_client = http_client if http_client is not None else requests.Session()
         self.headers = {"Accept": "application/json"}
         if api_key and api_key.strip():
-            self.headers["Authorization"] = f"Bearer {api_key}"
+            self.headers[authentication_header] = f"Bearer {api_key}" if authentication_header == 'Authorization' else api_key
         self.metrics = metric_store or metrics
 
     @property
@@ -78,7 +82,14 @@ class OpenAICompatibleProvider:
 
     def close(self) -> None:
         if self._owns_http_client:
-            self.http_client.close()
+            primary = sys.exc_info()[0] is not None
+            try:
+                self.http_client.close()
+            except (OSError, requests.RequestException):
+                # The owner may close in finally while a provider error unwinds.
+                # Preserve that error; normalize only a cleanup-only failure.
+                if not primary:
+                    raise InferenceConnectionError('Inference provider cleanup failed.') from None
 
     def _payload(self, prompt: str, role: ModelRole, stream: bool) -> dict:
         return {
@@ -366,10 +377,17 @@ class OpenAICompatibleProvider:
 
     def execute(self, request):
         """Bounded non-streaming JSON generation; never changes interactive settings."""
+        from dataclasses import replace
+
         from llm.bounded_http import request_json, result_text, validate_request
-        from llm.structured import GenerationResult
+        from llm.structured import (
+            GenerationResult,
+            ProviderResultMetadata,
+            generation_schema_for_capability,
+        )
         validate_request(request)
         cap = request.capability
+        schema = generation_schema_for_capability(cap, request.schema)
         model = self.model_id(request.role)
         payload = {'model': model, 'stream': False,
                    'messages': [{'role': 'system', 'content': request.system},
@@ -377,28 +395,89 @@ class OpenAICompatibleProvider:
                    cap.output_parameter: request.output_tokens}
         if cap.temperature is not None:
             payload['temperature'] = cap.temperature
+        if cap.reasoning_effort is not None:
+            payload['reasoning_effort'] = cap.reasoning_effort
         if cap.structured_output == 'json_object':
             payload['response_format'] = {'type': 'json_object'}
         elif cap.structured_output == 'json_schema':
             payload['response_format'] = {'type': 'json_schema', 'json_schema': {
-                'name': 'stage_result', 'strict': False, 'schema': request.schema}}
+                'name': 'polymind_stage_result' if cap.schema_profile else 'stage_result',
+                'strict': cap.schema_profile is not None, 'schema': schema}}
         observation = self.metrics.inference(self.name, request.role, model, 'generate')
         error = None
         usage = None
+        metadata = ProviderResultMetadata(completion_token_limit=request.output_tokens,
+                                          response_byte_limit=request.response_bytes)
         try:
             value = request_json(self.http_client, self.url, headers=self.headers, payload=payload,
                                  timeout=self.timeout, total_seconds=request.total_seconds,
-                                 max_bytes=request.response_bytes * 6 + 8192)
+                                 max_bytes=(request.max_response_envelope_bytes
+                                            if request.max_response_envelope_bytes is not None
+                                            else request.response_bytes * 6 + 8192))
+            choices = value.get('choices') if isinstance(value, dict) else None
+            first = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+            message = first.get('message')
+            raw_content = message.get('content') if isinstance(message, dict) else None
+            try:
+                content_bytes = len(raw_content.encode('utf-8')) if isinstance(raw_content, str) else None
+            except UnicodeError:
+                content_bytes = None  # Diagnostic measurement cannot mask protocol failure.
+            metadata = ProviderResultMetadata(**ProviderResultMetadata(
+                finish_reason=first.get('finish_reason'),
+                raw_response_byte_count=content_bytes,
+                completion_token_limit=request.output_tokens, response_byte_limit=request.response_bytes).evidence())
+            # Bounded execution must not settle malformed/inconsistent usage as known.
             usage = self._usage(value)
+            reasoning_tokens = None
+            raw_usage = value.get('usage') if isinstance(value, dict) else None
+            if raw_usage is not None:
+                if not isinstance(raw_usage, dict):
+                    usage = None
+                    raise InferenceResponseError('Inference provider returned invalid usage.')
+                counts = [raw_usage.get(k) for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')]
+                invalid = any(v is not None and (type(v) is not int or v < 0) for v in counts)
+                invalid = invalid or (all(v is not None for v in counts) and counts[2] != counts[0] + counts[1])
+                details = raw_usage.get('completion_tokens_details')
+                if details is not None:
+                    if not isinstance(details, dict):
+                        invalid = True
+                    else:
+                        reasoning_tokens = details.get('reasoning_tokens')
+                        if reasoning_tokens is not None:
+                            invalid = invalid or (type(reasoning_tokens) is not int or reasoning_tokens < 0
+                                        or counts[1] is None or reasoning_tokens > counts[1])
+                if invalid:
+                    usage = None
+                    raise InferenceResponseError('Inference provider returned invalid usage.')
+            metadata = ProviderResultMetadata(**replace(metadata,
+                prompt_tokens=getattr(usage, 'prompt_tokens', None),
+                completion_tokens=getattr(usage, 'completion_tokens', None),
+                total_tokens=getattr(usage, 'total_tokens', None),
+                reasoning_tokens=reasoning_tokens).evidence())
             observation.observe_usage(usage)
-            content = self._completion_content(value)
+            if cap.schema_profile:
+                choices = value.get('choices') if isinstance(value, dict) else None
+                if (not isinstance(choices, list) or len(choices) != 1
+                        or not isinstance(choices[0], dict)
+                        or not isinstance(choices[0].get('message'), dict)
+                        or choices[0]['message'].get('refusal') is not None
+                        or choices[0].get('finish_reason') is None):
+                    raise InferenceResponseError('Inference provider did not complete structured output.')
+            reason = first.get('finish_reason')
+            # Null or absent content is used only to classify validated truncation.
+            # Refusals and malformed strict envelopes have already failed above.
+            content = (None if isinstance(message, dict) and message.get('content') is None
+                       and reason in ('length', 'max_tokens') else self._completion_content(value))
             returned = value.get('model')
             if returned is not None and returned not in (model, *cap.response_models):
                 raise InferenceResponseError('Inference response model mismatch.')
-            reason = value['choices'][0].get('finish_reason')
-            return GenerationResult(result_text(content, request, reason), usage, returned or model, reason)
+            return GenerationResult(result_text(content, request, reason, usage=usage, reasoning_tokens=reasoning_tokens), usage, returned or model, reason, metadata)
         except BaseException as exc:
             error = exc
+            exc.provider_metadata = metadata
+            if getattr(exc, 'category', None) == 'output_limit':
+                exc.diagnostics = replace(exc.diagnostics, response_byte_limit=request.response_bytes,
+                                          completion_token_limit=request.output_tokens)
             if isinstance(exc, InferenceResponseError) or getattr(exc, 'category', None) == 'output_limit':
                 exc.usage = usage
             raise

@@ -25,6 +25,16 @@ from llm.inference import (
 from llm.structured import CapabilityProfile, GenerationResult
 
 
+@pytest.fixture(autouse=True)
+def legacy_mode(monkeypatch):
+    """Exercise the supported pre-governance adapter, independent of local settings."""
+    from types import SimpleNamespace
+
+    import config.settings as application_config
+
+    monkeypatch.setattr(application_config, 'settings', SimpleNamespace(GOVERNANCE_ENABLED=False))
+
+
 def settings(**changes):
     values = dict(capability=CapabilityProfile(version='test/1', context_tokens=50000,
                   max_output_tokens=5000, overhead_tokens=100, safety_tokens=100),
@@ -255,3 +265,110 @@ def test_scope_audit_isolation(tmp_path):
     a=SQLiteInferenceAdmission(tmp_path/'quota.sqlite','quota',policy())
     ident=identity(); a.acquire(ident,10,10)
     assert not a.records('foreign-scope',ident.job)
+
+
+def test_generation_schema_exposes_canonical_defaults_and_versions_prompt(tmp_path):
+    from documents.digestion.models import StageResult
+    a, request, _, _, _ = setup_adapter(tmp_path)
+    generation, _ = a.render(request)
+    control = json.loads(generation.system.split('\nCONTROL\n')[1])
+    assert generation.schema == control['schema']
+    for node in (generation.schema, *generation.schema['$defs'].values()):
+        if 'properties' in node:
+            assert set(node['required']) == set(node['properties'])
+    assert 'schema_version' not in StageResult.model_json_schema()['required']
+    assert request.profile.prompt_profile == 'managed-prompt/4'
+    assert control['profile']['template_version'] == 'managed-prompt/4'
+    assert 'complete compact ASCII JSON' in generation.system
+    assert control['max_result_bytes'] == generation.response_bytes == 3000
+
+
+def test_default_expansion_remains_bounded_and_complete_result_can_fit(tmp_path):
+    from documents.digestion.codec import encode
+    from documents.digestion.models import StageResult
+    from documents.jobs.models import canonical
+    from documents.models import stable_id
+    a, request, index, _, _ = setup_adapter(tmp_path)
+    request = request.model_copy(update={'profile': request.profile.model_copy(update={'max_claims': 8})})
+    # Synthetic analogue of L1: optional defaults absent, eight short claims.
+    payload = dict(stage_id=str(request.stage_id), kind='analysis', outcome='analyzed',
+                   open_questions=[], limitations=[], claims=[dict(
+                       claim_id=str(stable_id(str(request.stage_id), str(i))),
+                       originating_stage=str(request.stage_id), kind='fact', text='x' * 75,
+                       evidence_ids=[str(request.source_data[0].evidence_id())], subject=None)
+                       for i in range(8)])
+    raw = canonical(payload).encode()
+    result = StageResult.model_validate(payload)
+    assert len(raw) < 3000 < len(encode(result))
+    with pytest.raises(DigestionError, match='synthesis_limit_exceeded') as caught:
+        validate_result(raw, request, index)
+    assert classify_managed(caught.value).category == 'extraction_limit_exceeded'
+    # Emit all defaults, retain every synthetic claim and citation, shorten prose.
+    payload['claims'] = [{**c, 'text': 'Synthetic finding.'} for c in payload['claims']]
+    complete = encode(StageResult.model_validate(payload))
+    accepted = validate_result(complete, request, index)
+    assert len(complete) <= 3000
+    assert len(accepted.claims) == 8
+    assert {e for c in accepted.claims for e in c.evidence_ids} == {
+        p.evidence_id() for p in request.source_data}
+
+
+def test_governed_mode_rejects_legacy_adapter_before_admission(tmp_path, monkeypatch):
+    import config.settings as application_config
+
+    monkeypatch.setattr(application_config.settings, 'GOVERNANCE_ENABLED', True)
+    adapter, request, _, admission, context = setup_adapter(tmp_path)
+    with pytest.raises(InferenceConfigurationError, match='Governed background execution context required'):
+        adapter.analyze(request)
+    assert not adapter.provider.calls
+    assert not admission.records(context.identity.scope, context.identity.job)
+
+
+@pytest.mark.parametrize('binding', ['prompt_profile', 'inference_profile', 'inference_config'])
+def test_stale_execution_binding_fails_before_admission(tmp_path, binding):
+    adapter, request, _, admission, context = setup_adapter(tmp_path)
+    stale = {'prompt_profile': 'managed-prompt/3', 'inference_profile': 'deterministic/1',
+             'inference_config': '0' * 64}
+    request = request.model_copy(update={'profile': request.profile.model_copy(
+        update={binding: stale[binding]})})
+    with pytest.raises(DigestionError, match='incompatible_checkpoint'):
+        adapter.analyze(request)
+    assert not adapter.provider.calls
+    assert not admission.records(context.identity.scope, context.identity.job)
+
+
+@pytest.mark.parametrize('stage', ['chunk', 'intermediate', 'structural', 'root'])
+def test_explicit_v3_stage_configuration_rejected(stage):
+    from pydantic import ValidationError
+
+    chosen = settings().model_dump(mode='json')
+    for profile in chosen['profiles']:
+        if profile['stage'] == stage:
+            profile['template_version'] = 'managed-prompt/3'
+    with pytest.raises(ValidationError):
+        ManagedSettings.model_validate(chosen)
+
+
+@pytest.mark.parametrize('kind', ['unknown', 'unsupported', 'commentary', 'structural'])
+def test_subject_rejection_does_not_trigger_correction_or_retry(tmp_path, kind):
+    def response(data):
+        data['claims'][0].update(kind=kind, subject='SYNTHETIC_PRIVATE_SUBJECT')
+        return json.dumps(data)
+
+    adapter, request, index, admission, context = setup_adapter(tmp_path, provider=Provider(mutate=response))
+    raw = adapter.analyze(request)
+    with pytest.raises(DigestionError) as caught:
+        validate_result(raw, request, index)
+    error = caught.value
+    failure = classify_managed(error)
+    assert (failure.category, error.validation_diagnostic.value, error.validation_reason.value) == (
+        'serialization_error', 'claim_contract', 'subject_on_nonfact')
+    assert failure.classification == 'NON_RETRYABLE'
+    assert len(adapter.provider.calls) == 1
+    rows = admission.records(context.identity.scope, context.identity.job)
+    assert len(rows) == 1 and rows[0]['outcome'] == 'success' and not rows[0]['active']
+    safe = json.dumps({'message': str(error), 'failure': failure.model_dump(mode='json'),
+        'diagnostic': error.validation_diagnostic.value, 'reason': error.validation_reason.value})
+    for private in ('SYNTHETIC_PRIVATE_SUBJECT', json.loads(raw)['claims'][0]['text'],
+                    request.source_data[0].text, str(request.source_data[0].evidence_id()), raw.decode()):
+        assert private not in safe

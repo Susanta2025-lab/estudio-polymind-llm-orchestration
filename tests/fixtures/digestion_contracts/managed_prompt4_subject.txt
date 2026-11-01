@@ -1,0 +1,7 @@
+Only kind="fact" may have a non-null subject.
+For kind="unknown", "unsupported", "commentary", or "structural", include subject=null.
+Never use an empty or blank string instead of null.
+For a fact, subject may also be null. A populated subject must be 1–128 characters
+matching ^[a-zA-Z0-9_./:-]+$ and identifies a structured proposition, not a general topic.
+Do not change a claim's kind to fact merely to retain a subject.
+Facts must still have supported status and authorized source support.

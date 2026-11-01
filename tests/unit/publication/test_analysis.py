@@ -43,6 +43,9 @@ def test_selected_document_canonical_citations_not_semantic_certification(env):
     data = json.loads(provider.calls[0].data)
     assert all(c['document_id'] == str(UUID(int=3)) for c in data['ORIGINAL_SOURCE_EVIDENCE'])
     assert 'DERIVED_RETRIEVAL_MATERIAL' in data
+    request = provider.calls[0]
+    assert json.loads(request.system.split('\nOUTPUT_SCHEMA\n')[1]) == request.schema
+    assert set(request.schema['required']) == {'answer', 'evidence_status', 'citation_ids'}
 
 
 @pytest.mark.parametrize('citation',['foreign','C999','other-document-page-2'])

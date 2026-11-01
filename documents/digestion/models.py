@@ -1,24 +1,44 @@
 """Versioned digestion contracts. Source references remain Phase 17B EvidenceRefs."""
 
+from enum import Enum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from documents.digestion.diagnostics import PydanticDiagnostic, ValidationReason
 from documents.jobs.models import Token, fingerprint
 from documents.models import Digest, EvidenceRef, FrozenModel, ObjectRef, stable_id
 
 Text = Annotated[str, Field(min_length=1, max_length=4096)]
 
 
+class ValidationDiagnostic(Enum):
+    """Internal fixed identifiers; never populated from generated content."""
+    JSON_DECODE = 'json_decode'
+    DUPLICATE_JSON_KEY = 'duplicate_json_key'
+    PYDANTIC_VALIDATION = 'pydantic_validation'
+    CANONICAL_SERIALIZATION = 'canonical_serialization'
+    STAGE_BINDING = 'stage_binding'
+    CLAIM_IDENTITY = 'claim_identity'
+    CLAIM_CONTRACT = 'claim_contract'
+    EVIDENCE_VALIDATION = 'evidence_validation'
+    COVERAGE_VALIDATION = 'coverage_validation'
+    RESPONSE_LIMIT = 'response_limit'
+
+
 class DigestionError(RuntimeError):
     """Content-free domain failures; workflow classification is an adapter concern."""
-    def __init__(self, category):
+    def __init__(self, category, *, diagnostic: ValidationDiagnostic | None = None,
+                 reason: ValidationReason | None = None, pydantic: PydanticDiagnostic | None = None):
         allowed = {'structural_planning_failed', 'analysis_failed', 'reducer_failed',
                    'evidence_validation_failed', 'coverage_failed', 'inference_contract_error',
                    'synthesis_limit_exceeded', 'incompatible_checkpoint'}
         self.category = category if category in allowed else 'inference_contract_error'
+        self.validation_diagnostic = diagnostic if type(diagnostic) is ValidationDiagnostic else None
+        self.validation_reason = reason if type(reason) is ValidationReason else None
+        self.pydantic_diagnostic = pydantic if type(pydantic) is PydanticDiagnostic else None
         super().__init__(self.category)
 
 
@@ -39,7 +59,9 @@ class DigestionProfile(FrozenModel):
     template_tokens: int = Field(ge=0)
     chunk_characters: int = Field(gt=0)
     max_fan_in: int = Field(ge=2, le=64)
+    # Legacy name: canonical serialized JSON bytes, not characters or tokens.
     max_result_characters: int = Field(gt=0)
+    max_response_bytes: int | None = Field(default=None, gt=0, le=4000000)
     max_claims: int = Field(ge=1, le=64)
     max_claim_characters: int = Field(ge=64, le=4096)
     max_annotations: int = Field(ge=0, le=64)
@@ -56,10 +78,21 @@ class DigestionProfile(FrozenModel):
 
     @model_validator(mode='after')
     def budget(self):
-        if (self.reserved_output_tokens < self.max_result_characters or
-                self.context_tokens <= self.reserved_output_tokens + self.template_tokens):
+        if self.context_tokens <= self.reserved_output_tokens + self.template_tokens:
             raise ValueError('invalid synthesis budget')
         return self
+
+    @model_serializer(mode='wrap')
+    def serialize(self, handler):
+        value = handler(self)
+        if self.max_response_bytes is None:
+            value.pop('max_response_bytes', None)
+        return value
+
+    @property
+    def response_byte_limit(self):
+        """Legacy profiles retain their existing raw-content bound."""
+        return self.max_result_characters if self.max_response_bytes is None else self.max_response_bytes
 
     def digest(self):
         return fingerprint(self.model_dump(mode='json'))

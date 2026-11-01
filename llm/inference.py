@@ -64,8 +64,26 @@ class InferenceConfigurationError(InferenceError):
     category = "configuration_failure"
 
 
+@dataclass(frozen=True)
+class OutputLimitDiagnostics:
+    """Content-free evidence; None means unavailable, never an inferred zero."""
+
+    failure_cause: str = 'unknown'
+    response_bytes: Optional[int] = None
+    response_byte_limit: Optional[int] = None
+    finish_reason: Optional[str] = None
+    completion_tokens: Optional[int] = None
+    completion_token_limit: Optional[int] = None
+    reasoning_tokens: Optional[int] = None
+    usage_available: bool = False
+
+
 class InferenceOutputLimitError(InferenceError):
     category = "output_limit"
+
+    def __init__(self, message='Inference output limit exceeded.', *, diagnostics=None):
+        super().__init__(message)
+        self.diagnostics = diagnostics or OutputLimitDiagnostics()
 
 
 class InferenceContextError(InferenceConfigurationError):

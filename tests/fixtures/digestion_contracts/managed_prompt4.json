@@ -1,0 +1,20 @@
+{
+  "managed_source_sha256": "fa6cd701b73c0cdd486b645a64748f3bb70509b17d310b40c9455c619dbc91a9",
+  "requests": {
+    "chunk": {
+      "request": "62eb2c247d2c55117920a5908a6e7de6ef00b14ee7eac23f47fc8d99037ab6bd",
+      "generation": "0094d4bf941fa88ac95de483bc9561674457acb0ebfebaf133699967426c71f2",
+      "payload": "8c5065034bdab1c16e355fa03bf2c63eb95828489a8cfce36fb70cc947e24c92"
+    },
+    "structural": {
+      "request": "3d491fe9dc85b4942b030cf1ca89eac2be43d8e57843a04cdba187d024964ea8",
+      "generation": "6d0146129e478c357de1ade54da29172a57381783a402796fab71454defbe556",
+      "payload": "1bed91997a99323cf65827bbc649ee92a75f464ca033bc9239f6609f7c3a4b91"
+    },
+    "root": {
+      "request": "9d6be0d9c3897882888f4a0e631fe23accf251b309ad8e4422fb40534a96b0f9",
+      "generation": "10ad9fabbb9259e0bcc01dfe9803eb3d91869a455361a490c193551d31e318c9",
+      "payload": "4c67d75dfb67619852e0300fda0bfa494269a618259c90849df9df0886366575"
+    }
+  }
+}

@@ -2,13 +2,21 @@
 
 from collections import defaultdict
 
-from documents.models import stable_id
 from documents.digestion.codec import decode, encode
+from documents.digestion.diagnostics import ValidationReason as Reason
 from documents.digestion.models import (
-    Coverage, Contradiction, DigestArtifact, DigestionError, StageResult,
-    InheritedSummary, Proposition, SectionSummary,
+    Contradiction,
+    Coverage,
+    DigestArtifact,
+    DigestionError,
+    InheritedSummary,
+    Proposition,
+    SectionSummary,
+    StageResult,
+    ValidationDiagnostic,
 )
 from documents.digestion.planning import check_request
+from documents.models import stable_id
 
 
 class EvidenceIndex:
@@ -27,40 +35,90 @@ class EvidenceIndex:
         pair = self.blocks.get(ref.block_id)
         if (ref.scope != doc.scope or ref.document_version_id != doc.document_version_id
                 or ref.extraction_id != self.artifact.extraction_id or pair is None):
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.OTHER_EVIDENCE_VALIDATION),
+            )
         unit, block = pair
         if (unit.source_id != ref.source_id or
                 not block.span.start <= ref.span.start <= ref.span.end <= block.span.end):
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.OTHER_EVIDENCE_VALIDATION),
+            )
         text = unit.text[ref.span.start:ref.span.end]
         lines = self.lines.get(unit.source_id)
         expected = None if lines is None else 1 + bisect_left(lines, ref.span.start)
         end = None if expected is None else expected + text.rstrip('\n').count('\n')
         if (ref.span.line_start, ref.span.line_end) != (expected, end):
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.OTHER_EVIDENCE_VALIDATION),
+            )
         return text
 
 
 def validate_result(raw, request, index):
     check_request(request)
     profile = request.profile
-    result = decode(raw, StageResult, profile.max_result_characters)
+    result = decode(raw, StageResult, profile.response_byte_limit)
     if len(encode(result)) > profile.max_result_characters:
-        raise DigestionError('synthesis_limit_exceeded')
+        raise DigestionError(
+            "synthesis_limit_exceeded",
+            diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+            reason=(Reason.CANONICAL_RESPONSE_LIMIT),
+        )
     if result.stage_id != request.stage_id or result.kind != request.stage:
-        raise DigestionError('inference_contract_error')
+        raise DigestionError(
+            "inference_contract_error",
+            diagnostic=ValidationDiagnostic.STAGE_BINDING,
+            reason=(
+                Reason.STAGE_ID_MISMATCH
+                if result.stage_id != request.stage_id
+                else Reason.STAGE_KIND_MISMATCH
+            ),
+        )
     if result.outcome == 'unavailable':
         if request.stage != 'analysis' or result.claims or not result.limitations:
-            raise DigestionError('inference_contract_error')
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.STAGE_BINDING,
+                reason=(
+                    Reason.UNAVAILABLE_REDUCTION
+                    if request.stage != "analysis"
+                    else Reason.UNAVAILABLE_WITH_CLAIMS
+                    if result.claims
+                    else Reason.UNAVAILABLE_MISSING_LIMITATION
+                ),
+            )
     elif request.stage == 'analysis' and not result.claims:
-        raise DigestionError('inference_contract_error')
+        raise DigestionError(
+            "inference_contract_error",
+            diagnostic=ValidationDiagnostic.STAGE_BINDING,
+            reason=(Reason.ANALYZED_WITHOUT_CLAIMS),
+        )
     if (len(result.claims) > profile.max_claims or len(result.open_questions) > profile.max_annotations
             or len(result.limitations) > profile.max_annotations):
-        raise DigestionError('synthesis_limit_exceeded')
+        raise DigestionError(
+            "synthesis_limit_exceeded",
+            diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+            reason=(
+                Reason.CLAIM_LIMIT
+                if len(result.claims) > profile.max_claims
+                else Reason.ANNOTATION_LIMIT
+            ),
+        )
     permitted = {}
     for piece in request.source_data:
         if index.resolve(piece.evidence) != piece.text:
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.OTHER_EVIDENCE_VALIDATION),
+            )
         permitted[piece.evidence_id()] = piece.evidence
     links = {(child.result.stage_id, c.claim_id): c for child in request.children for c in child.result.claims}
     # Direct IDs must literally appear in supplied child claims. Other source sets
@@ -72,36 +130,97 @@ def validate_result(raw, request, index):
     for position, claim in enumerate(result.claims):
         if (claim.claim_id != stable_id(str(request.stage_id), str(position))
                 or claim.claim_id in ids or claim.originating_stage != request.stage_id):
-            raise DigestionError('inference_contract_error')
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.CLAIM_IDENTITY,
+                reason=(
+                    Reason.DUPLICATE_CLAIM_ID
+                    if claim.claim_id in ids
+                    else Reason.CLAIM_ID_MISMATCH
+                    if claim.claim_id != stable_id(str(request.stage_id), str(position))
+                    else Reason.ORIGINATING_STAGE_MISMATCH
+                ),
+            )
         ids.add(claim.claim_id)
         if len(claim.text) > profile.max_claim_characters or len(claim.qualifications) > profile.max_annotations:
-            raise DigestionError('synthesis_limit_exceeded')
+            raise DigestionError(
+                "synthesis_limit_exceeded",
+                diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                reason=(
+                    Reason.TEXT_LIMIT
+                    if len(claim.text) > profile.max_claim_characters
+                    else Reason.ANNOTATION_LIMIT
+                ),
+            )
         references = (*claim.evidence_ids, *claim.contradicting_evidence_ids)
         for values in (claim.evidence_ids, claim.contradicting_evidence_ids):
             if len(set(values)) != len(values) or not set(values) <= allowed:
-                raise DigestionError('evidence_validation_failed')
+                raise DigestionError(
+                    "evidence_validation_failed",
+                    diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                    reason=(
+                        Reason.DUPLICATE_EVIDENCE
+                        if len(set(values)) != len(values)
+                        else Reason.FOREIGN_EVIDENCE
+                    ),
+                )
         used.update(references)
         lineage = [(link.stage_id, link.claim_id) for link in claim.lineage]
         if len(set(lineage)) != len(lineage) or not set(lineage) <= links.keys():
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(
+                    Reason.DUPLICATE_CHILD_LINK
+                    if len(set(lineage)) != len(lineage)
+                    else Reason.INVALID_CHILD_LINK
+                ),
+            )
         linked.update(lineage)
         has_source = bool(claim.evidence_ids) or any(links[k].evidence_ids or links[k].lineage for k in lineage)
         if claim.kind == 'fact' and (not has_source or claim.status != 'supported'):
-            raise DigestionError('evidence_validation_failed')
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.UNSUPPORTED_FACT),
+            )
         for qualification in claim.qualifications:
             if (not qualification.evidence_ids or len(qualification.text) > profile.max_claim_characters
                     or len(set(qualification.evidence_ids)) != len(qualification.evidence_ids)
                     or not set(qualification.evidence_ids) <= allowed):
-                raise DigestionError('evidence_validation_failed')
+                raise DigestionError(
+                    "evidence_validation_failed",
+                    diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                    reason=(Reason.TEXT_LIMIT if qualification.evidence_ids
+                            and len(qualification.text) > profile.max_claim_characters
+                            else Reason.INVALID_QUALIFICATION_SOURCE),
+                )
         if claim.subject is not None and claim.kind != 'fact':
-            raise DigestionError('inference_contract_error')
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.CLAIM_CONTRACT,
+                reason=(Reason.SUBJECT_ON_NONFACT),
+            )
     if result.outcome == 'analyzed' and request.stage == 'analysis' and used != set(permitted):
-        raise DigestionError('coverage_failed')
+        raise DigestionError(
+            "coverage_failed",
+            diagnostic=ValidationDiagnostic.COVERAGE_VALIDATION,
+            reason=(Reason.MISSING_SOURCE_COVERAGE),
+        )
     if request.stage == 'reduction' and linked != links.keys():
-        raise DigestionError('coverage_failed')  # No silently dropped child claims/qualifiers.
+        # No silently dropped child claims/qualifiers.
+        raise DigestionError(
+            "coverage_failed",
+            diagnostic=ValidationDiagnostic.COVERAGE_VALIDATION,
+            reason=(Reason.MISSING_CHILD_COVERAGE),
+        )
     for text in (*result.open_questions, *result.limitations):
         if len(text) > profile.max_claim_characters:
-            raise DigestionError('synthesis_limit_exceeded')
+            raise DigestionError(
+                "synthesis_limit_exceeded",
+                diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                reason=(Reason.TEXT_LIMIT),
+            )
     return result
 
 

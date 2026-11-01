@@ -202,3 +202,46 @@ def test_slow_trickle_hits_deadline(monkeypatch):
 
 def test_very_long_retry_hint_is_not_discarded():
     assert retry_after({'Retry-After':'999999999'})==604800
+
+
+def test_explicit_bounded_reasoning_effort_and_inclusive_usage():
+    value = payload(model='gpt-5.4-mini-2026-03-17', usage={'prompt_tokens':21,
+        'completion_tokens':40, 'total_tokens':61, 'completion_tokens_details':{'reasoning_tokens':35}})
+    p = client(Response(value), kind='foundry')
+    req = request(reasoning_effort='low', output_parameter='max_completion_tokens',
+                  structured_output='json_object', response_models=('gpt-5.4-mini-2026-03-17',))
+    result = p.execute(req)
+    sent = p.http_client.calls[0][1]['json']
+    assert sent['reasoning_effort'] == 'low'
+    assert sent['max_completion_tokens'] == req.output_tokens
+    assert 'max_tokens' not in sent and 'temperature' not in sent and 'top_p' not in sent
+    assert sent['response_format'] == {'type':'json_object'}
+    assert result.usage == InferenceUsage(21, 40, 61)  # Reasoning is already included, never added twice.
+
+
+def test_unset_reasoning_preserves_legacy_serialization_and_fingerprint():
+    from documents.jobs.models import fingerprint
+    cap = request().capability
+    legacy = dict(version='explicit/1', context_tokens=16000, max_output_tokens=2000,
+        overhead_tokens=64, safety_tokens=100, structured_output='prompt', output_parameter='max_tokens',
+        streaming=True, usage_reporting=False, temperature=None, response_models=[])
+    assert cap.model_dump(mode='json') == legacy
+    assert fingerprint(cap.model_dump(mode='json')) == fingerprint(legacy)
+    assert json.loads(cap.model_dump_json()) == legacy
+    changed = request(reasoning_effort='low').capability.model_dump(mode='json')
+    assert fingerprint(changed) != fingerprint(legacy)
+
+
+def test_ollama_rejects_explicit_unsupported_reasoning_before_io():
+    p = client(Response({}), kind='ollama')
+    with pytest.raises(InferenceConfigurationError):
+        p.execute(request(reasoning_effort='low'))
+    assert not p.http_client.calls
+
+
+def test_bounded_redirect_is_rejected_without_retry():
+    response=Response(status=307,headers={'Location':'https://unapproved.invalid'})
+    p=client(response)
+    with pytest.raises(InferenceConfigurationError):p.execute(request())
+    assert p.http_client.calls[0][1]['allow_redirects'] is False
+    assert len(p.http_client.calls)==1 and response.closed

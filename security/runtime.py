@@ -13,7 +13,10 @@ class SecurityRuntime:
         self.verifier=OIDCVerifier(OIDCSettings.model_validate(configuration.OIDC_CONFIGURATION))
         self.governance=GovernanceLedger(configuration.GOVERNANCE_AUTHORITY_PATH,
             QuotaPolicy.model_validate(configuration.GOVERNANCE_POLICY),
-            PricingCatalog.model_validate(configuration.GOVERNANCE_PRICING))
+            PricingCatalog.model_validate(configuration.GOVERNANCE_PRICING),
+            provider_path=configuration.GOVERNANCE_PROVIDER_PATH,
+            provider_key=configuration.GOVERNANCE_PROVIDER_KEY,
+            provider_policy=AdmissionPolicy.model_validate(configuration.GOVERNANCE_PROVIDER_POLICY))
         self.admission=SQLiteInferenceAdmission(Path(configuration.GOVERNANCE_PROVIDER_PATH),
             configuration.GOVERNANCE_PROVIDER_KEY,AdmissionPolicy.model_validate(configuration.GOVERNANCE_PROVIDER_POLICY))
 

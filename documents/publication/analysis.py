@@ -59,11 +59,14 @@ class DocumentAnalysis:
             'ORIGINAL_SOURCE_EVIDENCE': [c.model_dump(mode='json') for c in citations],
             'DERIVED_RETRIEVAL_MATERIAL': self.replica.annotations(pin)})
         schema = AnalysisOutput.model_json_schema()
-        estimate = len(SYSTEM.encode()) + len(data.encode()) + len(canonical(schema))
+        # JSON-object and prompt-only providers do not transmit request.schema.
+        # Keep the output contract in trusted instructions for every adapter.
+        system = SYSTEM + '\nOUTPUT_SCHEMA\n' + canonical(schema)
+        estimate = len(system.encode()) + len(data.encode()) + len(canonical(schema))
         if (estimate > self.input_bytes or estimate + self.output_tokens + self.capability.overhead_tokens
                 + self.capability.safety_tokens > self.capability.context_tokens):
             raise PublicationError('analysis_limit')  # No silent removal of qualifications/conflicts.
-        result = (executor or self.provider).execute(GenerationRequest(system=SYSTEM, data=data, role=ModelRole.GENERAL,
+        result = (executor or self.provider).execute(GenerationRequest(system=system, data=data, role=ModelRole.GENERAL,
             capability=self.capability, output_tokens=self.output_tokens, response_bytes=12000,
             schema=schema, total_seconds=60))
         try:

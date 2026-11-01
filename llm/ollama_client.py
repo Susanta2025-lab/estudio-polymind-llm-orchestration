@@ -261,6 +261,12 @@ class OllamaClient:
         from llm.structured import GenerationResult
         validate_request(request)
         cap = request.capability
+        if cap.schema_profile is not None:
+            from llm.inference import InferenceConfigurationError
+            raise InferenceConfigurationError('Unsupported strict schema capability.')
+        if cap.reasoning_effort is not None:
+            from llm.inference import InferenceConfigurationError
+            raise InferenceConfigurationError('Configured reasoning effort is unsupported by this adapter.')
         model = self.model_id(request.role)
         options = {'num_predict': request.output_tokens, 'num_ctx': cap.context_tokens}
         if cap.temperature is not None:
@@ -276,7 +282,9 @@ class OllamaClient:
         try:
             value = request_json(self.http_client, self.url, headers={}, payload=payload,
                                  timeout=self.timeout, total_seconds=request.total_seconds,
-                                 max_bytes=request.response_bytes * 6 + 8192)
+                                 max_bytes=(request.max_response_envelope_bytes
+                                            if request.max_response_envelope_bytes is not None
+                                            else request.response_bytes * 6 + 8192))
             try:
                 content = value['message']['content']
                 returned = value.get('model')
@@ -287,9 +295,13 @@ class OllamaClient:
                 raise InferenceResponseError('Inference provider returned an invalid response.') from None
             usage = self._usage(value)
             observation.observe_usage(usage)
-            return GenerationResult(result_text(content, request, reason), usage, returned or model, reason)
+            return GenerationResult(result_text(content, request, reason, usage=usage), usage, returned or model, reason)
         except BaseException as exc:
             error = exc
+            if getattr(exc, 'category', None) == 'output_limit':
+                from dataclasses import replace
+                exc.diagnostics = replace(exc.diagnostics, response_byte_limit=request.response_bytes,
+                                          completion_token_limit=request.output_tokens)
             if isinstance(exc, InferenceResponseError) or getattr(exc, 'category', None) == 'output_limit':
                 exc.usage = usage
             raise

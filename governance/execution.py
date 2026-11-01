@@ -36,6 +36,7 @@ class GovernedExecution:
             self.ledger.transition(ticket,'ADMITTING','RELEASED')
             raise
         usage, outcome, started = None, 'unknown', False
+        primary = None
         try:
             self.authority.revalidate(self.snapshot)
             check_active()
@@ -46,13 +47,30 @@ class GovernedExecution:
             return result
         except InferenceError as exc:
             usage, outcome = getattr(exc,'usage',None), exc.category
+            primary = exc
+            raise
+        except BaseException as exc:
+            primary = exc
             raise
         finally:
-            if started:
-                self.ledger.settle(ticket,usage)
-            else:
-                self.ledger.transition(ticket,'ADMITTING','RELEASED')
-            self.admission.finish(provider_ticket,usage=usage,outcome=outcome)
+            cleanup = None
+            try:
+                if started:
+                    self.ledger.settle(ticket,usage)
+                else:
+                    self.ledger.transition(ticket,'ADMITTING','RELEASED')
+            except BaseException as exc:
+                cleanup = exc
+            try:
+                self.admission.finish(provider_ticket,usage=usage,outcome=outcome)
+            except BaseException as exc:
+                cleanup = cleanup or exc
+            if cleanup is not None:
+                if primary is not None:
+                    # Content-free marker; retain the original provider failure.
+                    primary.accounting_failed = True
+                else:
+                    raise cleanup
 
 
 class RestrictedProvider:

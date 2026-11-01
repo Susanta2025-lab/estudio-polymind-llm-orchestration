@@ -16,6 +16,16 @@ from llm.inference import InferenceRateLimitError, InferenceTimeoutError, Infere
 from llm.structured import CapabilityProfile, GenerationResult
 
 
+@pytest.fixture(autouse=True)
+def legacy_mode(monkeypatch):
+    """Exercise the supported pre-governance adapter, independent of local settings."""
+    from types import SimpleNamespace
+
+    import config.settings as application_config
+
+    monkeypatch.setattr(application_config, 'settings', SimpleNamespace(GOVERNANCE_ENABLED=False))
+
+
 class Provider:
     name='contract'
     model='served'

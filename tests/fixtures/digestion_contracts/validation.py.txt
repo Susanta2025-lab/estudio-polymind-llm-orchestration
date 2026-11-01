@@ -1,0 +1,161 @@
+def validate_result(raw, request, index):
+    check_request(request)
+    profile = request.profile
+    result = decode(raw, StageResult, profile.response_byte_limit)
+    if len(encode(result)) > profile.max_result_characters:
+        raise DigestionError(
+            "synthesis_limit_exceeded",
+            diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+            reason=(Reason.CANONICAL_RESPONSE_LIMIT),
+        )
+    if result.stage_id != request.stage_id or result.kind != request.stage:
+        raise DigestionError(
+            "inference_contract_error",
+            diagnostic=ValidationDiagnostic.STAGE_BINDING,
+            reason=(
+                Reason.STAGE_ID_MISMATCH
+                if result.stage_id != request.stage_id
+                else Reason.STAGE_KIND_MISMATCH
+            ),
+        )
+    if result.outcome == 'unavailable':
+        if request.stage != 'analysis' or result.claims or not result.limitations:
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.STAGE_BINDING,
+                reason=(
+                    Reason.UNAVAILABLE_REDUCTION
+                    if request.stage != "analysis"
+                    else Reason.UNAVAILABLE_WITH_CLAIMS
+                    if result.claims
+                    else Reason.UNAVAILABLE_MISSING_LIMITATION
+                ),
+            )
+    elif request.stage == 'analysis' and not result.claims:
+        raise DigestionError(
+            "inference_contract_error",
+            diagnostic=ValidationDiagnostic.STAGE_BINDING,
+            reason=(Reason.ANALYZED_WITHOUT_CLAIMS),
+        )
+    if (len(result.claims) > profile.max_claims or len(result.open_questions) > profile.max_annotations
+            or len(result.limitations) > profile.max_annotations):
+        raise DigestionError(
+            "synthesis_limit_exceeded",
+            diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+            reason=(
+                Reason.CLAIM_LIMIT
+                if len(result.claims) > profile.max_claims
+                else Reason.ANNOTATION_LIMIT
+            ),
+        )
+    permitted = {}
+    for piece in request.source_data:
+        if index.resolve(piece.evidence) != piece.text:
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.OTHER_EVIDENCE_VALIDATION),
+            )
+        permitted[piece.evidence_id()] = piece.evidence
+    links = {(child.result.stage_id, c.claim_id): c for child in request.children for c in child.result.claims}
+    # Direct IDs must literally appear in supplied child claims. Other source sets
+    # are inherited via validated claim links, not manufactured citation strings.
+    inherited = {eid for child in request.children for claim in child.result.claims
+                 for eid in (*claim.evidence_ids, *claim.contradicting_evidence_ids)}
+    allowed = set(permitted) | inherited
+    used, linked, ids = set(), set(), set()
+    for position, claim in enumerate(result.claims):
+        if (claim.claim_id != stable_id(str(request.stage_id), str(position))
+                or claim.claim_id in ids or claim.originating_stage != request.stage_id):
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.CLAIM_IDENTITY,
+                reason=(
+                    Reason.DUPLICATE_CLAIM_ID
+                    if claim.claim_id in ids
+                    else Reason.CLAIM_ID_MISMATCH
+                    if claim.claim_id != stable_id(str(request.stage_id), str(position))
+                    else Reason.ORIGINATING_STAGE_MISMATCH
+                ),
+            )
+        ids.add(claim.claim_id)
+        if len(claim.text) > profile.max_claim_characters or len(claim.qualifications) > profile.max_annotations:
+            raise DigestionError(
+                "synthesis_limit_exceeded",
+                diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                reason=(
+                    Reason.TEXT_LIMIT
+                    if len(claim.text) > profile.max_claim_characters
+                    else Reason.ANNOTATION_LIMIT
+                ),
+            )
+        references = (*claim.evidence_ids, *claim.contradicting_evidence_ids)
+        for values in (claim.evidence_ids, claim.contradicting_evidence_ids):
+            if len(set(values)) != len(values) or not set(values) <= allowed:
+                raise DigestionError(
+                    "evidence_validation_failed",
+                    diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                    reason=(
+                        Reason.DUPLICATE_EVIDENCE
+                        if len(set(values)) != len(values)
+                        else Reason.FOREIGN_EVIDENCE
+                    ),
+                )
+        used.update(references)
+        lineage = [(link.stage_id, link.claim_id) for link in claim.lineage]
+        if len(set(lineage)) != len(lineage) or not set(lineage) <= links.keys():
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(
+                    Reason.DUPLICATE_CHILD_LINK
+                    if len(set(lineage)) != len(lineage)
+                    else Reason.INVALID_CHILD_LINK
+                ),
+            )
+        linked.update(lineage)
+        has_source = bool(claim.evidence_ids) or any(links[k].evidence_ids or links[k].lineage for k in lineage)
+        if claim.kind == 'fact' and (not has_source or claim.status != 'supported'):
+            raise DigestionError(
+                "evidence_validation_failed",
+                diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                reason=(Reason.UNSUPPORTED_FACT),
+            )
+        for qualification in claim.qualifications:
+            if (not qualification.evidence_ids or len(qualification.text) > profile.max_claim_characters
+                    or len(set(qualification.evidence_ids)) != len(qualification.evidence_ids)
+                    or not set(qualification.evidence_ids) <= allowed):
+                raise DigestionError(
+                    "evidence_validation_failed",
+                    diagnostic=ValidationDiagnostic.EVIDENCE_VALIDATION,
+                    reason=(Reason.TEXT_LIMIT if qualification.evidence_ids
+                            and len(qualification.text) > profile.max_claim_characters
+                            else Reason.INVALID_QUALIFICATION_SOURCE),
+                )
+        if claim.subject is not None and claim.kind != 'fact':
+            raise DigestionError(
+                "inference_contract_error",
+                diagnostic=ValidationDiagnostic.CLAIM_CONTRACT,
+                reason=(Reason.SUBJECT_ON_NONFACT),
+            )
+    if result.outcome == 'analyzed' and request.stage == 'analysis' and used != set(permitted):
+        raise DigestionError(
+            "coverage_failed",
+            diagnostic=ValidationDiagnostic.COVERAGE_VALIDATION,
+            reason=(Reason.MISSING_SOURCE_COVERAGE),
+        )
+    if request.stage == 'reduction' and linked != links.keys():
+        # No silently dropped child claims/qualifiers.
+        raise DigestionError(
+            "coverage_failed",
+            diagnostic=ValidationDiagnostic.COVERAGE_VALIDATION,
+            reason=(Reason.MISSING_CHILD_COVERAGE),
+        )
+    for text in (*result.open_questions, *result.limitations):
+        if len(text) > profile.max_claim_characters:
+            raise DigestionError(
+                "synthesis_limit_exceeded",
+                diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                reason=(Reason.TEXT_LIMIT),
+            )
+    return result

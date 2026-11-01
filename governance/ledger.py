@@ -5,10 +5,11 @@ from decimal import Decimal, localcontext
 import json
 import time
 from uuid import UUID, uuid4
+from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator, model_serializer
 
-from documents.models import FrozenModel
+from documents.models import FrozenModel, Scope
 from security.database import Database
 from security.models import Action, SecurityError
 
@@ -84,10 +85,60 @@ class Limits(FrozenModel):
     _cost = field_validator('monthly_cost', mode='before')(money)
 
 
+class EvaluationBinding(FrozenModel):
+    """Operator-owned scope allowlist within the existing shared authorities."""
+    version: Literal['polymind-evaluation/1']
+    scopes: tuple[Scope, ...] = Field(min_length=1, max_length=128)
+    governance_path: str
+    provider_path: str
+    provider_key: str = Field(min_length=1, max_length=128)
+    provider_policy_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+
+    @model_validator(mode='after')
+    def valid(self):
+        from pathlib import Path
+        if (len({s.identity() for s in self.scopes}) != len(self.scopes)
+                or self.governance_path == self.provider_path
+                or any(not Path(p).is_absolute() or '..' in Path(p).parts
+                       for p in (self.governance_path, self.provider_path))):
+            raise ValueError('Unique scopes and shared absolute authority paths required')
+        return self
+
+    def validate_authorities(self, path, provider_path, provider_key, provider_policy):
+        from hashlib import sha256
+        if (str(path) != self.governance_path or str(provider_path) != self.provider_path
+                or provider_key != self.provider_key or provider_policy is None
+                or sha256(provider_policy.model_dump_json().encode()).hexdigest() != self.provider_policy_sha256):
+            raise SecurityError('security_configuration')
+
+    def limits(self):
+        return Limits(requests_per_window=16, window_seconds=86400,
+                      interactive_concurrent=1, background_concurrent=1,
+                      reserved_tokens=112000, daily_tokens=500000,
+                      monthly_tokens=1500000, monthly_cost='5.00')
+
+
 class QuotaPolicy(FrozenModel):
     version: str = Field(pattern=r'^[A-Za-z0-9_./:-]{1,128}$')
     owner: Limits
     tenant: Limits
+    evaluation: EvaluationBinding | None = None
+
+    @model_serializer(mode='wrap')
+    def serialize(self, handler):
+        # Legacy configuration bytes and signed configuration digests stay stable.
+        data = handler(self)
+        if self.evaluation is None:
+            data.pop('evaluation', None)
+        return data
+
+    def select(self, scope):
+        binding = self.evaluation
+        if binding is not None and scope in binding.scopes:
+            limits = binding.limits()
+            return binding.version, limits, limits
+        # Other owners in an evaluation tenant must not gain its tenant allowance.
+        return self.version, self.owner, self.tenant
 
 
 SCHEMA = (
@@ -98,11 +149,16 @@ SCHEMA = (
 
 
 class GovernanceLedger(Database):
-    def __init__(self, path, policy, catalog, *, clock=time.time, event_limit=100000):
+    def __init__(self, path, policy, catalog, *, clock=time.time, event_limit=100000,
+                 provider_path=None, provider_key=None, provider_policy=None):
         if type(event_limit) is not int or not 1 <= event_limit <= 10000000:
             raise SecurityError('security_configuration')
         self.policy = QuotaPolicy.model_validate(policy.model_dump())
         self.catalog = PricingCatalog.model_validate(catalog.model_dump())
+        if self.policy.evaluation is not None:
+            self.policy.evaluation.validate_authorities(path, provider_path, provider_key, provider_policy)
+            if self.catalog.currency != 'EUR':
+                raise SecurityError('security_configuration')
         self.clock, self.event_limit = clock, event_limit
         super().__init__(path, SCHEMA)
         with self.transaction() as db:
@@ -117,9 +173,15 @@ class GovernanceLedger(Database):
             return False
         try:
             with self.transaction() as db:
+                self._current_policy(db)
                 return db.execute('SELECT COUNT(*) FROM events').fetchone()[0] < self.event_limit
         except SecurityError:
             return False
+
+    def _current_policy(self, db):
+        row = db.execute('SELECT policy,catalog FROM configuration WHERE singleton=1').fetchone()
+        if row is None or tuple(row) != (self.policy.model_dump_json(), self.catalog.model_dump_json()):
+            raise SecurityError('security_configuration')
 
     def _event(self, db, scope, action):
         if db.execute('SELECT COUNT(*) FROM events').fetchone()[0] >= self.event_limit:
@@ -144,9 +206,11 @@ class GovernanceLedger(Database):
         if len(encoded) > 2048 or type(identity.job) is not UUID or type(identity.step) is not UUID:
             raise GovernanceError()
         scope = principal.scope
+        version, owner_limits, tenant_limits = self.policy.select(scope)
         cost = price.cost(input_tokens, output_tokens)
         denied = False
         with self.transaction() as db:
+            self._current_policy(db)
             existing = db.execute('SELECT * FROM reservations WHERE tenant=? AND owner=? AND identity_key=?',
                 (str(scope.tenant),str(scope.owner),identity_key)).fetchone()
             if existing:
@@ -158,7 +222,7 @@ class GovernanceLedger(Database):
             day = date.replace(hour=0,minute=0,second=0,microsecond=0).timestamp()
             month = date.replace(day=1,hour=0,minute=0,second=0,microsecond=0).timestamp()
             rows = list(db.execute('SELECT * FROM reservations WHERE tenant=?', (str(scope.tenant),)))
-            for limits, rs in ((self.policy.tenant,rows), (self.policy.owner,[r for r in rows if r['owner']==str(scope.owner)])):
+            for limits, rs in ((tenant_limits,rows), (owner_limits,[r for r in rows if r['owner']==str(scope.owner)])):
                 recent = [r for r in rs if r['created'] > now-limits.window_seconds]
                 spent = [r for r in rs if r['state'] != 'RELEASED']
                 unsettled = lambda r: r['state'] not in {'SETTLED','RELEASED'}
@@ -180,7 +244,7 @@ class GovernanceLedger(Database):
             else:
                 ticket = str(uuid4())
                 db.execute('INSERT INTO reservations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,?,?)',
-                    (ticket,str(scope.tenant),str(scope.owner),encoded,identity_key,workload,self.policy.version,
+                    (ticket,str(scope.tenant),str(scope.owner),encoded,identity_key,workload,version,
                      self.catalog.version,identity.provider,identity.model,input_tokens,output_tokens,str(cost),'RESERVED',now))
                 self._event(db,scope,'RESERVED')
         if denied:

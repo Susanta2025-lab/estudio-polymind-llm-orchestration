@@ -1,0 +1,119 @@
+Text = Annotated[str, Field(min_length=1, max_length=4096)]
+
+
+class DigestionProfile(FrozenModel):
+    version: Token = 'digestion/1'
+    structure_profile: Token = 'source-structure/1'
+    chunking_profile: Token = 'analysis-chunks/1'
+    inference_profile: Token = 'deterministic/1'
+    inference_config: Digest = fingerprint([])
+    reducer_profile: Token = 'lineage-reduction/1'
+    prompt_profile: Token = 'structured-data/1'
+    output_schema: Literal['stage-result/1'] = 'stage-result/1'
+    role: Literal['summarization'] = 'summarization'
+    capability: Literal['structured-output'] = 'structured-output'
+    # Required planning choices, not purported production model sizes.
+    context_tokens: int = Field(gt=0)
+    reserved_output_tokens: int = Field(gt=0)
+    template_tokens: int = Field(ge=0)
+    chunk_characters: int = Field(gt=0)
+    max_fan_in: int = Field(ge=2, le=64)
+    # Legacy name: canonical serialized JSON bytes, not characters or tokens.
+    max_result_characters: int = Field(gt=0)
+    max_response_bytes: int | None = Field(default=None, gt=0, le=4000000)
+    max_claims: int = Field(ge=1, le=64)
+    max_claim_characters: int = Field(ge=64, le=4096)
+    max_annotations: int = Field(ge=0, le=64)
+    max_source_units: int = Field(gt=0, le=100000)
+    max_chunks: int = Field(gt=0, le=900)
+    max_steps: int = Field(ge=3, le=1000)
+    max_artifact_bytes: int = Field(gt=0)
+    max_depth: int = Field(ge=1, le=64)
+    overlap_characters: Literal[0] = 0  # No duplicated source in v1.
+    estimator: Literal['json-characters/1'] = 'json-characters/1'
+    allow_partial: bool = False
+    minimum_coverage: float = Field(ge=0, le=1)
+    max_failed_units: int = Field(ge=0)
+
+    @model_validator(mode='after')
+    def budget(self):
+        if self.context_tokens <= self.reserved_output_tokens + self.template_tokens:
+            raise ValueError('invalid synthesis budget')
+        return self
+
+    @model_serializer(mode='wrap')
+    def serialize(self, handler):
+        value = handler(self)
+        if self.max_response_bytes is None:
+            value.pop('max_response_bytes', None)
+        return value
+
+    @property
+    def response_byte_limit(self):
+        """Legacy profiles retain their existing raw-content bound."""
+        return self.max_result_characters if self.max_response_bytes is None else self.max_response_bytes
+
+    def digest(self):
+        return fingerprint(self.model_dump(mode='json'))
+
+
+class ClaimLink(FrozenModel):
+    stage_id: UUID
+    claim_id: UUID
+
+
+class Qualification(FrozenModel):
+    text: Text
+    evidence_ids: tuple[UUID, ...]
+
+
+class Claim(FrozenModel):
+    claim_id: UUID
+    originating_stage: UUID
+    text: Text
+    kind: Literal['fact', 'unknown', 'unsupported', 'commentary', 'structural']
+    evidence_ids: tuple[UUID, ...] = ()
+    contradicting_evidence_ids: tuple[UUID, ...] = ()
+    qualifications: tuple[Qualification, ...] = ()
+    lineage: tuple[ClaimLink, ...] = ()
+    # Optional synthetic/structured propositions; no language inference here.
+    subject: Token | None = None
+    stance: Literal['affirmed', 'denied', 'unknown'] = 'unknown'
+    status: Literal['supported', 'unknown', 'unsupported'] = 'supported'
+
+
+class StageResult(FrozenModel):
+    schema_version: Literal['stage-result/1'] = 'stage-result/1'
+    stage_id: UUID
+    kind: Literal['analysis', 'reduction']
+    outcome: Literal['analyzed', 'unavailable'] = 'analyzed'
+    claims: tuple[Claim, ...]
+    open_questions: tuple[Text, ...] = ()
+    limitations: tuple[Text, ...] = ()
+
+
+class StageRequest(FrozenModel):
+    schema_version: Literal['stage-request/1'] = 'stage-request/1'
+    stage_id: UUID
+    stage: Literal['analysis', 'reduction']
+    profile: DigestionProfile
+    structural_path: tuple[str, ...]
+    source_data: tuple[SourcePiece, ...] = ()
+    children: tuple[ChildInput, ...] = ()
+    instructions: Literal['Analyze data; inherit all child claims and their qualifications/conflicts.'] = (
+        'Analyze data; inherit all child claims and their qualifications/conflicts.')
+    tools: tuple[()] = ()
+
+    @model_validator(mode='after')
+    def material_boundary(self):
+        if self.stage == 'analysis':
+            if not self.source_data or self.children:
+                raise ValueError('invalid analysis input')
+            ids = [p.evidence_id() for p in self.source_data]
+        else:
+            if self.source_data or len(self.children) > self.profile.max_fan_in:
+                raise ValueError('invalid reduction input')
+            ids = [c.result.stage_id for c in self.children]
+        if len(ids) != len(set(ids)):
+            raise ValueError('duplicate input identity')
+        return self
