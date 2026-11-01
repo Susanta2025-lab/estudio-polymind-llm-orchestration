@@ -1,5 +1,16 @@
 # PolyMind production security runbook
 
+Scope update — 1 November 2026: the deployment instructions below describe the
+Helm chart's static-bearer control plane. The application also implements generic
+OIDC and an explicit [Entra v2 profile](entra_v2.md), with reference
+[SecurityAuthority and governance](phase_17g.md). These single-host components
+do not establish distributed multi-user production deployment; OIDC legacy
+query/stream routes fail closed and authorized analysis requires explicit
+composition. [Phase 17G](../codex/reports/phase_17g_report.md) is COMPLETED/PASS in
+reference scope. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+closed PASS for one accepted, settled Azure analysis. Phase 17H remains PARTIAL;
+full live digestion/Q&A and production readiness remain unestablished.
+
 ## Application authentication and endpoints
 
 Local and Compose development default to `API_AUTH_ENABLED=false` and
@@ -106,5 +117,6 @@ rates without collecting raw client credentials, IPs, or request content.
 
 Run ingestion/reset only as a separately authorized internal job or operator
 command. Use immutable image tags or digests for production. Dependency scanning,
-container scanning, SBOMs, signing, gateway rate limiting, OAuth/OIDC, mTLS, and
-cloud secret-manager deployment remain explicit future controls.
+container scanning, SBOMs, signing, gateway rate limiting, production OIDC
+deployment, mTLS, and cloud secret-manager deployment remain explicit future
+controls. Reference OIDC token verification is implemented as linked above.

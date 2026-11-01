@@ -23,6 +23,8 @@ and offline model artifacts under the existing deployment contract.
 
 | Field | Contract |
 | --- | --- |
+| `token_profile` | `oidc` (default, contract below) or explicit `entra_v2` ([Entra setup](entra_v2.md)) |
+| `tenant_id` | Required canonical tenant UUID for Entra; unset for generic OIDC |
 | `issuer` | Exact allowed HTTPS issuer |
 | `audience` | Required API audience |
 | `jwks_url` | Explicit operator-selected HTTPS trust anchor |
@@ -258,7 +260,12 @@ databases, available audit capacity and a fresh verified JWKS cache. Missing
 security components deny serving. The final Phase 17G closure verified the added readiness paths and schema-drift
 checks; see the authoritative report. No live IdP check was run.
 
-Live Azure Foundry document-digestion validation remains **BLOCKED / PENDING**.
-Phase 17H local reliability/evaluation evidence is recorded in its
-[report](../codex/reports/phase_17h_report.md); real-model semantic certification
-and Phase 17I external verification remain gated. This work authorizes neither.
+Status — 1 November 2026: Phase 17G remains **COMPLETED/PASS** within its accepted
+single-host/reference scope. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+is **CLOSED/PASS** for one governed strict response accepted by the application,
+with known usage durably SETTLED and zero automatic retries. Active generation is
+[managed-prompt/4](../codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md).
+Full live L1 hierarchical digestion, publication/retrieval and grounded Q&A remain
+**NOT VALIDATED**. Phase 17H remains **PARTIAL**; representative semantic review,
+workload reliability and Phase 17I external verification remain gated. Production
+readiness is **NOT ESTABLISHED**. No authorization requirement is changed here.

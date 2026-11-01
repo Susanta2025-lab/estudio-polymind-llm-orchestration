@@ -1,5 +1,12 @@
 # Phase 17H evaluation methodology and operator runbook
 
+Status — 1 November 2026: this methodology remains the offline reliability and
+quality rubric. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+adds one accepted, financially settled live analysis under active managed-prompt/4;
+it does not close full Phase 17H, which remains PARTIAL. Full live hierarchical
+digestion, subsequent grounded Q&A, representative independent semantic/citation
+review and workload reliability remain open. The commands below remain offline.
+
 This harness runs only synthetic offline work. It never constructs a configured
 inference provider, downloads models or accesses configured cloud stores. Run from
 the repository root with its existing Python environment; no dependencies need

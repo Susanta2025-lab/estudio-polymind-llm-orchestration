@@ -22,7 +22,29 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-> **Current status:** Phases 17A–17F have completed application contracts. Phase 17G is **PASS within local/reference scope**, with **690 tests passed in 94.03 seconds** at closure; see its [authoritative report](docs/codex/reports/phase_17g_report.md). Phase 17H implements bounded physical-PDF reliability and quality evaluation and remains **PARTIAL** pending representative real-model/expert quality and separately authorized live Foundry validation. See the [17H report](docs/codex/reports/phase_17h_report.md) for measured local evidence and limits.
+## Current engineering status — 1 November 2026
+
+Phases 17A–17F have implemented application contracts. The current evidence is
+bounded to the reference architecture and the evaluations below; production
+readiness is **NOT ESTABLISHED**.
+
+| Scope | Verified status |
+|---|---|
+| [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
+| [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
+| Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
+| [Active managed-prompt/4](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md) | **PASS within tested scope**; fact-only populated subject instructions |
+| [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
+| Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
+| Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
+
+Attempt 6 cost is local catalog accounting, not an independently verified Azure
+invoice. One accepted synthetic analysis does not establish end-to-end live
+digestion or semantic quality. Operational boundaries are documented in the
+[security contract](docs/security/phase_17g.md), [Entra v2 profile](docs/security/entra_v2.md),
+[evaluation governance](docs/governance/evaluation-policy.md),
+[Foundry runbook](docs/evaluation/phase_17h_foundry_validation.md) and
+[independent operator approval procedure](docs/evaluation/phase_17hl_operator_approval.md).
 
 ---
 
@@ -229,7 +251,7 @@ Provider-specific HTTP/authentication behavior stays inside `llm/`.
 |---|---|
 | Ollama | Supported for local inference |
 | OpenAI-compatible | Supported for generation, streaming and bounded structured execution |
-| Azure Foundry | Application inference validated in Phase 16; Phase 17E live document-digestion call still pending |
+| Azure Foundry | Phase 16 application inference and Attempt 6 single-analysis acceptance validated; full live L1 digestion remains unvalidated |
 | OpenAI-style endpoint | Protocol compatibility validated locally; no live OpenAI account required |
 | External vLLM | Protocol compatibility validated locally; vLLM is not deployed by this repository |
 
@@ -329,11 +351,19 @@ The complete local suite passed:
 543 passed
 ```
 
-### Important Phase 17E limitation
+### Live evaluation boundary
 
-The real Phase 17 document-digestion flow has **not yet been exercised against Azure Foundry**. During Phase 17E closure the local process had no configured Foundry endpoint/model map/key, so zero live calls were made rather than fabricating credentials or changing cloud resources.
+Phase 17E closed with offline protocol/application integration and zero live calls.
+Later diagnostic attempts culminated in **Attempt 6 CLOSED/PASS** under active
+`managed-prompt/4`: one first-chunk analysis passed both strict provider output and
+application validation, with known usage settled once and no automatic retries.
+See the [closure and complete failure history](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md).
 
-Protocol/application integration is complete; real-model quality remains a later validation gate.
+Full live hierarchical digestion, subsequent grounded Q&A and representative
+independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
+conformance and application domain acceptance are separate checks; neither alone
+certifies semantic support. The broader historical prompt proposal is inactive;
+v4 implements the narrower subject-contract correction.
 
 ---
 
@@ -406,7 +436,7 @@ See:
 Current application protections include bounded request IDs, sanitized provider failures, production bearer-token support, secret-safe logging, read-only serving vector access and Helm security controls.
 
 Phase 17G adds verified OIDC access tokens, immutable server-derived principals,
-SQLite ownership/grant/security-epoch authority, same-tenant sharing, authorized
+SQLite `SecurityAuthority` ownership/grant/security-epoch authority, same-tenant sharing, authorized
 document analysis, scoped memory, owner/tenant reservations, operator-supplied
 decimal pricing, and usage reconciliation through the existing provider admission
 boundary. It does **not claim production multi-user deployment or public-user
@@ -424,7 +454,13 @@ purge. Unknown provider usage retains reservations across restart; it is never
 converted to zero. SQLite authorities remain single-host reference adapters.
 See the [Phase 17G operator contract](docs/security/phase_17g.md) for authentication
 modes, required configuration/pricing, memory isolation, quotas, audit, readiness,
-purge and deployment limitations.
+purge and deployment limitations. The explicit Entra v2 profile verifies a
+tenant-specific issuer, exact API audience, delegated scope and assigned operator
+role. Identity authentication, resource authorization, financial approval and
+independent RSA approval of an exact configuration digest remain separate gates.
+The evaluation launchers retain persistent approval consumption/replay protection,
+RPM/TPM admission, reservations and settlement. Unknown usage retains obligations;
+zero automatic paid retries does not imply zero billable failed calls.
 
 ---
 
@@ -572,6 +608,12 @@ make test
 python -m pytest
 ```
 
+See [test execution and isolation](tests/README.md) for offline unit/integration
+tests, synthetic Foundry harnesses and frozen v3 versus active v4 contracts.
+Ordinary regression testing does not use live launcher flags. Live Azure execution
+requires a separately reviewed configuration, identity, financial and independent
+operator approvals; prior consumed approvals grant no further calls.
+
 Validate the Helm chart:
 
 ```bash
@@ -612,10 +654,10 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17B | Canonical Document Model, Object Storage & Extraction Plane | ✅ Complete |
 | 17C | Durable Job Orchestration, Idempotency & Recovery | ✅ Complete |
 | 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
-| 17E | Managed Inference Integration | ✅ Complete — live Foundry digestion pending |
+| 17E | Managed Inference Integration | ✅ Complete — later single-analysis live acceptance; full live digestion unvalidated |
 | 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
 | 17G | Multi-User Security, Quotas & Cost Governance | ✅ PASS — local/reference scope |
-| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | PARTIAL — local evidence implemented; real-model quality/live validation pending |
+| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | PARTIAL — Attempt 6 accepted one analysis; full live workflow, representative quality and reliability remain |
 | 17I | External User Verification | Planned |
 
 After Phase 17, the planned direction is broader Azure productionization of the document pipeline, including durable cloud storage/state, distributed worker/admission infrastructure, identity hardening and production reliability controls.
@@ -637,6 +679,8 @@ Current key reports:
 - [Phase 17F — RAG Publication, Provenance & Interactive Document Analysis](docs/codex/reports/phase_17f_report.md)
 - [Phase 17G — Multi-User Security, Quotas & Cost Governance](docs/codex/reports/phase_17g_report.md)
 - [Phase 17H — Large-Document Reliability & Quality Evaluation](docs/codex/reports/phase_17h_report.md)
+- [managed-prompt/4 — Subject-Contract Implementation](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
+- [Attempt 6 — Closure and Phase 17H Gate Assessment](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 
 The reports distinguish verified behavior from deferred production claims.
 
@@ -650,7 +694,7 @@ The repository should **not** currently be interpreted as claiming:
 - Azure Blob-backed canonical document storage;
 - a production distributed document-job database/queue;
 - production distributed inference admission;
-- live Phase 17 Foundry document-digestion validation;
+- full live Phase 17 Foundry hierarchical digestion and subsequent grounded Q&A;
 - live OpenAI validation;
 - live external vLLM validation;
 - self-hosted vLLM/GPU infrastructure;
@@ -707,7 +751,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G local/reference PASS; Phase 17H PARTIAL pending real-model quality/live validation
+**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/4 active; Attempt 6 CLOSED/PASS; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

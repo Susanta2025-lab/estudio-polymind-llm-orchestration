@@ -5,6 +5,15 @@ must provide OpenAI-compatible inference (including vLLM), Redis, and Chroma HTT
 The chart does not install those services, an ingress controller, monitoring, or
 cloud infrastructure.
 
+This deployment contract uses shared static bearer authentication. Phase 17G's
+OIDC/`SecurityAuthority` and financial authorities are single-host reference
+components; this chart does not establish their distributed deployment. In OIDC
+mode legacy query/stream routes fail closed, and authorized document analysis
+requires explicit service composition. See the [security contract](../../../docs/security/phase_17g.md).
+As of 1 November 2026, [Attempt 6](../../../docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+accepted one governed Azure analysis. Full live digestion and production readiness
+remain unestablished; that result does not certify this chart for multi-user production.
+
 ## Configure secrets
 
 Create a Secret before installation. The Redis URL and PolyMind API token are
@@ -116,5 +125,6 @@ real labels. External dependencies require reviewed `ipBlocks` or a CNI/egress
 gateway because standard NetworkPolicy cannot select DNS names. The Phase 10 Kind
 override disables policy because Kind's default CNI does not enforce it.
 
-See `docs/security/production-security.md` and `docs/security/threat-model.md` for
+See [production security](../../../docs/security/production-security.md) and the
+[threat model](../../../docs/security/threat-model.md) for
 the complete endpoint, Secret rotation, network, proxy, and residual-risk contract.

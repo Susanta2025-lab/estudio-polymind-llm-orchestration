@@ -1,0 +1,13 @@
+{
+  "version": "polymind-evaluation/1",
+  "scopes": [
+    {
+      "tenant": "00000000-0000-0000-0000-000000000000",
+      "owner": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "governance_path": "/operator/private/existing-governance.sqlite",
+  "provider_path": "/operator/private/existing-provider-admission.sqlite",
+  "provider_key": "REPLACE_WITH_EXISTING_SHARED_KEY",
+  "provider_policy_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

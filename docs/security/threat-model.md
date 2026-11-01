@@ -1,5 +1,16 @@
 # PolyMind production threat model
 
+Scope update — 1 November 2026: the Phase 11 mitigations and residual-risk snapshot
+below describe the original static-bearer deployment boundary. Subsequent chart
+hardening implements a read-only root filesystem and graceful bounded stream
+draining; see the [current deployment/security runbook](production-security.md).
+The separate [Phase 17G contract](phase_17g.md) adds reference OIDC/Entra identity,
+tenant/owner authorization, revocation and durable quota/cost governance.
+Distributed authority, physical purge and public-user production readiness remain
+unestablished. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+is a single-analysis live milestone; Phase 17H remains PARTIAL. Historical deferred
+items below must be read against these later scoped implementations.
+
 ## Scope and assets
 
 This model covers the FastAPI control plane and its connections to an ingress or

@@ -1,0 +1,11 @@
+# Phase 17H–L — Offline Diagnostic Hardening After Azure Foundry Live Test
+
+Implement minimal, fail-closed internal validation diagnostics after a completed strict provider response was rejected by application validation as `serialization_error`. The supplied historical audit establishes FAILED, one consumed call, completed_strict_response, application validation failed, and accounting_failed=False. The historical response was not retained; do not claim to establish its exact cause.
+
+Inspect codec, validation, models, managed inference, workflow, Azure schema conversion, structured contracts, the bounded single-call runner, and their consumers/tests before editing. Distinguish JSON parsing, duplicate keys, Pydantic validation, canonical encoding/revalidation, stage binding, deterministic claim identity/origin, claim contracts, evidence/lineage, coverage, and response limits using fixed allowlisted identifiers. Preserve acceptance rules, successful results, public classifications, and authorization/accounting controls.
+
+Add an optional sanitized application-validation diagnostic to the existing private immutable audit. Never include output, prompts, document/evidence/claim content, identifiers, exception details, credentials, or untrusted paths. Missing diagnostics must not suppress failure.
+
+Use only synthetic requests/results and fake providers. Test valid acceptance, every rejection class, byte limits, privacy, taxonomy compatibility, and the actual governed single-call audit path where practical. Run relevant offline digestion, governance, security, and runner regressions, lint/format checks, self-review, and pre-commit review. Document exact results, limitations, and changed executor approval bindings.
+
+Offline only: no provider/cloud contact, real inference, deployments, provisioning, dependency installation, private operator credentials/keys/JWTs/approval access, historical audit/configuration/replay changes, security bypass, branch creation, commits, or pushes. Do not run a live CLI or replay historical approval. Leave unrelated existing work intact. Produce a report under docs/codex/reports and final PASS/FAIL with files, diagnostics, compatibility, tests, privacy, historical preservation, zero Azure calls and commits/pushes, issues, and recommendation.
