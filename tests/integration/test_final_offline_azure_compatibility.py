@@ -30,13 +30,35 @@ FOREIGN = str(UUID(int=17000001))
 
 @pytest.fixture(scope="module")
 def contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory)
+
+
+@pytest.fixture(scope="module")
+def legacy_v4_contracts(tmp_path_factory):
+    """Replay the pre-G1 profile through current code, with its original binding."""
+    return capture_contracts(tmp_path_factory, historical_settings=True)
+
+
+def capture_contracts(tmp_path_factory, *, historical_settings=False):
     """Observe real planning/rendering/HTTP/validation without changing decisions."""
+    from documents.digestion import managed
+    from documents.storage import LocalObjectStore
+
     records = []
+    original_settings = managed.ManagedSettings
     original_analyze = ManagedDigestionHandler.analyze
     original_execute = OpenAICompatibleProvider.execute
     original_validate = workflow.validate_result
     original_post = foundry_preflight.OfflineHTTP.post
     active = {}
+
+    def historical_configuration(**kwargs):
+        # The current L1 harness always selects G1. Historical replay must omit
+        # that one new input BEFORE the original strict settings constructor.
+        assert kwargs.pop("child_input_bytes") == 7000
+        settings = original_settings(**kwargs)
+        assert "child_input_bytes" not in settings.model_dump(mode="json")
+        return settings
 
     def analyze(handler, request, *args):
         active["request"] = request
@@ -70,18 +92,21 @@ def contracts(tmp_path_factory):
         return result
 
     with pytest.MonkeyPatch.context() as patch:
+        if historical_settings:
+            patch.setattr(managed, "ManagedSettings", historical_configuration)
         patch.setattr(ManagedDigestionHandler, "analyze", analyze)
         patch.setattr(OpenAICompatibleProvider, "execute", execute)
         patch.setattr(foundry_preflight.OfflineHTTP, "post", post)
         patch.setattr(workflow, "validate_result", validate)
-        outcome = foundry_preflight.execute(
-            tmp_path_factory.mktemp("synthetic-compatibility"), "L1"
-        )
+        root = tmp_path_factory.mktemp("synthetic-compatibility")
+        outcome = foundry_preflight.execute(root, "L1")
     assert outcome["job_state"] == "COMPLETED"
     assert outcome["digest_status"] == "COMPLETE"
     assert outcome["calls"] == 4
     assert all(r["state"] == "SETTLED" for r in outcome["governance_records"])
     assert len(records) == 3
+    for record in records:
+        record.store = LocalObjectStore(root / "objects")
     return dict(zip(STAGES, records, strict=True))
 
 
@@ -387,6 +412,7 @@ def test_render_rejects_wrong_profile_and_config_before_provider(contracts, stag
     )
     settings = ManagedSettings(
         capability=record.generation.capability,
+        child_input_bytes=7000,
         generation_profile="managed-generation/2",
         max_response_envelope_bytes=26192,
         profiles=tuple(
@@ -482,8 +508,11 @@ def bounded_witness(record, size):
 
 @pytest.mark.parametrize("stage", STAGES)
 @pytest.mark.parametrize("size", (10000, 10001))
-def test_canonical_boundary_under_unchanged_l1_profile(contracts, stage, size):
-    record = contracts[stage]
+def test_canonical_boundary_under_unchanged_l1_profile(legacy_v4_contracts, stage, size):
+    # This historical independent-output-limit contract predates child admission.
+    # Current G1 rejection of the same witness is checked separately below.
+    record = legacy_v4_contracts[stage]
+    assert record.request.profile.managed_input_budget is None
     raw = bounded_witness(record, size)
     Draft202012Validator(provider_schema(generation_schema())).validate(json.loads(raw))
     if size == 10000:
@@ -499,6 +528,37 @@ def test_canonical_boundary_under_unchanged_l1_profile(contracts, stage, size):
         with pytest.raises(DigestionError) as caught:
             validate_result(utf8, record.request, record.index)
         assert caught.value.validation_diagnostic.value == "response_limit"
+
+
+@pytest.mark.parametrize("stage", STAGES)
+def test_current_l1_canonical_10k_witness_exceeds_child_budget(contracts, stage):
+    from documents.digestion.sizing import CHILD_WRAPPER_BYTES, result_contribution
+
+    record = contracts[stage]
+    raw = bounded_witness(record, 10000)
+    result = StageResult.model_validate_json(raw)
+    assert len(raw) == record.request.profile.response_byte_limit == 10000
+    assert len(encode(result)) == record.request.profile.max_result_characters == 10000
+    assert record.request.profile.managed_input_budget.child_bytes == 7000
+    assert result_contribution(result) + CHILD_WRAPPER_BYTES > 7000
+    with pytest.raises(DigestionError, match="^synthesis_limit_exceeded$") as caught:
+        validate_result(raw, record.request, record.index)
+    assert caught.value.validation_diagnostic.value == "response_limit"
+    assert encode(result) == raw  # Rejection does not truncate or repair evidence.
+
+
+@pytest.mark.parametrize("stage", STAGES)
+def test_current_l1_canonical_limit_precedes_child_admission(contracts, stage):
+    record = contracts[stage]
+    canonical = bounded_witness(record, 10001)
+    raw = json.dumps(json.loads(canonical), ensure_ascii=False,
+                     separators=(",", ":")).encode()
+    assert len(raw) < record.request.profile.response_byte_limit == 10000
+    assert len(canonical) > record.request.profile.max_result_characters == 10000
+    with pytest.raises(DigestionError, match="^synthesis_limit_exceeded$") as caught:
+        validate_result(raw, record.request, record.index)
+    assert caught.value.validation_reason.value == "canonical_response_limit"
+    assert encode(StageResult.model_validate_json(raw)) == canonical
 
 
 @pytest.mark.parametrize("stage", STAGES)

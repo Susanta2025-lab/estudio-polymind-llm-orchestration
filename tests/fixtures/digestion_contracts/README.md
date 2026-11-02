@@ -57,16 +57,45 @@ version-3 execution. Do not update its bytes or the original checksums to follow
 the active default.
 
 `managed_prompt4_subject.txt` is the separately reviewed v4 instruction paragraph.
-`managed_prompt4.json` pins the new active renderer source and the three synthetic
+`managed_prompt4.json` pins the pre-G1 v4 renderer source and the three synthetic
 stages' request/generation/payload checksums. Separate behavioral tests cover the
 intermediate profile as well. Tests compare v3/v4 prose after removing exactly the
 subject paragraph, retaining the unrelated unavailable-analysis ambiguity.
 These are synthetic regression witnesses, with no live approval authority.
 
-The active v4 change is limited to subject-contract instructions and stale-binding
+The v3-to-v4 migration is limited to subject-contract instructions and stale-binding
 rejection; the provider schema and application domain acceptance remain authoritative.
 See the [v4 implementation](../../../docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
 and [Attempt 6 closure](../../../docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md).
 The latter establishes one accepted live analysis, not full live digestion or Q&A.
 Fixture execution is offline and synthetic; none of these files is a credential,
 live approval, pricing authority or launch configuration.
+
+## G1 optional admission compatibility
+
+The original references above retain their bytes and checksums. G1 in `d940443`
+intentionally added an optional rendered-child budget to the profile, renderer,
+and application validator. Comparing those complete current declarations directly
+to pre-G1 source would prohibit that intentional addition. Historical v3 replay
+also cannot accept the G1-only settings input.
+
+`managed_g1.patch` records exactly the three modules' source delta from
+`d940443^` to `d940443`. It is a fixed, separately reviewable compatibility
+exception, not a regenerated golden or replacement fingerprint. The test-only
+`tests/g1_source_compatibility.py` reverses those exact contextual hunks in memory
+before the original historical source/hash comparisons. Every hunk is mandatory,
+must occur exactly once, and preserves all other source. Changed predicates,
+missing additions, broader exception code or edits to historical source still
+fail. Tests do not regenerate the patch, execute projected source, or write it
+back to production. Mutation tests exercise this fail-closed boundary.
+
+Historical v3 and pre-G1 v4 fixtures explicitly omit `child_input_bytes` before
+their original strict settings constructor. Current v4 code with the policy unset
+must reproduce all nine original v4 request/generation/payload checksums. Current
+L1 fixtures retain `child_input_bytes=7000` and their independent 10,000-byte
+raw/canonical limits. Matching historical/current configurations render their own
+requests; cross-policy requests fail with `incompatible_checkpoint`. Existing
+stored results/checkpoints remain readable under their original contracts.
+
+See the [CI reconciliation report](../../../docs/codex/reports/phase_17h_ci_failure_and_historical_contract_reconciliation.md)
+for the verified failure inventory, exact regression commands and limitations.

@@ -27,8 +27,11 @@ from llm.inference import (
 )
 from llm.structured import ProviderResultMetadata
 from tests.integration.test_final_offline_azure_compatibility import (
+    capture_contracts,
     contracts,
+    legacy_v4_contracts,
 )
+from tests.g1_source_compatibility import source_before_g1
 from tests.performance.foundry_schema_diagnostics import (
     SchemaObservation,
     observe_schema,
@@ -613,7 +616,10 @@ def test_generation_schema_and_renderer_source_remain_frozen():
     fixture = root / "tests/fixtures/digestion_contracts/models.py.txt"
     approved = source_sections(fixture.read_text(encoding="utf-8"), DOMAIN_NAMES)
     actual = source_sections(
-        (root / "documents/digestion/models.py").read_text(encoding="utf-8"),
+        source_before_g1(
+            (root / "documents/digestion/models.py").read_text(encoding="utf-8"),
+            "documents/digestion/models.py",
+        ),
         DOMAIN_NAMES,
     )
     for name in DOMAIN_NAMES:
@@ -630,7 +636,6 @@ def historical_contracts(tmp_path_factory):
     from types import ModuleType, SimpleNamespace
 
     from documents.digestion import managed
-    from documents.storage import LocalObjectStore
 
     fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt3.py.txt"
     source = fixture.read_bytes()
@@ -643,17 +648,17 @@ def historical_contracts(tmp_path_factory):
         for name in ("StageProfile", "ManagedSettings", "ManagedSynthesisInference"):
             patch.setattr(managed, name, getattr(module, name))
         root = tmp_path_factory.mktemp("historical-v3")
-        records = contracts.__wrapped__(SimpleNamespace(mktemp=lambda name: root))
-        for record in records.values():
-            record.store = LocalObjectStore(root / "objects")
+        records = capture_contracts(
+            SimpleNamespace(mktemp=lambda name: root), historical_settings=True
+        )
         return records
 
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
-def test_active_v4_generation_contract(contracts, stage):
+def test_active_v4_generation_contract(legacy_v4_contracts, stage):
     root = Path(__file__).resolve().parents[2]
     expected = json.loads((root / "tests/fixtures/digestion_contracts/managed_prompt4.json").read_text())
-    record = contracts[stage]
+    record = legacy_v4_contracts[stage]
     for component, value in {
         "request": record.request.model_dump(mode="json"),
         "generation": asdict(record.generation),
@@ -662,14 +667,18 @@ def test_active_v4_generation_contract(contracts, stage):
         actual = sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
         assert actual == expected["requests"][stage][component]
         assert actual != FROZEN_REQUESTS[stage][component]
-    assert sha256((root / "documents/digestion/managed.py").read_bytes()).hexdigest() == expected["managed_source_sha256"]
+    historical_source = source_before_g1(
+        (root / "documents/digestion/managed.py").read_text(encoding="utf-8"),
+        "documents/digestion/managed.py",
+    )
+    assert sha256(historical_source.encode()).hexdigest() == expected["managed_source_sha256"]
 
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
-def test_v4_changes_only_subject_guidance(historical_contracts, contracts, stage):
+def test_v4_changes_only_subject_guidance(historical_contracts, legacy_v4_contracts, stage):
     fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4_subject.txt"
     clarification = " ".join(fixture.read_text().split()) + " "
-    active = contracts[stage].generation
+    active = legacy_v4_contracts[stage].generation
     historical = historical_contracts[stage].generation
     assert active.system.count(clarification) == 1
     assert active.system.split("\nCONTROL\n")[0].replace(clarification, "") == historical.system.split("\nCONTROL\n")[0]
@@ -711,6 +720,62 @@ def test_historical_results_readable_but_requests_cannot_resume(historical_contr
         adapter.render(historical.request)
 
 
+@pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
+@pytest.mark.parametrize("child_bytes", [None, 7000])
+def test_v4_original_and_g1_bindings_round_trip_without_upgrade(
+    legacy_v4_contracts, contracts, stage, child_bytes
+):
+    from documents.digestion.codec import read
+    from documents.digestion.managed import (
+        ManagedSettings,
+        ManagedSynthesisInference,
+        StageProfile,
+    )
+    from documents.digestion.models import Checkpoint, DigestionProfile
+    from llm.openai_compatible import OpenAICompatibleProvider
+
+    selected = (legacy_v4_contracts if child_bytes is None else contracts)[stage]
+    incompatible = (contracts if child_bytes is None else legacy_v4_contracts)[stage]
+    settings = ManagedSettings(
+        capability=selected.generation.capability,
+        child_input_bytes=child_bytes,
+        generation_profile="managed-generation/2",
+        max_response_envelope_bytes=26192,
+        profiles=tuple(StageProfile(stage=s, input_tokens=24800, output_tokens=3000)
+                       for s in ("chunk", "intermediate", "structural", "root")),
+    )
+    serialized = settings.model_dump(mode="json")
+    assert ("child_input_bytes" in serialized) == (child_bytes is not None)
+    assert ManagedSettings.model_validate(serialized) == settings
+    with pytest.raises(ValidationError):
+        ManagedSettings.model_validate({**serialized, "unexpected_setting": True})
+    profile = selected.request.profile
+    dumped = profile.model_dump(mode="json")
+    assert ("managed_input_budget" in dumped) == (child_bytes is not None)
+    assert DigestionProfile.model_validate(dumped) == profile
+    assert DigestionProfile.model_validate(dumped).digest() == profile.digest()
+    provider = OpenAICompatibleProvider(
+        base_url="https://offline.invalid/openai/v1",
+        model_map={"summarization": "offline-model"}, http_client=object(),
+    )
+    adapter = ManagedSynthesisInference(provider, settings, None, stage=stage)
+    assert adapter.config == profile.inference_config
+    assert adapter.render(selected.request)[0] == selected.generation
+    with pytest.raises(DigestionError, match="^incompatible_checkpoint$"):
+        adapter.render(incompatible.request)
+    assert validate_result(selected.raw, selected.request, selected.index) == selected.result
+    # Read the actual immutable checkpoint made under this profile, including
+    # its original lineage. Data readability does not authorize cross-policy reuse.
+    parent = (legacy_v4_contracts if child_bytes is None else contracts)[
+        "structural" if stage == "chunk" else "root"
+    ]
+    if stage != "root":
+        child = parent.request.children[0]
+        checkpoint = read(selected.store, child.artifact.scope, child.artifact,
+                          Checkpoint, profile.max_artifact_bytes)
+        assert checkpoint.result == selected.result
+
+
 @pytest.mark.parametrize("stage", ["chunk", "intermediate", "structural", "root"])
 def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, stage):
     from documents.digestion.managed import (
@@ -724,6 +789,7 @@ def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, s
     r = contracts["structural" if stage == "intermediate" else stage]
     settings = ManagedSettings(
         capability=candidate_capability(strict_digestion=True),
+        child_input_bytes=7000,
         generation_profile="managed-generation/2",
         max_response_envelope_bytes=26192,
         profiles=tuple(
@@ -796,7 +862,10 @@ def test_supplemental_classifier_failure_cannot_mask_domain_error(
 def test_application_acceptance_predicates_and_order_are_unchanged():
     root = Path(__file__).resolve().parents[2]
     actual = source_sections(
-        (root / "documents/digestion/validation.py").read_text(encoding="utf-8"),
+        source_before_g1(
+            (root / "documents/digestion/validation.py").read_text(encoding="utf-8"),
+            "documents/digestion/validation.py",
+        ),
         ("validate_result",),
     )["validate_result"]
     approved = (
