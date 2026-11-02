@@ -42,6 +42,13 @@ class DigestionError(RuntimeError):
         super().__init__(self.category)
 
 
+class ManagedInputBudget(FrozenModel):
+    """Rendered ASCII envelope admission, independent of output byte/token limits."""
+    input_bytes: int = Field(gt=0)
+    base_bytes: int = Field(gt=0)
+    child_bytes: int = Field(gt=1024)
+
+
 class DigestionProfile(FrozenModel):
     version: Token = 'digestion/1'
     structure_profile: Token = 'source-structure/1'
@@ -62,6 +69,7 @@ class DigestionProfile(FrozenModel):
     # Legacy name: canonical serialized JSON bytes, not characters or tokens.
     max_result_characters: int = Field(gt=0)
     max_response_bytes: int | None = Field(default=None, gt=0, le=4000000)
+    managed_input_budget: ManagedInputBudget | None = None
     max_claims: int = Field(ge=1, le=64)
     max_claim_characters: int = Field(ge=64, le=4096)
     max_annotations: int = Field(ge=0, le=64)
@@ -87,6 +95,8 @@ class DigestionProfile(FrozenModel):
         value = handler(self)
         if self.max_response_bytes is None:
             value.pop('max_response_bytes', None)
+        if self.managed_input_budget is None:
+            value.pop('managed_input_budget', None)
         return value
 
     @property

@@ -178,6 +178,14 @@ class DigestionHandler:
             tuple(checkpoints[c.result.stage_id] for c in request.children))
         cp = Checkpoint(plan_hash=plan_hash, parents=parents, result=result,
                         inherited=inherited, propositions=propositions)
+        if plan.profile.managed_input_budget is not None:
+            from documents.digestion.sizing import child_contribution
+            # UUID/hash strings have fixed width. Reserve the largest reference
+            # byte_size before writing, and include the actual inherited summary.
+            material = ChildInput(artifact=self.plan_ref.model_copy(update={'byte_size': limit}),
+                                  result=result, inherited=inherited)
+            if child_contribution(material) > plan.profile.managed_input_budget.child_bytes:
+                raise DigestionError('synthesis_limit_exceeded')
         return (put(store, scope, cp, limit),)
 
 

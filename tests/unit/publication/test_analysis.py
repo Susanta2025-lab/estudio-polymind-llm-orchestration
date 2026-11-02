@@ -130,3 +130,43 @@ def test_pdf_uses_canonical_physical_page(env):
     citations = replica.citations(pin,hits)
     assert {c.physical_page for c in citations} == {1,2}
     assert all(c.span.line_start is None for c in citations)
+
+
+def test_escaped_evidence_and_annotations_use_complete_governed_envelope(env):
+    from documents.digestion.inference import FakeInference, Fixture
+    from documents.jobs.models import canonical
+
+    service, document = env
+    qualification = '\\"' * 100
+    def annotated(artifact):
+        return FakeInference(fixtures=(Fixture(block_id=artifact.units[0].blocks[0].block_id,
+            text='Qualified source finding.', qualification=qualification),))
+    job = document('alpha "escaped" evidence \\\\ source\n', inference=annotated)
+    manifest = service.plan([job]); service.prepare(manifest.generation); service.activate(manifest.generation)
+    replica = PublicationReplica(service, manifest.generation); replica.load()
+    provider = Provider()
+    capability = CapabilityProfile(version='synthetic/1', context_tokens=100000, max_output_tokens=2048,
+                                   overhead_tokens=100, safety_tokens=100)
+    analysis = DocumentAnalysis(replica, provider, capability, reranker=lambda q,docs,top_k: docs[:top_k])
+    query = AnalysisRequest(query='alpha', document_ids=(UUID(int=3),))
+    analysis.analyze(query)
+    generation, = provider.calls
+    data = json.loads(generation.data)
+    assert data['DERIVED_RETRIEVAL_MATERIAL'][0]['qualifications'][0]['text'] == qualification
+    assert data['ORIGINAL_SOURCE_EVIDENCE'][0]['excerpt'] == 'alpha "escaped" evidence \\\\ source\n'
+    old = len(generation.system.encode()) + len(generation.data.encode()) + len(canonical(generation.schema))
+    full = len(canonical({'system': generation.system, 'data': generation.data, 'schema': generation.schema}).encode())
+    assert old < full
+    provider.calls.clear()
+    analysis.input_bytes = old
+    with pytest.raises(PublicationError, match='analysis_limit'):
+        analysis.analyze(query)
+    assert not provider.calls
+    analysis.input_bytes = full
+    analysis.capability = capability.model_copy(update={'context_tokens': full+2048+199})
+    with pytest.raises(PublicationError, match='analysis_limit'):
+        analysis.analyze(query)
+    assert not provider.calls
+    analysis.capability = capability.model_copy(update={'context_tokens': full+2048+200})
+    analysis.analyze(query)
+    assert provider.calls[0].data == generation.data

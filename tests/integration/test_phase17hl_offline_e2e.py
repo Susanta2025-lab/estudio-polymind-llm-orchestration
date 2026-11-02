@@ -126,9 +126,28 @@ def l1(tmp_path, monkeypatch, record_property):
                         "evidence_ids": leaf["claims"][0]["evidence_ids"][:1],
                     }
                 ]
+                if state.two_chunks:
+                    source = ''.join(p['text'] for p in data['UNTRUSTED_DOCUMENT_DATA'])
+                    affirmed = 'Access is permitted during daytime.' in source
+                    finding = ('Access is permitted during daytime.' if affirmed
+                               else 'Access is denied during maintenance.')
+                    assert finding in source
+                    leaf['claims'][0].update(text=finding, subject='access',
+                        stance='affirmed' if affirmed else 'denied', qualifications=[{
+                            'text': 'Only during daytime.' if affirmed else 'During maintenance.',
+                            'evidence_ids': leaf['claims'][0]['evidence_ids'][:1]}])
                 result = json.dumps(leaf)
+            elif stage in ('structural', 'root') and state.two_chunks:
+                reduction = json.loads(result)
+                reduction['claims'][0]['text'] = (
+                    'Access is permitted: Only during daytime. Access is denied: During maintenance. '
+                    'Conflicting source findings remain unresolved.')
+                result = json.dumps(reduction)
             elif stage == "question":
                 evidence = data["ORIGINAL_SOURCE_EVIDENCE"][0]
+                if state.two_chunks:
+                    evidence = next(c for c in data['ORIGINAL_SOURCE_EVIDENCE']
+                                    if 'Access is permitted during daytime.' in c['excerpt'])
                 result = json.dumps(
                     {
                         "answer": evidence["excerpt"],
@@ -156,18 +175,34 @@ def l1(tmp_path, monkeypatch, record_property):
         return Contract.model_validate(
             {
                 **original_contract().model_dump(mode="json"),
-                "attempts": 4,
-                "total_input": 100000,
-                "total_output": 12000,
+                "attempts": 5 if state.two_chunks else 4,
+                "total_input": 125000 if state.two_chunks else 100000,
+                "total_output": 15000 if state.two_chunks else 12000,
                 "rpm": 1,
             }
         )
 
     monkeypatch.setattr(foundry_preflight, "synthetic_contract", contract)
 
-    def run(transform=lambda value, stage: value, *, before_analyze=None):
+    def run(transform=lambda value, stage: value, *, before_analyze=None, two_chunks=False):
         state.transform = transform
         state.before_analyze = before_analyze
+        state.two_chunks = two_chunks
+        if two_chunks:
+            from tests.performance import fixtures
+            original_lines = fixtures.page_lines
+            original_profile = foundry_preflight.profile
+
+            def lines(page, count, rng):
+                result = original_lines(page, count, rng)
+                if page in (1, 3):
+                    result[1] = ('Access is permitted during daytime.' if page == 1
+                                 else 'Access is denied during maintenance.')
+                return result
+
+            monkeypatch.setattr(fixtures, 'page_lines', lines)
+            monkeypatch.setattr(foundry_preflight, 'profile', lambda **kw: original_profile(
+                **{**kw, 'chunk_characters': 800}))
         state.result = foundry_preflight.execute(tmp_path, "L1")
         record_property("synthetic_provider_calls", len(state.sent))
         return state

@@ -185,6 +185,7 @@ def execute(root, stage, *, runtime=None):
     provider.execute = recorded_execute
     cap = candidate_capability(strict_digestion=stage == 'L1')
     settings = ManagedSettings(capability=cap,
+        child_input_bytes=7000 if stage == 'L1' else None,
         generation_profile='managed-generation/2' if stage == 'L1' else 'managed-generation/1',
         max_response_envelope_bytes=26192 if stage == 'L1' else None, profiles=tuple(StageProfile(stage=s, input_tokens=24800,
         output_tokens=3000) for s in ('chunk', 'intermediate', 'structural', 'root')))

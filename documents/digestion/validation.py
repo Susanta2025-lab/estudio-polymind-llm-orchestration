@@ -71,6 +71,11 @@ def validate_result(raw, request, index):
             diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
             reason=(Reason.CANONICAL_RESPONSE_LIMIT),
         )
+    if profile.managed_input_budget is not None:
+        from documents.digestion.sizing import CHILD_WRAPPER_BYTES, result_contribution
+        if result_contribution(result) + CHILD_WRAPPER_BYTES > profile.managed_input_budget.child_bytes:
+            raise DigestionError('synthesis_limit_exceeded',
+                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT)
     if result.stage_id != request.stage_id or result.kind != request.stage:
         raise DigestionError(
             "inference_contract_error",

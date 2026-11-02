@@ -29,6 +29,15 @@ def request_size(request):
 
 def check_request(request):
     size = request_size(request)
+    budget = request.profile.managed_input_budget
+    if budget is not None:
+        from documents.digestion.sizing import analysis_size, child_contribution, reduction_size
+        rendered = (analysis_size(request) if request.stage == 'analysis' else
+                    reduction_size(request.profile, request.structural_path, len(request.children)))
+        if (any(child_contribution(c) > budget.child_bytes for c in request.children)
+                or rendered > budget.input_bytes):
+            raise DigestionError('synthesis_limit_exceeded')
+        size = max(size, rendered)
     if size + request.profile.reserved_output_tokens > request.profile.context_tokens:
         raise DigestionError('synthesis_limit_exceeded')
     return size
@@ -244,7 +253,14 @@ def _build(artifact, ref, profile):
         overhead = base + len(encode(empty.model_copy(update={'structural_path': node.path}))) + 512
         capacity = min(profile.max_fan_in,
                        (profile.context_tokens-profile.reserved_output_tokens-overhead) // per_child)
-        if capacity < 2:
+        budget = profile.managed_input_budget
+        if budget is not None:
+            from documents.digestion.sizing import reduction_size
+            raw_capacity = (profile.context_tokens-profile.reserved_output_tokens-overhead) // budget.child_bytes
+            overhead = reduction_size(profile, node.path, 0)
+            capacity = min(profile.max_fan_in, raw_capacity,
+                           (budget.input_bytes-overhead) // budget.child_bytes)
+        if capacity < (min(2, len(children)) if budget else 2):
             raise DigestionError('synthesis_limit_exceeded')
         current = list(children)
         while True:
@@ -258,7 +274,8 @@ def _build(artifact, ref, profile):
                                 str(node.structural_unit_id), *(str(k) for k in group))
                 reducers.append(ReductionNode(stage_id=key, structural_parent=node.structural_unit_id,
                                               children=group, level=level, path=node.path,
-                                              estimated_tokens=overhead + len(group)*per_child))
+                                              estimated_tokens=overhead + len(group)*(
+                                                  budget.child_bytes if budget else per_child)))
                 levels[key] = level
                 positions[key] = min(positions[k] for k in group)
                 following.append(key)

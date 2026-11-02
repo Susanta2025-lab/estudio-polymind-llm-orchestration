@@ -62,7 +62,9 @@ class DocumentAnalysis:
         # JSON-object and prompt-only providers do not transmit request.schema.
         # Keep the output contract in trusted instructions for every adapter.
         system = SYSTEM + '\nOUTPUT_SCHEMA\n' + canonical(schema)
-        estimate = len(system.encode()) + len(data.encode()) + len(canonical(schema))
+        # Use the same complete escaped envelope as GovernedExecution. Counting
+        # the component strings underestimates quotes/backslashes in annotations.
+        estimate = len(canonical({'system': system, 'data': data, 'schema': schema}).encode())
         if (estimate > self.input_bytes or estimate + self.output_tokens + self.capability.overhead_tokens
                 + self.capability.safety_tokens > self.capability.context_tokens):
             raise PublicationError('analysis_limit')  # No silent removal of qualifications/conflicts.

@@ -5,14 +5,17 @@ No provider transport, credentials, tools, retry loop or semantic repair lives h
 from dataclasses import dataclass
 import re
 from typing import Literal
+from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from documents.models import FrozenModel, stable_id
 from documents.jobs.errors import Failure
 from documents.jobs.models import canonical, fingerprint
-from documents.digestion.models import DigestionError, DigestionProfile, StageResult
+from documents.digestion.models import (
+    DigestionError, DigestionProfile, ManagedInputBudget, StageRequest, StageResult,
+)
 from documents.digestion.planning import check_request
 from documents.digestion.workflow import DigestionHandler, classify_digestion
 from llm.admission import CallIdentity, InferenceAdmissionPort
@@ -65,7 +68,15 @@ class ManagedSettings(BaseSettings):
     max_request_bytes: int = Field(default=256000, gt=0, le=4000000)
     max_response_envelope_bytes: int | None = Field(default=None, gt=0, le=24008192)
     max_evidence: int = Field(default=256, gt=0, le=4096)
+    child_input_bytes: int | None = Field(default=None, gt=1024, le=4000000)
     total_seconds: float = Field(default=60, gt=0, le=600)
+
+    @model_serializer(mode='wrap')
+    def serialize(self, handler):
+        value = handler(self)
+        if self.child_input_bytes is None:
+            value.pop('child_input_bytes', None)
+        return value
 
     @model_validator(mode='after')
     def stages(self):
@@ -137,10 +148,28 @@ class ManagedSynthesisInference:
 
     def profile(self, planning: DigestionProfile):
         """Bind semantic compatibility before planning; never rewrite an accepted plan."""
-        return DigestionProfile.model_validate({**planning.model_dump(mode='json'),
+        bound = DigestionProfile.model_validate({**planning.model_dump(mode='json'),
             'inference_profile': 'managed/1',
             'prompt_profile': self.profiles['chunk'].template_version,
-            'inference_config': self.config})
+            'inference_config': self.config, 'managed_input_budget': None})
+        if self.settings.child_input_bytes is None:
+            return bound
+        request = StageRequest(stage_id=UUID(int=0), stage='reduction', profile=bound,
+                               structural_path=())
+        cap = self.settings.capability
+        # Empty source material is used only to measure the fixed chunk envelope;
+        # ordinary analysis admission still requires actual source pieces.
+        empty_chunk = request.model_copy(update={'stage': 'analysis'})
+        base = max(self.bind(None, stage).render(empty_chunk if stage == 'chunk' else request,
+                                               _check_limits=False)[1]
+                   - cap.overhead_tokens - cap.safety_tokens
+                   for stage in self.profiles)
+        limit = min(self.settings.max_request_bytes, *(min(
+            p.input_tokens, cap.context_tokens-p.output_tokens-cap.overhead_tokens-cap.safety_tokens)
+            for p in self.profiles.values()))
+        budget = ManagedInputBudget(input_bytes=limit, base_bytes=base,
+                                    child_bytes=self.settings.child_input_bytes)
+        return bound.model_copy(update={'managed_input_budget': budget})
 
     def bind(self, context, stage):
         bound = ManagedSynthesisInference(self.provider, self.settings, self.admission,
@@ -149,8 +178,9 @@ class ManagedSynthesisInference:
             raise DigestionError('incompatible_checkpoint')
         return bound
 
-    def render(self, request):
-        check_request(request)  # Revalidates unchecked model copies, too.
+    def render(self, request, *, _check_limits=True):
+        if _check_limits:
+            check_request(request)  # Revalidates unchecked model copies, too.
         profile = self.profiles[self.stage]
         if (request.profile.inference_config != self.config
                 or request.profile.prompt_profile != profile.template_version
@@ -162,6 +192,9 @@ class ManagedSynthesisInference:
             raise InferenceConfigurationError('Stage output exceeds planning reservation.')
         if self.provider.model_id(ModelRole(profile.role)) != self.model:
             raise DigestionError('incompatible_checkpoint')
+        if _check_limits and self.settings.child_input_bytes is not None:
+            if request.profile.managed_input_budget != self.profile(request.profile).managed_input_budget:
+                raise DigestionError('incompatible_checkpoint')
         evidence = sorted({str(p.evidence_id()) for p in request.source_data} | {
             str(e) for child in request.children for c in child.result.claims
             for e in (*c.evidence_ids, *c.contradicting_evidence_ids)})
@@ -181,6 +214,8 @@ class ManagedSynthesisInference:
             'max_response_bytes': request.profile.response_byte_limit,
             'schema': schema,
         }
+        if self.settings.child_input_bytes is not None:
+            control['max_child_input_bytes'] = self.settings.child_input_bytes
         task = {'chunk': 'Analyze every supplied source piece.',
                 'intermediate': 'Combine child findings with complete lineage.',
                 'structural': 'Summarize this structural section with complete lineage.',
@@ -209,6 +244,9 @@ class ManagedSynthesisInference:
             'For analysis, reference EVERY allowed evidence ID across the claims. '
             'For reduction, include EVERY required_child_link across claim lineage; generated '
             'child text is not original source evidence. Preserve all child qualifications/conflicts. '
+            + ('The complete result must also fit max_child_input_bytes when embedded as child material, '
+               'including escaped result JSON, required links, evidence IDs and 1024 reserved wrapper bytes. '
+               if self.settings.child_input_bytes is not None else '')
             + task + '\nCONTROL\n' + canonical(control))
         data = canonical({
             'UNTRUSTED_DOCUMENT_DATA': [dict(evidence_id=str(p.evidence_id()), text=p.text,
@@ -224,7 +262,7 @@ class ManagedSynthesisInference:
         # Include response schema even for prompt-only adapters to avoid under-reservation.
         size = len(canonical({'system': system, 'data': data, 'schema': generation.schema}).encode())
         estimate = size + cap.overhead_tokens + cap.safety_tokens
-        if (size > self.settings.max_request_bytes or size > profile.input_tokens
+        if _check_limits and (size > self.settings.max_request_bytes or size > profile.input_tokens
                 or estimate+profile.output_tokens > cap.context_tokens):
             raise InferenceContextError('Rendered request exceeds configured capability.')
         return generation, estimate
