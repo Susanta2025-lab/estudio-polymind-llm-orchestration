@@ -365,6 +365,20 @@ conformance and application domain acceptance are separate checks; neither alone
 certifies semantic support. The broader historical prompt proposal is inactive;
 v4 implements the narrower subject-contract correction.
 
+The L1 composition now retains its 10,000-byte raw/canonical result allowance
+and separately admits at most 7,000 rendered bytes per child, including claim
+links, evidence IDs, JSON escaping and reference/inherited metadata. The opt-in
+`DOCUMENT_INFERENCE_CHILD_INPUT_BYTES` setting binds this policy into the managed
+configuration and plan; unset settings preserve historical profile hashes.
+Planning derives reducer capacity from the complete fixed prompt/schema envelope
+plus these child budgets and structural paths. Results that exceed the embedded
+budget fail before checkpoint acceptance; no evidence or annotations are trimmed.
+Q&A independently checks its complete retrieved evidence and derived annotation
+envelope using the same estimator as governance, before reservation or inference.
+See the [G1/G2 offline engineering report](docs/codex/reports/phase_17h_g1_g2_offline_engineering_and_integration_hardening.md)
+for the strict two-chunk/five-call and existing four-call synthetic verification.
+These offline checks do not close Phase 17H or establish live semantic quality.
+
 ---
 
 # RAG publication model
