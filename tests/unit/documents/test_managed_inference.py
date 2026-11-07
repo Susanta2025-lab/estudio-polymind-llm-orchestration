@@ -277,8 +277,8 @@ def test_generation_schema_exposes_canonical_defaults_and_versions_prompt(tmp_pa
         if 'properties' in node:
             assert set(node['required']) == set(node['properties'])
     assert 'schema_version' not in StageResult.model_json_schema()['required']
-    assert request.profile.prompt_profile == 'managed-prompt/4'
-    assert control['profile']['template_version'] == 'managed-prompt/4'
+    assert request.profile.prompt_profile == 'managed-prompt/5'
+    assert control['profile']['template_version'] == 'managed-prompt/5'
     assert 'complete compact ASCII JSON' in generation.system
     assert control['max_result_bytes'] == generation.response_bytes == 3000
 
@@ -338,13 +338,14 @@ def test_stale_execution_binding_fails_before_admission(tmp_path, binding):
 
 
 @pytest.mark.parametrize('stage', ['chunk', 'intermediate', 'structural', 'root'])
-def test_explicit_v3_stage_configuration_rejected(stage):
+@pytest.mark.parametrize('version', [3, 4])
+def test_explicit_historical_stage_configuration_rejected(stage, version):
     from pydantic import ValidationError
 
     chosen = settings().model_dump(mode='json')
     for profile in chosen['profiles']:
         if profile['stage'] == stage:
-            profile['template_version'] = 'managed-prompt/3'
+            profile['template_version'] = f'managed-prompt/{version}'
     with pytest.raises(ValidationError):
         ManagedSettings.model_validate(chosen)
 

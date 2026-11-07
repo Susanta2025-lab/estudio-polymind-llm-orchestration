@@ -95,7 +95,7 @@ def test_authorized_composition_with_intercepted_http(composition,auth,header,va
     assert cfg.generation_contract_sha256 == launch.generation_contract_digest()
     for _, kwargs in http.sent[:3]:
         control = json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
-        assert control['profile']['template_version'] == 'managed-prompt/4'
+        assert control['profile']['template_version'] == 'managed-prompt/5'
         assert set(control['schema']['required']) == set(control['schema']['properties'])
     assert {json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
             ['profile']['stage'] for _, kwargs in http.sent[:3]} == {'chunk', 'structural', 'root'}
@@ -226,6 +226,18 @@ def test_generation_contract_change_refused_before_approval_consumption(composit
     monkeypatch.setattr(launch, 'generation_contract_digest', lambda: '0' * 64)
     with pytest.raises(ValueError):
         launch.launch(cfg, launch.configuration_digest(cfg), '', '', '')
+    assert not http.sent
+    assert not (cfg.audit_directory/'run.sqlite').exists()
+    assert not (cfg.audit_directory/'live-started.json').exists()
+
+
+def test_previous_generation_configuration_cannot_authorize_v5(composition):
+    cfg, _, http, _, _ = composition
+    previous = '00bf895290e1da2fb81372ff1ea921d8d7f464ea14f41110f54313d0423ad904'
+    assert launch.generation_contract_digest() != previous
+    with pytest.raises(ValueError, match='Reviewed generation contract'):
+        launch.LaunchConfiguration.model_validate({**cfg.model_dump(),
+            'generation_contract_sha256': previous})
     assert not http.sent
     assert not (cfg.audit_directory/'run.sqlite').exists()
     assert not (cfg.audit_directory/'live-started.json').exists()

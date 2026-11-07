@@ -543,6 +543,38 @@ def test_strict_rejection_preserves_paid_usage_and_never_completes(
         )
 
 
+def test_mixed_qualification_provenance_stops_after_first_call(l1):
+    from tests.integration.test_final_offline_azure_compatibility import qualification_witness
+
+    def response(value, stage):
+        assert stage == "chunk"  # No reducer, root or grounded Q&A call follows.
+        data = qualification_witness(value, "blended")
+        Draft202012Validator(provider_schema(generation_schema())).validate(data)
+        return encode(StageResult.model_validate(data)).decode()
+
+    state = l1(response)
+    assert state.result["job_state"] == "FAILED"
+    assert state.result["terminal_category"] == "invalid_reference"
+    assert len(state.requests) == len(state.generations) == 1
+    assert not state.validated
+    error = state.errors[-1]
+    assert error.category == "evidence_validation_failed"
+    assert error.validation_diagnostic.value == "evidence_validation"
+    assert error.validation_reason.value == "invalid_qualification_source"
+    assert "publication" not in state.result and "questions" not in state.result
+    assert_accounting(state, 1)
+    scope = state.artifact.document.scope
+    steps = state.jobs.steps(scope, state.job.job_id)
+    failed, = [s for s in steps if s.state == "FAILED"]
+    assert failed.attempt_count == 1 and not failed.manifest
+    stage_ids = {str(state.plan.root_id), *(str(r.stage_id) for r in state.plan.reducers), "digest"}
+    downstream = [s for s in steps if s.spec.unit_id in stage_ids]
+    assert len(downstream) == 3
+    assert all(s.state == "CANCELLED" and s.attempt_count == 0 and not s.manifest for s in downstream)
+    with pytest.raises(DigestionError):
+        workflow.load_digest(state.jobs, state.store, scope, state.job.job_id)
+
+
 @pytest.mark.parametrize(
     "case", ["raw_limit", "truncated", "envelope", "unknown_usage", "exception"]
 )

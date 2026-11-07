@@ -14,7 +14,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from documents.digestion import workflow
-from documents.digestion.codec import encode
+from documents.digestion.codec import decode, encode
 from documents.digestion.managed import ManagedDigestionHandler, generation_schema
 from documents.digestion.models import DigestionError, StageResult
 from documents.digestion.validation import validate_result
@@ -35,14 +35,43 @@ def contracts(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def legacy_v4_contracts(tmp_path_factory):
-    """Replay the pre-G1 profile through current code, with its original binding."""
+    """Replay the pinned v4 renderer without G1, preserving its original binding."""
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_v4=True)
+
+
+@pytest.fixture(scope="module")
+def v4_g1_contracts(tmp_path_factory):
+    """The prior generation contract, retaining its original G1 admission."""
+    return capture_contracts(tmp_path_factory, historical_v4=True)
+
+
+@pytest.fixture(scope="module")
+def unbounded_contracts(tmp_path_factory):
     return capture_contracts(tmp_path_factory, historical_settings=True)
 
 
-def capture_contracts(tmp_path_factory, *, historical_settings=False):
+def capture_contracts(tmp_path_factory, *, historical_settings=False, historical_v4=False):
     """Observe real planning/rendering/HTTP/validation without changing decisions."""
     from documents.digestion import managed
     from documents.storage import LocalObjectStore
+
+    if historical_v4:
+        import sys
+        from hashlib import sha256
+        from pathlib import Path
+        from types import ModuleType
+
+        fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4.py.txt"
+        source = fixture.read_bytes()
+        assert sha256(source).hexdigest() == "36e0fba04c1dd952dc7617759fc36f2106d407578ecba194204a215b1ef88a36"
+        module = ModuleType("tests._historical_managed_prompt4")
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setitem(sys.modules, module.__name__, module)
+            # Execute only the fixed, hash-pinned synthetic historical fixture.
+            exec(compile(source, str(fixture), "exec"), module.__dict__)  # noqa: S102
+            for name in ("StageProfile", "ManagedSettings", "ManagedSynthesisInference"):
+                patch.setattr(managed, name, getattr(module, name))
+            return capture_contracts(tmp_path_factory, historical_settings=historical_settings)
 
     records = []
     original_settings = managed.ManagedSettings
@@ -100,6 +129,9 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False):
         patch.setattr(workflow, "validate_result", validate)
         root = tmp_path_factory.mktemp("synthetic-compatibility")
         outcome = foundry_preflight.execute(root, "L1")
+        classes = SimpleNamespace(**{name: getattr(managed, name) for name in (
+            "StageProfile", "ManagedSettings", "ManagedSynthesisInference")})
+        classes.ManagedSettings = original_settings
     assert outcome["job_state"] == "COMPLETED"
     assert outcome["digest_status"] == "COMPLETE"
     assert outcome["calls"] == 4
@@ -107,6 +139,7 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False):
     assert len(records) == 3
     for record in records:
         record.store = LocalObjectStore(root / "objects")
+        record.managed = classes
     return dict(zip(STAGES, records, strict=True))
 
 
@@ -118,6 +151,72 @@ def schema_nodes(node):
     elif isinstance(node, list):
         for child in node:
             yield from schema_nodes(child)
+
+
+def qualification_witness(raw, case):
+    """Synthetic eight-claim/17-primary-reference analogue; no live content/IDs."""
+    data = json.loads(raw)
+    original = data["claims"][0]
+    allowed = original["evidence_ids"]
+    assert len(allowed) == len(set(allowed)) == 4
+    data["claims"] = []
+    for position, count in enumerate((1, 1, 1, 1, 4, 1, 4, 4)):
+        claim = deepcopy(original)
+        claim.update(
+            claim_id=str(stable_id(data["stage_id"], str(position))),
+            text="Synthetic source finding.",
+            evidence_ids=allowed if count == 4 else [allowed[position % 4]],
+            qualifications=[],
+        )
+        data["claims"].append(claim)
+    references = allowed[:3]
+    if case == "valid":
+        references.append(allowed[3])
+    elif case == "foreign":
+        references.append(FOREIGN)
+    elif case == "blended":
+        blended = allowed[0].split("-")[0] + "-" + allowed[1].split("-", 1)[1]
+        assert str(UUID(blended)) == blended and blended not in allowed
+        references.append(blended)
+    elif case == "duplicate":
+        references.append(allowed[0])
+    else:
+        raise AssertionError(case)
+    data["claims"][-1]["qualifications"] = [
+        {"text": "Only under the supplied source conditions.", "evidence_ids": references}
+    ]
+    return data
+
+
+@pytest.mark.parametrize("case", ("valid", "foreign", "blended", "duplicate"))
+def test_multi_reference_qualification_membership(contracts, case):
+    record = contracts["chunk"]
+    data = qualification_witness(record.raw, case)
+    Draft202012Validator(provider_schema(generation_schema())).validate(data)
+    raw = encode(StageResult.model_validate(data))
+    decoded = decode(raw, StageResult, record.request.profile.response_byte_limit)
+    allowed = {p.evidence_id() for p in record.request.source_data}
+    assert len(decoded.claims) == 8
+    assert sum(len(c.evidence_ids) for c in decoded.claims) == 17
+    assert all(set(c.evidence_ids) <= allowed for c in decoded.claims)
+    qualification = decoded.claims[-1].qualifications[0]
+    assert len(qualification.evidence_ids) == 4
+    assert len(set(qualification.evidence_ids[:3])) == 3
+    assert set(qualification.evidence_ids[:3]) <= allowed
+    if case == "valid":
+        assert len(set(qualification.evidence_ids)) == 4
+        assert validate_result(raw, record.request, record.index) == decoded
+    else:
+        if case != "duplicate":
+            assert qualification.evidence_ids[3] not in allowed
+        with pytest.raises(DigestionError) as caught:
+            validate_result(raw, record.request, record.index)
+        assert caught.value.category == "evidence_validation_failed"
+        assert caught.value.validation_diagnostic.value == "evidence_validation"
+        assert caught.value.validation_reason.value == "invalid_qualification_source"
+        # Removing only the late invalid entry establishes valid surrounding provenance.
+        data["claims"][-1]["qualifications"][0]["evidence_ids"].pop()
+        assert validate_result(encode(StageResult.model_validate(data)), record.request, record.index)
 
 
 @pytest.mark.parametrize("stage", STAGES)
@@ -147,7 +246,7 @@ def test_exact_rendered_contract_and_unmodified_witness(contracts, stage):
     assert generation.max_response_envelope_bytes == 26192
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == "managed-prompt/4"
+    assert control["profile"]["template_version"] == "managed-prompt/5"
     assert control["kind"] == request.stage
     assert control["stage_id"] == str(request.stage_id)
     assert control["schema"] == generation.schema

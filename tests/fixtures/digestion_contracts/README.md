@@ -99,3 +99,29 @@ stored results/checkpoints remain readable under their original contracts.
 
 See the [CI reconciliation report](../../../docs/codex/reports/phase_17h_ci_failure_and_historical_contract_reconciliation.md)
 for the verified failure inventory, exact regression commands and limitations.
+
+## Exact evidence-copying prompt migration
+
+Active generation now uses `managed-prompt/5`. The v3 and pre-G1 v4 fixtures and
+their original hashes above retain their bytes. `managed_prompt4.py.txt` freezes
+the complete prior v4/G1 renderer, SHA-256
+`36e0fba04c1dd952dc7617759fc36f2106d407578ecba194204a215b1ef88a36`.
+Like the pinned v3 fixture, it is executed only inside the isolated synthetic
+historical fixture, after checksum verification, with temporary class substitutions
+restored afterward. Production does not load historical renderer files or accept
+v4 stage configuration. Its pre-G1 projection still matches the original
+`managed_prompt4.json` source hash and nine request/generation/payload hashes.
+The G1 projection utility's managed-source mutation tests also use this pinned
+historical source: v5's new prose intentionally changes one fixed patch context.
+The original patch remains exact and unchanged; active v5 is checked separately.
+Both v4 budget configurations and stored checkpoints remain readable as historical
+data; they do not authorize execution with the changed v5 contract.
+
+`managed_prompt5.json` independently pins the active renderer and nine synthetic
+G1 request/generation/payload hashes. These were captured intentionally for this
+version transition; tests never refresh them. Behavioral tests compare v4/v5 prose
+after removing exactly the two evidence-copying paragraphs, check their sizing
+delta, preserve schema equality, and reject cross-version execution. All four
+stage profiles must include the new instructions. See the
+[R0/R1 engineering report](../../../docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
+for the generation-contract transition and remaining live-validation boundary.

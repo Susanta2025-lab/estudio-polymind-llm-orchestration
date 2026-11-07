@@ -2,10 +2,14 @@
 
 Status — 1 November 2026: this methodology remains the offline reliability and
 quality rubric. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-adds one accepted, financially settled live analysis under active managed-prompt/4;
+adds one accepted, financially settled live analysis under then-active managed-prompt/4;
 it does not close full Phase 17H, which remains PARTIAL. Full live hierarchical
 digestion, subsequent grounded Q&A, representative independent semantic/citation
 review and workload reliability remain open. The commands below remain offline.
+
+The 7 November four-call live evaluation failed G2 qualification provenance after
+one call. Current [managed-prompt/5 R0/R1 hardening](../codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
+is offline only; it does not establish model compliance or complete live validation.
 
 This harness runs only synthetic offline work. It never constructs a configured
 inference provider, downloads models or accesses configured cloud stores. Run from

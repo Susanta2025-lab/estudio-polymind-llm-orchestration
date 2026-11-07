@@ -3,10 +3,17 @@
 > **Current status — 1 November 2026:** [Attempt 6 CLOSED/PASS](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 > establishes one governed first-chunk analysis: strict response completed,
 > application validation accepted, known usage SETTLED, one call and no automatic
-> retries. Active generation is [managed-prompt/4](../codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md).
+> retries. That historical run used [managed-prompt/4](../codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md).
 > Phase 17G is COMPLETED/PASS within reference scope; Phase 17H remains PARTIAL.
 > Full live L1 digestion and subsequent grounded Q&A are NOT VALIDATED. Production
 > readiness is NOT ESTABLISHED. All further live work requires separate authorization.
+
+**7 November offline update:** The later four-call evaluation stopped after its
+first call on invalid qualification provenance. Current generation is
+[managed-prompt/5](../codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md),
+with exact evidence-copying and stage-local inheritance guidance. No v5 live call
+is authorized or validated; the prior approval is consumed and its generation
+binding cannot authorize v5.
 
 ## Current interpretation of the historical runbook
 

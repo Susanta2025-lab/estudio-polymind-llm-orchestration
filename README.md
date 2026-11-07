@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 1 November 2026
+## Current engineering status — 7 November 2026
 
 Phases 17A–17F have implemented application contracts. The current evidence is
 bounded to the reference architecture and the evaluations below; production
@@ -33,7 +33,7 @@ readiness is **NOT ESTABLISHED**.
 | [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
 | [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
 | Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
-| [Active managed-prompt/4](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md) | **PASS within tested scope**; fact-only populated subject instructions |
+| [Active managed-prompt/5](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md) | Offline evidence-copying and stage-local inheritance hardening; retains v4 subject rules; no v5 live evaluation |
 | [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
 | Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
 | Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
@@ -354,10 +354,17 @@ The complete local suite passed:
 ### Live evaluation boundary
 
 Phase 17E closed with offline protocol/application integration and zero live calls.
-Later diagnostic attempts culminated in **Attempt 6 CLOSED/PASS** under active
+Later diagnostic attempts culminated in **Attempt 6 CLOSED/PASS** under then-active
 `managed-prompt/4`: one first-chunk analysis passed both strict provider output and
 application validation, with known usage settled once and no automatic retries.
 See the [closure and complete failure history](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md).
+
+The [7 November four-call evaluation](docs/codex/reports/phase_17h_final_approval_signing_and_controlled_execution.md)
+stopped after one call: G2 rejected a foreign qualification evidence ID before
+an analysis checkpoint was accepted. The approval was consumed. Current
+[managed-prompt/5](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
+adds exact evidence-copying instructions and offline regressions; it has no live
+validation and requires a separately reviewed generation-bound configuration.
 
 Full live hierarchical digestion, subsequent grounded Q&A and representative
 independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
@@ -694,6 +701,7 @@ Current key reports:
 - [Phase 17G — Multi-User Security, Quotas & Cost Governance](docs/codex/reports/phase_17g_report.md)
 - [Phase 17H — Large-Document Reliability & Quality Evaluation](docs/codex/reports/phase_17h_report.md)
 - [managed-prompt/4 — Subject-Contract Implementation](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
+- [managed-prompt/5 — R0/R1 Evidence-Provenance Hardening](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
 - [Attempt 6 — Closure and Phase 17H Gate Assessment](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 
 The reports distinguish verified behavior from deferred production claims.
@@ -765,7 +773,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/4 active; Attempt 6 CLOSED/PASS; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
+**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/5 active with offline R0/R1 hardening; Attempt 6 CLOSED/PASS; 7 November live evaluation failed G2 after one call; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 
