@@ -32,6 +32,8 @@ from tests.integration.test_final_offline_azure_compatibility import (
     legacy_v4_contracts,
     legacy_v5_contracts,
     legacy_v5_unbounded_contracts,
+    legacy_v6_contracts,
+    legacy_v6_unbounded_contracts,
     v4_g1_contracts,
     unbounded_contracts,
 )
@@ -806,9 +808,10 @@ def test_historical_results_readable_but_requests_cannot_resume(historical_contr
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
 @pytest.mark.parametrize("child_bytes", [None, 7000])
-@pytest.mark.parametrize("version", [4, 5, 6])
+@pytest.mark.parametrize("version", [4, 5, 6, 7])
 def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
     legacy_v4_contracts, v4_g1_contracts, legacy_v5_contracts, legacy_v5_unbounded_contracts,
+    legacy_v6_contracts, legacy_v6_unbounded_contracts,
     unbounded_contracts, contracts, stage, child_bytes, version
 ):
     from documents.digestion.codec import read
@@ -823,7 +826,8 @@ def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
     unbounded, bounded = {
         4: (legacy_v4_contracts, v4_g1_contracts),
         5: (legacy_v5_unbounded_contracts, legacy_v5_contracts),
-        6: (unbounded_contracts, contracts),
+        6: (legacy_v6_unbounded_contracts, legacy_v6_contracts),
+        7: (unbounded_contracts, contracts),
     }[version]
     selected = (unbounded if child_bytes is None else bounded)[stage]
     incompatible = (bounded if child_bytes is None else unbounded)[stage]
@@ -901,13 +905,13 @@ def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, s
     generation, _ = adapter.render(r.request)
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/6"
+    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/7"
     fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4_subject.txt"
     assert " ".join(fixture.read_text().split()) in " ".join(generation.system.split())
     for instruction in (
         "Include every schema field, including default values, empty arrays and nulls.",
         "Cite ONLY allowed evidence IDs; never invent references.",
-        "Use the supplied claim_ids_in_order consecutively and originating_stage=stage_id.",
+        "Use CONTROL.claim_ids_in_order consecutively for this response.",
         "Represent unknown or unsupported conclusions explicitly using kind/status.",
         "For analysis, reference EVERY allowed evidence ID across the claims.",
         "For reduction, include EVERY required_child_link across claim lineage;",
@@ -1007,10 +1011,10 @@ def test_byte_diagnostic_cannot_mask_refusal():
 
 
 @pytest.mark.parametrize('stage', ['chunk', 'structural', 'root'])
-def test_active_v6_generation_fingerprints(contracts, stage):
+def test_historical_v6_generation_fingerprints(legacy_v6_contracts, stage):
     root = Path(__file__).resolve().parents[2]
     expected = json.loads((root / 'tests/fixtures/digestion_contracts/managed_prompt6.json').read_text())
-    record = contracts[stage]
+    record = legacy_v6_contracts[stage]
     for component, value in {
         'request': record.request.model_dump(mode='json'),
         'generation': asdict(record.generation),
@@ -1018,14 +1022,14 @@ def test_active_v6_generation_fingerprints(contracts, stage):
     }.items():
         actual = sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), default=str).encode()).hexdigest()
         assert actual == expected['requests'][stage][component]
-    assert sha256((root / 'documents/digestion/managed.py').read_bytes()).hexdigest() == expected['managed_source_sha256']
+    assert sha256((root / 'tests/fixtures/digestion_contracts/managed_prompt6.py.txt').read_bytes()).hexdigest() == expected['managed_source_sha256']
 
 
 @pytest.mark.parametrize('stage', ['chunk', 'structural', 'root'])
-def test_v6_changes_only_wrapper_instruction_and_binding(legacy_v5_contracts, contracts, stage):
+def test_v6_changes_only_wrapper_instruction_and_binding(legacy_v5_contracts, legacy_v6_contracts, stage):
     from llm.openai_compatible import OpenAICompatibleProvider
 
-    old, new = legacy_v5_contracts[stage], contracts[stage]
+    old, new = legacy_v5_contracts[stage], legacy_v6_contracts[stage]
     before = ('including escaped result JSON, required links, evidence IDs and 1024 reserved wrapper bytes. ')
     after = ('including escaped result JSON, required links, evidence IDs and the actual '
              'application-owned artifact and inherited-summary wrapper. The application checks '

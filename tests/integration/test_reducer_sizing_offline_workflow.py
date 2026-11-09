@@ -283,8 +283,20 @@ def test_one_byte_incompatible_output_fails_before_checkpoint_without_retry(
         reopen(state)
 
 
-def test_new_contract_rejects_stale_generation_digest_and_prompt_version():
-    old = "de9492c536c1435464e8d9e406cbd1491ea358bc45f817df72eb2ea2a0f69a71"
+@pytest.mark.parametrize(
+    "old,template",
+    [
+        (
+            "de9492c536c1435464e8d9e406cbd1491ea358bc45f817df72eb2ea2a0f69a71",
+            "managed-prompt/5",
+        ),
+        (
+            "f6e568d450ac084c5977e4fef68823fb457cceacd22b361f047310c5d3512f5b",
+            "managed-prompt/6",
+        ),
+    ],
+)
+def test_new_contract_rejects_stale_generation_digest_and_prompt_version(old, template):
     assert generation_contract_digest() != old
     stale = SimpleNamespace(
         contract=None,
@@ -298,14 +310,14 @@ def test_new_contract_rejects_stale_generation_digest_and_prompt_version():
         StageProfile(
             stage="root", input_tokens=24800, output_tokens=3000
         ).template_version
-        == "managed-prompt/6"
+        == "managed-prompt/7"
     )
     with pytest.raises(ValueError):
         StageProfile(
             stage="root",
             input_tokens=24800,
             output_tokens=3000,
-            template_version="managed-prompt/5",
+            template_version=template,
         )
 
 

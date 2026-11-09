@@ -55,7 +55,7 @@ class StageProfile(FrozenModel):
     input_tokens: int = Field(gt=0)
     output_tokens: int = Field(gt=0)
     schema_version: Literal['stage-result/1'] = 'stage-result/1'
-    template_version: Literal['managed-prompt/6'] = 'managed-prompt/6'
+    template_version: Literal['managed-prompt/7'] = 'managed-prompt/7'
     constraints: Literal['retain-evidence-qualifications-conflicts/1'] = 'retain-evidence-qualifications-conflicts/1'
 
 
@@ -236,7 +236,10 @@ class ManagedSynthesisInference:
             'complete, unchanged identifier, including every UUID segment. Never invent, '
             'reconstruct, shorten, combine or modify identifiers; claim IDs and stage IDs are '
             'not source evidence IDs. '
-            'Use the supplied claim_ids_in_order consecutively and originating_stage=stage_id. '
+            'Use CONTROL.claim_ids_in_order consecutively for this response. Set the result stage_id '
+            'and every claims[i].originating_stage to the current CONTROL.stage_id, including claims '
+            'that restate child findings. Copy source-stage identities only into lineage using '
+            "CONTROL.required_child_links; never copy a child's originating_stage into a new claim. "
             'Represent unknown or unsupported conclusions explicitly using kind/status. '
             'Only kind="fact" may have a non-null subject. '
             'For kind="unknown", "unsupported", "commentary", or "structural", include subject=null. '

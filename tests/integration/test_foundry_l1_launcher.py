@@ -95,7 +95,7 @@ def test_authorized_composition_with_intercepted_http(composition,auth,header,va
     assert cfg.generation_contract_sha256 == launch.generation_contract_digest()
     for _, kwargs in http.sent[:3]:
         control = json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
-        assert control['profile']['template_version'] == 'managed-prompt/6'
+        assert control['profile']['template_version'] == 'managed-prompt/7'
         assert set(control['schema']['required']) == set(control['schema']['properties'])
     assert {json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
             ['profile']['stage'] for _, kwargs in http.sent[:3]} == {'chunk', 'structural', 'root'}

@@ -33,7 +33,7 @@ readiness is **NOT ESTABLISHED**.
 | [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
 | [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
 | Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
-| [Active managed-prompt/6](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md) | Offline actual-wrapper sizing reconciliation; retains v5 provenance rules; no v6 live evaluation |
+| [Active managed-prompt/7](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md) | Explicit current-stage claim identity and child-lineage guidance; retains v6 sizing and strict provenance; offline validation only |
 | [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
 | Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
 | Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
@@ -364,10 +364,12 @@ stopped after one call: G2 rejected a foreign qualification evidence ID before
 an analysis checkpoint was accepted. The approval was consumed. The subsequent
 [9 November v5 evaluation](docs/codex/reports/phase_17h_v5_execution_window_renewal_and_rsa_authorization.md)
 made two calls and stopped on first-reducer child sizing. Its approval is consumed.
-Current [managed-prompt/6](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md)
-retains v5 evidence-copying rules and measures the actual application-owned wrapper
-before checkpoint acceptance and during finalization. It has synthetic offline
-validation only and requires fresh generation-bound configurations and approvals.
+Offline replay also exposed eight invalid child-stage origins in that reducer.
+Current [managed-prompt/7](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md)
+explicitly binds each new claim to CONTROL.stage_id and preserves child identities
+through lineage. Strict identity validation and v6 actual-wrapper sizing remain
+authoritative. This has synthetic offline validation only; fresh generation-bound
+configuration and separate operator authorizations are required for any live run.
 
 Full live hierarchical digestion, subsequent grounded Q&A and representative
 independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
@@ -709,6 +711,7 @@ Current key reports:
 - [managed-prompt/4 — Subject-Contract Implementation](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
 - [managed-prompt/5 — R0/R1 Evidence-Provenance Hardening](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
 - [managed-prompt/6 — Offline Reducer Sizing Reconciliation](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md)
+- [managed-prompt/7 — Claim-Identity Hardening and Offline Readiness](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md)
 - [Attempt 6 — Closure and Phase 17H Gate Assessment](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 
 The reports distinguish verified behavior from deferred production claims.
@@ -780,7 +783,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/6 active with offline sizing reconciliation and v5 provenance rules; Attempt 6 CLOSED/PASS; 9 November v5 live evaluation failed reducer sizing after two calls; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
+**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/7 active with explicit current-stage identity, v6 sizing and strict provenance; Attempt 6 CLOSED/PASS; 9 November v5 live evaluation failed reducer sizing after two calls; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

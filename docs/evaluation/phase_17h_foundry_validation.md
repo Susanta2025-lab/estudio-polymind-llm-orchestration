@@ -10,11 +10,16 @@
 
 **9 November offline update:** The later v5 evaluation stopped after two calls
 on first-reducer child sizing; its approval is consumed. Current generation is
-[managed-prompt/6](../codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md),
-which retains v5 provenance guidance and checks the actual application-owned
-wrapper before checkpoint commit and during finalization. The child budget
-remains 7,000 bytes. This is synthetic offline validation only; fresh reviewed
-configuration and separate authorizations are required for any future live run.
+[managed-prompt/7](../codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md).
+It explicitly separates current output claim identity (CONTROL.stage_id) from
+immediate child identities (CONTROL.required_child_links in lineage). This
+clarifies the potential current/child-stage ambiguity identified after offline
+replay of eight wrong origins; the historical output remains invalid. Strict G2 validation, v6 actual
+wrapper checks before checkpoint commit/during finalization, and the 7,000-byte
+child budget are unchanged. Synthetic offline success cannot guarantee model
+compliance. A separate operator-preparation review, fresh generation-bound
+configuration, new RSA authorization and separate paid authorization are required
+for any future live attempt; the consumed approval cannot be reused.
 
 ## Current interpretation of the historical runbook
 
