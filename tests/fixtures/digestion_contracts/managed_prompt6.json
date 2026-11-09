@@ -1,0 +1,20 @@
+{
+  "managed_source_sha256": "6d744cf9ef412beaa2e25a48c80c2959ed6edf9d5fc8f873eaf1643686839f8f",
+  "requests": {
+    "chunk": {
+      "request": "29a5a19fd27cf49503645e67ab143096a376a625cc3adc89bace26d7e1498778",
+      "generation": "25197daf86410013653a8f6357ec13d6d7d9a1e0629b48d8193c777196b76847",
+      "payload": "7eafd3ed88bbfd62c28741199a9016d024fd992f9a4a066909530fe5fdd17431"
+    },
+    "structural": {
+      "request": "a24a28fbdd2ebd9221f9946dcab4278a524c00594ab43ef9b98dc65f43da88ca",
+      "generation": "92aa37199ae622eab441a5631a49a78c20caababea85e7ea74c59053d0d36a8b",
+      "payload": "7a7b46ae0091ee819516a299b251d2d980af98865eb410ec7abdfc702baf8f31"
+    },
+    "root": {
+      "request": "bda6aca7985f234fe48eae4e17af0b33f4b7351d999d648c7e21b1406b4f9ca1",
+      "generation": "625eef9812970f4aec4fcf645dc3c4142107db1cf9389fedb577fb621bfe2b61",
+      "payload": "08e9a26f5e01c82109bec4837dc89e580db9177d19ec02fabff85c083532ef2a"
+    }
+  }
+}

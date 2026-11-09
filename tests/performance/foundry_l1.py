@@ -33,6 +33,8 @@ def generation_contract_digest():
     root = Path(__file__).resolve().parents[2]
     paths = ('documents/digestion/managed.py', 'documents/digestion/models.py',
              'documents/digestion/validation.py', 'documents/digestion/planning.py',
+             'documents/digestion/sizing.py', 'documents/digestion/workflow.py',
+             'documents/digestion/diagnostics.py',
              'documents/publication/analysis.py', 'llm/structured.py',
              'llm/bounded_http.py', 'llm/openai_compatible.py', 'llm/azure_schema.py',
              'tests/performance/fixtures.py', 'tests/performance/foundry_preflight.py',

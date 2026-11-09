@@ -66,7 +66,7 @@ def test_independent_l1_limits_preserve_four_call_accounting(tmp_path, monkeypat
         control = json.loads(request.system.split('\nCONTROL\n')[1])
         assert request.response_bytes == control['max_response_bytes'] == control['max_result_bytes'] == 10000
         assert request.max_response_envelope_bytes == 26192
-        assert control['profile']['template_version'] == 'managed-prompt/5'
+        assert control['profile']['template_version'] == 'managed-prompt/6'
     assert all(r['state'] == 'SETTLED' and r['actual_cost'] == '0.000011'
                for r in result['governance_records'])
     assert generation_contract_digest() == before

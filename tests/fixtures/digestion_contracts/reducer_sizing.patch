@@ -1,0 +1,39 @@
+diff --git a/documents/digestion/validation.py b/documents/digestion/validation.py
+index 800af7f..a46cd1c 100644
+--- a/documents/digestion/validation.py
++++ b/documents/digestion/validation.py
+@@ -15,0 +16 @@ from documents.digestion.models import (
++    ChildInput,
+@@ -64,0 +66,5 @@ def validate_result(raw, request, index):
++    """Validate generated content; full child admission follows inherited_summary.
++
++    The wrapper depends on application-owned lineage and artifact metadata. The
++    worker must validate_child_material before committing or accepting a replay.
++    """
+@@ -75,2 +81,2 @@ def validate_result(raw, request, index):
+-        from documents.digestion.sizing import CHILD_WRAPPER_BYTES, result_contribution
+-        if result_contribution(result) + CHILD_WRAPPER_BYTES > profile.managed_input_budget.child_bytes:
++        from documents.digestion.sizing import result_contribution
++        if result_contribution(result) > profile.managed_input_budget.child_bytes:
+@@ -78 +84,2 @@ def validate_result(raw, request, index):
+-                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT)
++                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
++                                 reason=Reason.CHILD_MATERIAL_LIMIT)
+@@ -231,0 +239,17 @@ def validate_result(raw, request, index):
++def validate_child_material(result, inherited, artifact, profile):
++    """Admit unchanged result and actual lineage with a worst-size artifact ref.
++
++    UUIDs and hashes have fixed width; reserving max_artifact_bytes for byte_size
++    bounds the reference before storage. No guessed wrapper allowance is needed.
++    """
++    if profile.managed_input_budget is not None:
++        from documents.digestion.sizing import child_contribution
++        material = ChildInput(
++            artifact=artifact.model_copy(update={'byte_size': profile.max_artifact_bytes}),
++            result=result, inherited=inherited)
++        if child_contribution(material) > profile.managed_input_budget.child_bytes:
++            raise DigestionError('synthesis_limit_exceeded',
++                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
++                                 reason=Reason.CHILD_MATERIAL_LIMIT)
++
++

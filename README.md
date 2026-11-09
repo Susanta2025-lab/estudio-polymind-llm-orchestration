@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 7 November 2026
+## Current engineering status — 9 November 2026
 
 Phases 17A–17F have implemented application contracts. The current evidence is
 bounded to the reference architecture and the evaluations below; production
@@ -33,7 +33,7 @@ readiness is **NOT ESTABLISHED**.
 | [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
 | [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
 | Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
-| [Active managed-prompt/5](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md) | Offline evidence-copying and stage-local inheritance hardening; retains v4 subject rules; no v5 live evaluation |
+| [Active managed-prompt/6](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md) | Offline actual-wrapper sizing reconciliation; retains v5 provenance rules; no v6 live evaluation |
 | [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
 | Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
 | Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
@@ -361,10 +361,13 @@ See the [closure and complete failure history](docs/codex/reports/phase_17hl_att
 
 The [7 November four-call evaluation](docs/codex/reports/phase_17h_final_approval_signing_and_controlled_execution.md)
 stopped after one call: G2 rejected a foreign qualification evidence ID before
-an analysis checkpoint was accepted. The approval was consumed. Current
-[managed-prompt/5](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
-adds exact evidence-copying instructions and offline regressions; it has no live
-validation and requires a separately reviewed generation-bound configuration.
+an analysis checkpoint was accepted. The approval was consumed. The subsequent
+[9 November v5 evaluation](docs/codex/reports/phase_17h_v5_execution_window_renewal_and_rsa_authorization.md)
+made two calls and stopped on first-reducer child sizing. Its approval is consumed.
+Current [managed-prompt/6](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md)
+retains v5 evidence-copying rules and measures the actual application-owned wrapper
+before checkpoint acceptance and during finalization. It has synthetic offline
+validation only and requires fresh generation-bound configurations and approvals.
 
 Full live hierarchical digestion, subsequent grounded Q&A and representative
 independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
@@ -376,10 +379,13 @@ The L1 composition now retains its 10,000-byte raw/canonical result allowance
 and separately admits at most 7,000 rendered bytes per child, including claim
 links, evidence IDs, JSON escaping and reference/inherited metadata. The opt-in
 `DOCUMENT_INFERENCE_CHILD_INPUT_BYTES` setting binds this policy into the managed
-configuration and plan; unset settings preserve historical profile hashes.
+configuration and plan; unset settings omit this policy. Prompt-version changes
+still require fresh bindings.
 Planning derives reducer capacity from the complete fixed prompt/schema envelope
 plus these child budgets and structural paths. Results that exceed the embedded
 budget fail before checkpoint acceptance; no evidence or annotations are trimmed.
+The historical fixed 1,024-byte output-wrapper reservation is replaced by measured
+reference/inherited metadata with the maximum artifact-size integer reserved.
 Q&A independently checks its complete retrieved evidence and derived annotation
 envelope using the same estimator as governance, before reservation or inference.
 See the [G1/G2 offline engineering report](docs/codex/reports/phase_17h_g1_g2_offline_engineering_and_integration_hardening.md)
@@ -702,6 +708,7 @@ Current key reports:
 - [Phase 17H — Large-Document Reliability & Quality Evaluation](docs/codex/reports/phase_17h_report.md)
 - [managed-prompt/4 — Subject-Contract Implementation](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
 - [managed-prompt/5 — R0/R1 Evidence-Provenance Hardening](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
+- [managed-prompt/6 — Offline Reducer Sizing Reconciliation](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md)
 - [Attempt 6 — Closure and Phase 17H Gate Assessment](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 
 The reports distinguish verified behavior from deferred production claims.
@@ -773,7 +780,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/5 active with offline R0/R1 hardening; Attempt 6 CLOSED/PASS; 7 November live evaluation failed G2 after one call; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
+**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/6 active with offline sizing reconciliation and v5 provenance rules; Attempt 6 CLOSED/PASS; 9 November v5 live evaluation failed reducer sizing after two calls; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

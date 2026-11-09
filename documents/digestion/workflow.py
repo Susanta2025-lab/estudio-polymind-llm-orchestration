@@ -17,7 +17,9 @@ from documents.digestion.models import (
     AnalysisChunk, Checkpoint, ChildInput, DigestArtifact, DigestionError, Plan, StageRequest,
 )
 from documents.digestion.planning import build_plan
-from documents.digestion.validation import EvidenceIndex, inherited_summary, make_digest, validate_result
+from documents.digestion.validation import (
+    EvidenceIndex, inherited_summary, make_digest, validate_child_material, validate_result,
+)
 
 
 def classify_digestion(error):
@@ -164,6 +166,7 @@ class DigestionHandler:
                     tuple(ordered[c.result.stage_id] for c in request.children))
                 if cp.inherited != inherited or cp.propositions != propositions:
                     raise DigestionError('incompatible_checkpoint')
+                validate_child_material(cp.result, inherited, refs[key], plan.profile)
                 ordered[key] = cp
             digest = make_digest(plan, self.plan_ref, ordered, refs, index)
             if digest.status == 'FAILED':
@@ -178,14 +181,7 @@ class DigestionHandler:
             tuple(checkpoints[c.result.stage_id] for c in request.children))
         cp = Checkpoint(plan_hash=plan_hash, parents=parents, result=result,
                         inherited=inherited, propositions=propositions)
-        if plan.profile.managed_input_budget is not None:
-            from documents.digestion.sizing import child_contribution
-            # UUID/hash strings have fixed width. Reserve the largest reference
-            # byte_size before writing, and include the actual inherited summary.
-            material = ChildInput(artifact=self.plan_ref.model_copy(update={'byte_size': limit}),
-                                  result=result, inherited=inherited)
-            if child_contribution(material) > plan.profile.managed_input_budget.child_bytes:
-                raise DigestionError('synthesis_limit_exceeded')
+        validate_child_material(result, inherited, self.plan_ref, plan.profile)
         return (put(store, scope, cp, limit),)
 
 

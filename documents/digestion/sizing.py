@@ -5,6 +5,8 @@ the actual renderer deduplicates them, making the sum an upper bound.
 """
 from documents.jobs.models import canonical
 
+# Historical v5 reservation, retained for diagnostic/API compatibility. Runtime
+# admission measures the complete ChildInput; this is not an output restriction.
 CHILD_WRAPPER_BYTES = 1024
 
 

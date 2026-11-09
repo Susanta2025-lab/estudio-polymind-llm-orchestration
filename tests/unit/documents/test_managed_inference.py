@@ -277,8 +277,8 @@ def test_generation_schema_exposes_canonical_defaults_and_versions_prompt(tmp_pa
         if 'properties' in node:
             assert set(node['required']) == set(node['properties'])
     assert 'schema_version' not in StageResult.model_json_schema()['required']
-    assert request.profile.prompt_profile == 'managed-prompt/5'
-    assert control['profile']['template_version'] == 'managed-prompt/5'
+    assert request.profile.prompt_profile == 'managed-prompt/6'
+    assert control['profile']['template_version'] == 'managed-prompt/6'
     assert 'complete compact ASCII JSON' in generation.system
     assert control['max_result_bytes'] == generation.response_bytes == 3000
 

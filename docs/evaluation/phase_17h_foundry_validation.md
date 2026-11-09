@@ -8,12 +8,13 @@
 > Full live L1 digestion and subsequent grounded Q&A are NOT VALIDATED. Production
 > readiness is NOT ESTABLISHED. All further live work requires separate authorization.
 
-**7 November offline update:** The later four-call evaluation stopped after its
-first call on invalid qualification provenance. Current generation is
-[managed-prompt/5](../codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md),
-with exact evidence-copying and stage-local inheritance guidance. No v5 live call
-is authorized or validated; the prior approval is consumed and its generation
-binding cannot authorize v5.
+**9 November offline update:** The later v5 evaluation stopped after two calls
+on first-reducer child sizing; its approval is consumed. Current generation is
+[managed-prompt/6](../codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md),
+which retains v5 provenance guidance and checks the actual application-owned
+wrapper before checkpoint commit and during finalization. The child budget
+remains 7,000 bytes. This is synthetic offline validation only; fresh reviewed
+configuration and separate authorizations are required for any future live run.
 
 ## Current interpretation of the historical runbook
 

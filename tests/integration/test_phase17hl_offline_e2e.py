@@ -207,6 +207,7 @@ def l1(tmp_path, monkeypatch, record_property):
         record_property("synthetic_provider_calls", len(state.sent))
         return state
 
+    run.state = state
     return run
 
 

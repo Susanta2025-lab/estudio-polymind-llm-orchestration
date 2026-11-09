@@ -13,6 +13,7 @@ from documents.digestion.models import (
     Proposition,
     SectionSummary,
     StageResult,
+    ChildInput,
     ValidationDiagnostic,
 )
 from documents.digestion.planning import check_request
@@ -62,6 +63,11 @@ class EvidenceIndex:
 
 
 def validate_result(raw, request, index):
+    """Validate generated content; full child admission follows inherited_summary.
+
+    The wrapper depends on application-owned lineage and artifact metadata. The
+    worker must validate_child_material before committing or accepting a replay.
+    """
     check_request(request)
     profile = request.profile
     result = decode(raw, StageResult, profile.response_byte_limit)
@@ -72,10 +78,11 @@ def validate_result(raw, request, index):
             reason=(Reason.CANONICAL_RESPONSE_LIMIT),
         )
     if profile.managed_input_budget is not None:
-        from documents.digestion.sizing import CHILD_WRAPPER_BYTES, result_contribution
-        if result_contribution(result) + CHILD_WRAPPER_BYTES > profile.managed_input_budget.child_bytes:
+        from documents.digestion.sizing import result_contribution
+        if result_contribution(result) > profile.managed_input_budget.child_bytes:
             raise DigestionError('synthesis_limit_exceeded',
-                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT)
+                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                                 reason=Reason.CHILD_MATERIAL_LIMIT)
     if result.stage_id != request.stage_id or result.kind != request.stage:
         raise DigestionError(
             "inference_contract_error",
@@ -227,6 +234,23 @@ def validate_result(raw, request, index):
                 reason=(Reason.TEXT_LIMIT),
             )
     return result
+
+
+def validate_child_material(result, inherited, artifact, profile):
+    """Admit unchanged result and actual lineage with a worst-size artifact ref.
+
+    UUIDs and hashes have fixed width; reserving max_artifact_bytes for byte_size
+    bounds the reference before storage. No guessed wrapper allowance is needed.
+    """
+    if profile.managed_input_budget is not None:
+        from documents.digestion.sizing import child_contribution
+        material = ChildInput(
+            artifact=artifact.model_copy(update={'byte_size': profile.max_artifact_bytes}),
+            result=result, inherited=inherited)
+        if child_contribution(material) > profile.managed_input_budget.child_bytes:
+            raise DigestionError('synthesis_limit_exceeded',
+                                 diagnostic=ValidationDiagnostic.RESPONSE_LIMIT,
+                                 reason=Reason.CHILD_MATERIAL_LIMIT)
 
 
 def inherited_summary(result, request, children):

@@ -44,6 +44,7 @@ class ValidationReason(Enum):
     OTHER_COVERAGE_FAILURE = "other_coverage_failure"
     RAW_RESPONSE_LIMIT = "raw_response_limit"
     CANONICAL_RESPONSE_LIMIT = "canonical_response_limit"
+    CHILD_MATERIAL_LIMIT = "child_material_limit"
     CLAIM_LIMIT = "claim_limit"
     ANNOTATION_LIMIT = "annotation_limit"
     TEXT_LIMIT = "text_limit"

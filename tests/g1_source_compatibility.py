@@ -16,10 +16,34 @@ _PATHS = {
 }
 
 
+def source_before_reducer_sizing(source):
+    """Reverse the exact reviewed v6 sizing delta for frozen historical checks."""
+    patch = _PATCH.with_name("reducer_sizing.patch").read_text(encoding="utf-8")
+    hunks = re.split(r"^@@[^\n]*\n", patch, flags=re.MULTILINE)[1:]
+    assert hunks, "Empty reducer sizing source delta"
+    for hunk in reversed(hunks):
+        lines = hunk.splitlines(keepends=True)
+        assert all(line[0] in " +-" for line in lines), (
+            "Invalid reducer sizing source delta"
+        )
+        before = "".join(line[1:] for line in lines if line[0] in " -")
+        after = "".join(line[1:] for line in lines if line[0] in " +")
+        assert after and source.count(after) == 1, (
+            "Reviewed reducer sizing source delta changed"
+        )
+        source = source.replace(after, before, 1)
+    return source
+
+
 def source_before_g1(source, path):
     """Project exact reviewed additions out of a complete module, failing closed."""
     if path not in _PATHS:
         raise ValueError("Unknown G1 source contract")
+    if (
+        path == "documents/digestion/validation.py"
+        and "def validate_child_material(" in source
+    ):
+        source = source_before_reducer_sizing(source)
     blocks = _PATCH.read_text(encoding="utf-8").split("diff --git ")[1:]
     selected = [b for b in blocks if b.startswith(f"a/{path} b/{path}\n")]
     assert len(selected) == 1, "Missing or duplicate G1 source delta"

@@ -36,13 +36,24 @@ def contracts(tmp_path_factory):
 @pytest.fixture(scope="module")
 def legacy_v4_contracts(tmp_path_factory):
     """Replay the pinned v4 renderer without G1, preserving its original binding."""
-    return capture_contracts(tmp_path_factory, historical_settings=True, historical_v4=True)
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_version=4)
+
+
+@pytest.fixture(scope="module")
+def legacy_v5_contracts(tmp_path_factory):
+    """Replay the unchanged hash-pinned v5 renderer with its original binding."""
+    return capture_contracts(tmp_path_factory, historical_version=5)
+
+
+@pytest.fixture(scope="module")
+def legacy_v5_unbounded_contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_version=5)
 
 
 @pytest.fixture(scope="module")
 def v4_g1_contracts(tmp_path_factory):
     """The prior generation contract, retaining its original G1 admission."""
-    return capture_contracts(tmp_path_factory, historical_v4=True)
+    return capture_contracts(tmp_path_factory, historical_version=4)
 
 
 @pytest.fixture(scope="module")
@@ -50,21 +61,25 @@ def unbounded_contracts(tmp_path_factory):
     return capture_contracts(tmp_path_factory, historical_settings=True)
 
 
-def capture_contracts(tmp_path_factory, *, historical_settings=False, historical_v4=False):
+def capture_contracts(tmp_path_factory, *, historical_settings=False, historical_version=None):
     """Observe real planning/rendering/HTTP/validation without changing decisions."""
     from documents.digestion import managed
     from documents.storage import LocalObjectStore
 
-    if historical_v4:
+    if historical_version is not None:
         import sys
         from hashlib import sha256
         from pathlib import Path
         from types import ModuleType
 
-        fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4.py.txt"
+        version = historical_version
+        fixture = Path(__file__).resolve().parents[1] / f"fixtures/digestion_contracts/managed_prompt{version}.py.txt"
         source = fixture.read_bytes()
-        assert sha256(source).hexdigest() == "36e0fba04c1dd952dc7617759fc36f2106d407578ecba194204a215b1ef88a36"
-        module = ModuleType("tests._historical_managed_prompt4")
+        expected = json.loads(fixture.with_suffix("").with_suffix(".json").read_text())
+        expected_source = (expected["managed_source_sha256"] if version == 5 else
+                           "36e0fba04c1dd952dc7617759fc36f2106d407578ecba194204a215b1ef88a36")
+        assert sha256(source).hexdigest() == expected_source
+        module = ModuleType(f"tests._historical_managed_prompt{version}")
         with pytest.MonkeyPatch.context() as patch:
             patch.setitem(sys.modules, module.__name__, module)
             # Execute only the fixed, hash-pinned synthetic historical fixture.
@@ -246,7 +261,7 @@ def test_exact_rendered_contract_and_unmodified_witness(contracts, stage):
     assert generation.max_response_envelope_bytes == 26192
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == "managed-prompt/5"
+    assert control["profile"]["template_version"] == "managed-prompt/6"
     assert control["kind"] == request.stage
     assert control["stage_id"] == str(request.stage_id)
     assert control["schema"] == generation.schema

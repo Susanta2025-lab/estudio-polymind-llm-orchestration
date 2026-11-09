@@ -55,7 +55,7 @@ class StageProfile(FrozenModel):
     input_tokens: int = Field(gt=0)
     output_tokens: int = Field(gt=0)
     schema_version: Literal['stage-result/1'] = 'stage-result/1'
-    template_version: Literal['managed-prompt/5'] = 'managed-prompt/5'
+    template_version: Literal['managed-prompt/6'] = 'managed-prompt/6'
     constraints: Literal['retain-evidence-qualifications-conflicts/1'] = 'retain-evidence-qualifications-conflicts/1'
 
 
@@ -253,7 +253,9 @@ class ManagedSynthesisInference:
             'source references. Do not copy an inherited qualification evidence ID into any new '
             'direct-reference field unless it is in the current CONTROL.allowed_evidence_ids. '
             + ('The complete result must also fit max_child_input_bytes when embedded as child material, '
-               'including escaped result JSON, required links, evidence IDs and 1024 reserved wrapper bytes. '
+               'including escaped result JSON, required links, evidence IDs and the actual '
+               'application-owned artifact and inherited-summary wrapper. The application checks '
+               'that complete contribution before checkpoint commit; keep the result concise. '
                if self.settings.child_input_bytes is not None else '')
             + task + '\nCONTROL\n' + canonical(control))
         data = canonical({

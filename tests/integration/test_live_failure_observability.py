@@ -30,6 +30,8 @@ from tests.integration.test_final_offline_azure_compatibility import (
     capture_contracts,
     contracts,
     legacy_v4_contracts,
+    legacy_v5_contracts,
+    legacy_v5_unbounded_contracts,
     v4_g1_contracts,
     unbounded_contracts,
 )
@@ -702,8 +704,8 @@ EVIDENCE_COPY_RULES = (
 
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
-def test_v5_changes_only_evidence_copy_guidance(v4_g1_contracts, contracts, stage):
-    old, new = v4_g1_contracts[stage], contracts[stage]
+def test_v5_changes_only_evidence_copy_guidance(v4_g1_contracts, legacy_v5_contracts, stage):
+    old, new = v4_g1_contracts[stage], legacy_v5_contracts[stage]
     prose = new.generation.system.split("\nCONTROL\n")[0]
     for instruction in EVIDENCE_COPY_RULES:
         assert prose.count(instruction) == 1
@@ -741,8 +743,9 @@ def test_v5_changes_only_evidence_copy_guidance(v4_g1_contracts, contracts, stag
         generation_profile="managed-generation/2", max_response_envelope_bytes=26192,
         profiles=tuple(old.managed.StageProfile(stage=s, input_tokens=24800, output_tokens=3000)
                        for s in ("chunk", "intermediate", "structural", "root")))
-    # Revalidate with the current class, choosing the new template default deliberately.
-    from documents.digestion.managed import ManagedSettings
+    # Revalidate with the pinned v5 class, choosing its template default deliberately.
+    ManagedSettings = new.managed.ManagedSettings
+    ManagedSynthesisInference = new.managed.ManagedSynthesisInference
     values = settings.model_dump(mode="json")
     for p in values["profiles"]:
         p.pop("template_version")
@@ -754,10 +757,10 @@ def test_v5_changes_only_evidence_copy_guidance(v4_g1_contracts, contracts, stag
 
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
-def test_active_v5_generation_fingerprints(contracts, stage):
+def test_historical_v5_generation_fingerprints(legacy_v5_contracts, stage):
     root = Path(__file__).resolve().parents[2]
     expected = json.loads((root / "tests/fixtures/digestion_contracts/managed_prompt5.json").read_text())
-    record = contracts[stage]
+    record = legacy_v5_contracts[stage]
     for component, value in {
         "request": record.request.model_dump(mode="json"),
         "generation": asdict(record.generation),
@@ -765,7 +768,7 @@ def test_active_v5_generation_fingerprints(contracts, stage):
     }.items():
         actual = sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
         assert actual == expected["requests"][stage][component]
-    assert sha256((root / "documents/digestion/managed.py").read_bytes()).hexdigest() == expected["managed_source_sha256"]
+    assert sha256((root / "tests/fixtures/digestion_contracts/managed_prompt5.py.txt").read_bytes()).hexdigest() == expected["managed_source_sha256"]
 
 
 def test_historical_results_readable_but_requests_cannot_resume(historical_contracts, contracts):
@@ -803,9 +806,10 @@ def test_historical_results_readable_but_requests_cannot_resume(historical_contr
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
 @pytest.mark.parametrize("child_bytes", [None, 7000])
-@pytest.mark.parametrize("version", [4, 5])
+@pytest.mark.parametrize("version", [4, 5, 6])
 def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
-    legacy_v4_contracts, v4_g1_contracts, unbounded_contracts, contracts, stage, child_bytes, version
+    legacy_v4_contracts, v4_g1_contracts, legacy_v5_contracts, legacy_v5_unbounded_contracts,
+    unbounded_contracts, contracts, stage, child_bytes, version
 ):
     from documents.digestion.codec import read
     from documents.digestion.managed import (
@@ -816,8 +820,11 @@ def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
     from documents.digestion.models import Checkpoint, DigestionProfile
     from llm.openai_compatible import OpenAICompatibleProvider
 
-    unbounded, bounded = ((legacy_v4_contracts, v4_g1_contracts) if version == 4
-                          else (unbounded_contracts, contracts))
+    unbounded, bounded = {
+        4: (legacy_v4_contracts, v4_g1_contracts),
+        5: (legacy_v5_unbounded_contracts, legacy_v5_contracts),
+        6: (unbounded_contracts, contracts),
+    }[version]
     selected = (unbounded if child_bytes is None else bounded)[stage]
     incompatible = (bounded if child_bytes is None else unbounded)[stage]
     # Historical classes exist only in hash-pinned offline fixtures.
@@ -894,7 +901,7 @@ def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, s
     generation, _ = adapter.render(r.request)
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/5"
+    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/6"
     fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4_subject.txt"
     assert " ".join(fixture.read_text().split()) in " ".join(generation.system.split())
     for instruction in (
@@ -997,3 +1004,52 @@ def test_byte_diagnostic_cannot_mask_refusal():
         p.execute(req)
     assert caught.value.provider_metadata.raw_response_byte_count is None
     assert caught.value.usage == InferenceUsage(21, 7, 28)
+
+
+@pytest.mark.parametrize('stage', ['chunk', 'structural', 'root'])
+def test_active_v6_generation_fingerprints(contracts, stage):
+    root = Path(__file__).resolve().parents[2]
+    expected = json.loads((root / 'tests/fixtures/digestion_contracts/managed_prompt6.json').read_text())
+    record = contracts[stage]
+    for component, value in {
+        'request': record.request.model_dump(mode='json'),
+        'generation': asdict(record.generation),
+        'payload': record.payload,
+    }.items():
+        actual = sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), default=str).encode()).hexdigest()
+        assert actual == expected['requests'][stage][component]
+    assert sha256((root / 'documents/digestion/managed.py').read_bytes()).hexdigest() == expected['managed_source_sha256']
+
+
+@pytest.mark.parametrize('stage', ['chunk', 'structural', 'root'])
+def test_v6_changes_only_wrapper_instruction_and_binding(legacy_v5_contracts, contracts, stage):
+    from llm.openai_compatible import OpenAICompatibleProvider
+
+    old, new = legacy_v5_contracts[stage], contracts[stage]
+    before = ('including escaped result JSON, required links, evidence IDs and 1024 reserved wrapper bytes. ')
+    after = ('including escaped result JSON, required links, evidence IDs and the actual '
+             'application-owned artifact and inherited-summary wrapper. The application checks '
+             'that complete contribution before checkpoint commit; keep the result concise. ')
+    old_prose, new_prose = (r.generation.system.split('\nCONTROL\n')[0] for r in (old, new))
+    assert old_prose.count(before) == new_prose.count(after) == 1
+    assert old_prose.replace(before, after) == new_prose
+    assert old.generation.schema == new.generation.schema
+    assert old.request.profile.prompt_profile == 'managed-prompt/5'
+    assert new.request.profile.prompt_profile == 'managed-prompt/6'
+    old_budget, new_budget = (r.request.profile.managed_input_budget for r in (old, new))
+    assert old_budget.child_bytes == new_budget.child_bytes == 7000
+    assert old_budget.input_bytes == new_budget.input_bytes == 24800
+    assert new_budget.base_bytes - old_budget.base_bytes == len(after.encode()) - len(before.encode())
+    for name in ('output_tokens', 'response_bytes', 'max_response_envelope_bytes', 'capability', 'total_seconds'):
+        assert getattr(old.generation, name) == getattr(new.generation, name)
+    assert new.request.profile.inference_config != old.request.profile.inference_config
+    assert new.request.stage_id != old.request.stage_id
+    adapter = new.managed.ManagedSynthesisInference(
+        OpenAICompatibleProvider(base_url='https://offline.invalid/openai/v1',
+            model_map={'summarization': 'offline-model'}, http_client=object()),
+        new.managed.ManagedSettings(capability=new.generation.capability, child_input_bytes=7000,
+            generation_profile='managed-generation/2', max_response_envelope_bytes=26192,
+            profiles=tuple(new.managed.StageProfile(stage=s, input_tokens=24800, output_tokens=3000)
+                for s in ('chunk', 'intermediate', 'structural', 'root'))), None, stage=stage)
+    with pytest.raises(DigestionError, match='^incompatible_checkpoint$'):
+        adapter.render(old.request)
