@@ -277,7 +277,19 @@ def execute_stage(config, principal, authority, ledger, guard, provider, prepare
         audit['provider_acceptance'] = 'completed_strict_response'
         authority.revalidate(snapshot)
         audit['application_validation'] = 'failed'
-        result = validate_result(response.text.encode('utf-8'), request, index)
+        raw = response.text.encode('utf-8')
+        if request.profile.prompt_profile == 'managed-prompt/10':
+            from documents.digestion.wire import construct, references
+            from documents.digestion.receipts import generation_hash
+            table = references(request)
+            proposal = dict(wire_version='stage-proposal/1', decoder_version='stage-decoder/1',
+                request_sha256=table.request_sha256, table_sha256=table.digest,
+                generation_sha256=generation_hash(generation), raw_sha256=sha256(raw).hexdigest(),
+                configuration_sha256=configuration_digest(config), raw=response.text)
+            durable_json(config.audit_directory / 'proposal.json', proposal)
+            audit['proposal_sha256'] = digest(proposal)
+            raw = construct(raw, request, table)
+        result = validate_result(raw, request, index)
         audit['application_validation'] = 'accepted'
         from documents.digestion.codec import encode
         audit['canonical_bytes'] = len(encode(result))

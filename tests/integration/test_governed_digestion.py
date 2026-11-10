@@ -1,4 +1,9 @@
 """Governance composed with real checkpoint scheduling and provider admission."""
+import pytest
+
+# Permanent historical canonical-output characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 import time
 
 import test_document_digestion as digestion_fixture

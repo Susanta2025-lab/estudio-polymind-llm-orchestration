@@ -8,18 +8,82 @@
 > Full live L1 digestion and subsequent grounded Q&A are NOT VALIDATED. Production
 > readiness is NOT ESTABLISHED. All further live work requires separate authorization.
 
-**9 November offline update:** The later v5 evaluation stopped after two calls
-on first-reducer child sizing; its approval is consumed. Current generation is
-[managed-prompt/7](../codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md).
-It explicitly separates current output claim identity (CONTROL.stage_id) from
-immediate child identities (CONTROL.required_child_links in lineage). This
-clarifies the potential current/child-stage ambiguity identified after offline
-replay of eight wrong origins; the historical output remains invalid. Strict G2 validation, v6 actual
-wrapper checks before checkpoint commit/during finalization, and the 7,000-byte
-child budget are unchanged. Synthetic offline success cannot guarantee model
-compliance. A separate operator-preparation review, fresh generation-bound
-configuration, new RSA authorization and separate paid authorization are required
-for any future live attempt; the consumed approval cannot be reused.
+**10 November v10 engineering update (active contract):**
+[managed-prompt/10](../codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
+replaces canonical model output with `stage-proposal/1`. Models select exact
+request-bound E source keys and atomic C immediate-child keys; the application
+assigns stage/origin/positional claim identities and constructs canonical
+`stage-result/1`. V9's strict source membership protection is retained as E-key
+enums and strengthened by the same deterministic decoder in every transport mode.
+No reference repair or automatic evidence/lineage attachment is performed.
+
+An accepted v10 step manifest contains the unchanged checkpoint, immutable
+decoding receipt and exact raw proposal record. Existing ledger fencing and
+atomic manifests bind them together. Recovery and publication reconstruct the
+exact request/tables and re-decode before accepting the canonical graph. Orphans
+cannot authorize inference or become checkpoints. See the
+[receipt and recovery decision](../adr/phase_17h_v10_generation_wire_receipt_decision.md).
+Historical single-checkpoint manifests remain readable under their original
+profiles. The generation inventory expands to version 2; new configuration must
+pin the complete new digest in the v10 report. Historical approvals remain
+incompatible and consumed markers must be preserved.
+
+All runtime ceilings remain: 24,800 managed input, 28,000 context, 7,000 complete
+child, 10,000 raw/canonical bytes, 3,000 output, maximum four L1 calls, one concurrent
+call, minimum 61-second starts, zero automatic paid retries and no fallback.
+A future operator phase must manually review v10, verify the exact Azure schema,
+current authorities and financial/admission headroom, and obtain new separate
+signing and paid-execution authorizations. No such preparation or execution is
+performed by this engineering task. The dated v9 and earlier guidance below is
+historical where superseded by this update. Live compliance remains unverified.
+
+**9 November v9 offline update:** The [v8 controlled evaluation](../codex/reports/phase_17h_v8_controlled_four_call_execution.md)
+stopped after one provider-successful chunk call: G2 rejected one foreign original
+source UUID at `claims[6].evidence_ids[1]`. All eight claim identities were correct.
+All four allowed IDs appearing elsewhere did not authorize that extra reference.
+No checkpoint, reducer, publication or Q&A was accepted. Usage is settled and the
+approval is consumed. The earlier v7 run also remains a failed lineage evaluation.
+
+At that checkpoint, generation was [managed-prompt/9](../codex/reports/phase_17h_v9_source_identity_reliability_and_offline_readiness.md).
+Strict digestion now restricts direct evidence, contradicting evidence and nested
+qualification references to the exact current authorized source set in the
+request-specific `SourceEvidence` schema definition. The set is unchanged: source
+pieces plus direct supporting/contradicting IDs from immediate child claims;
+qualification-only inherited IDs do not become new direct authority. An empty
+set uses null items, permitting only empty reference arrays in a valid UUID result.
+G2 still rejects null items, foreign/malformed IDs, duplicates and missing coverage.
+
+Strict requests carry the authorized set once in the response schema; redundant
+`CONTROL.schema` and `CONTROL.allowed_evidence_ids` are omitted. Prompt-based
+modes retain those fields and explicit complete, indivisible UUID-copying rules.
+Strict configuration allows at most 256 IDs; enums are partitioned into at most
+two existing `anyOf` branches of 128 IDs (4,608 UUID characters per branch).
+No result model, source authorization, transport, checkpoint or publication API
+changes. Invalid output is never repaired. These are generation constraints,
+not proof that a deployed endpoint accepts this exact new schema or that a model
+chooses semantically correct sources.
+
+The v7 current-stage identities and v8 exact immediate-child lineage rules remain.
+Direct links must copy `(stage_id, claim_id)` pairs together from
+`CONTROL.required_child_links`. Qualifications/conflicts continue through valid
+lineage. G1/G2 validation source and independent acceptance predicates are unchanged.
+
+Measured maximum empty-material L1 envelope: 7,251 bytes; fixed planning reserve:
+7,379 including 128 bytes of enum scaffolding. Empty-path one/two-child reserves
+are 14,379/21,379, leaving 3,421 path bytes for two children under 24,800. Actual
+system/data/schema and bounded transport serialization still require admission.
+The 28,000 context, 7,000 complete-child, 10,000 raw/canonical response and 3,000
+output limits remain. Maximum paid L1 calls: four; automatic retries: zero.
+
+The v9 generation digest is
+`f270aa81cbd5764d2b4739bf3ac3692653b1fe4c8ffbd67860e642137cb2579d`.
+Historical v5/v6/v7/v8 bindings remain incompatible with current execution;
+historical checkpoints remain readable. Existing consumed approvals stay consumed.
+The v9 task is offline only. A future controlled attempt requires fresh v9-bound
+planning/configuration, endpoint/schema capability review, current authority and
+financial checks, independently authorized RSA signing, and separate explicit paid
+execution authorization. Do not reuse old approvals or infer authority from
+synthetic success. Full live four-call compliance and semantic quality remain open.
 
 ## Current interpretation of the historical runbook
 

@@ -15,11 +15,17 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from jsonschema import Draft202012Validator
+
+from tests.integration.test_final_offline_azure_compatibility import schema_source_ids
 
 from documents.digestion import workflow
 from documents.digestion.codec import encode, read
-from documents.digestion.managed import (
+from tests.historical_managed import (
     ManagedDigestionHandler,
     classify_managed,
     generation_schema,
@@ -281,7 +287,6 @@ def test_l1_extraction_dag_schema_digest_citations_accounting_and_reopen(l1):
         sum(r.stage_id == req.stage_id for _, r, _ in state.validated) >= 2
         for req in state.requests
     )
-    expected_schema = provider_schema(generation_schema())
     for number, (url, kwargs) in enumerate(state.sent):
         assert url == "https://offline.invalid/openai/v1/chat/completions"
         assert kwargs["allow_redirects"] is False and kwargs["stream"] is True
@@ -305,6 +310,7 @@ def test_l1_extraction_dag_schema_digest_citations_accounting_and_reopen(l1):
             continue
         request = state.requests[number]
         generation = state.generations[number]
+        expected_schema = provider_schema(generation.schema)
         assert generation.output_tokens == 3000 and generation.response_bytes == 10000
         assert generation.max_response_envelope_bytes == 26192
         control = json.loads(system.split("\nCONTROL\n")[1])
@@ -316,7 +322,7 @@ def test_l1_extraction_dag_schema_digest_citations_accounting_and_reopen(l1):
                 "schema": expected_schema,
             },
         }
-        assert control["schema"] == generation_schema()
+        assert "schema" not in control and "allowed_evidence_ids" not in control
         assert control["profile"]["stage"] == ("chunk", "structural", "root")[number]
         assert control["stage_id"] == str(request.stage_id)
         assert control["kind"] == request.stage
@@ -336,7 +342,7 @@ def test_l1_extraction_dag_schema_digest_citations_accounting_and_reopen(l1):
             for c in child.result.claims
             for e in (*c.evidence_ids, *c.contradicting_evidence_ids)
         }
-        assert set(control["allowed_evidence_ids"]) == expected_evidence
+        assert set(schema_source_ids(generation.schema)) == expected_evidence
         returned = StageResult.model_validate_json(state.http.calls[number]["response"])
         Draft202012Validator(expected_schema).validate(
             json.loads(state.http.calls[number]["response"])

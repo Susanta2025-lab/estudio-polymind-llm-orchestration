@@ -35,14 +35,16 @@ class SharedProvider:
         ident=threading.get_ident()
         with self.lock:
             first=ident not in self.seen;self.seen.add(ident)
-            self.active+=1;self.peak=max(self.peak,self.active);self.calls.append(control['stage_id'])
+            self.active+=1;self.peak=max(self.peak,self.active);self.calls.append(control['request_binding'])
         try:
             if first:self.barrier.wait()
-            result={'stage_id':control['stage_id'],'kind':control['kind'],'claims':[{
-                'claim_id':control['claim_ids_in_order'][0],'originating_stage':control['stage_id'],
-                'kind':'fact' if control['kind']=='analysis' else 'commentary',
-                'text':'Synthetic source observation; no semantic evaluation.',
-                'evidence_ids':control['allowed_evidence_ids'],'lineage':control['required_child_links']}]}
+            result=dict(schema_version='stage-proposal/1',request_binding=control['request_binding'],
+                outcome='analyzed',open_questions=[],limitations=[],claims=[dict(
+                    kind='fact' if control['kind']=='analysis' else 'commentary',
+                    status='supported',subject=None,stance='unknown',
+                    text='Synthetic source observation; no semantic evaluation.',
+                    evidence_refs=list(control['source_references']),contradicting_evidence_refs=[],
+                    qualifications=[],child_refs=control['required_child_refs'])])
             return GenerationResult(json.dumps(result),InferenceUsage(30,40,70),'offline','stop')
         finally:
             with self.lock:self.active-=1

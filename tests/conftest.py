@@ -19,3 +19,11 @@ isolate_application_settings(_settings_patch)
 def pytest_unconfigure(config):
     """Restore the public constructor even when collection or tests fail."""
     _settings_patch.undo()
+
+
+@pytest.fixture
+def managed_v9(monkeypatch):
+    """Explicit historical generation; current G1/G2 and durable storage remain real."""
+    from tests.historical_managed import activate
+    with activate(monkeypatch):
+        yield

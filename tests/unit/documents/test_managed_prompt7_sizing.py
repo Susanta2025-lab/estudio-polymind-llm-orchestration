@@ -15,14 +15,39 @@ from documents.digestion.workflow import DigestionHandler
 from documents.extraction import extract
 from documents.jobs.models import canonical
 from documents.storage import LocalObjectStore
+from tests.integration.test_final_offline_azure_compatibility import (
+    legacy_v7_contracts as legacy_v7_contracts,  # noqa: PLC0414
+)
+from tests.integration.test_managed_prompt7_contract import (
+    adapter as historical_adapter,
+)
 from tests.performance.fixtures import NOW, SCOPE, profile
 from tests.performance.foundry_envelopes import maximal_result
 from tests.unit.documents.test_managed_sizing import (
-    adapter,
     checkpoint,
     plain_result,
     setup,
 )
+
+
+@pytest.fixture(autouse=True)
+def pinned_v7_adapter(monkeypatch, legacy_v7_contracts):
+    from tests.unit.documents import test_managed_sizing
+
+    def adapter(child_bytes=None):
+        assert child_bytes == 7000
+        return historical_adapter(legacy_v7_contracts["chunk"], "chunk")
+
+    monkeypatch.setattr(test_managed_sizing, "adapter", adapter)
+
+
+@pytest.fixture
+def adapter():
+    # The chunk test requests the same hash-pinned historical adapter.
+    from tests.unit.documents import test_managed_sizing
+
+    return test_managed_sizing.adapter
+
 
 VARIANTS = ["ordinary", 'Section "A"\\path\n', "é\u0800😀"]
 
@@ -93,7 +118,9 @@ def test_reducer_profiles_fit_actual_v7_envelope(
 
 
 @pytest.mark.parametrize("text", VARIANTS)
-def test_chunk_escaped_original_sources_fit_v7(tmp_path, text, record_property):
+def test_chunk_escaped_original_sources_fit_v7(
+    tmp_path, text, record_property, adapter
+):
     store = LocalObjectStore(tmp_path / "objects")
     artifact, ref = extract(
         BytesIO((text + "\n").encode("utf-8")),

@@ -11,6 +11,10 @@ from uuid import uuid4
 
 import pytest
 
+# Permanent historical canonical-output characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from governance.ledger import (
     EvaluationBinding,
     GovernanceError,

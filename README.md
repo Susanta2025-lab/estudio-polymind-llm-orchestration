@@ -33,7 +33,7 @@ readiness is **NOT ESTABLISHED**.
 | [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
 | [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
 | Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
-| [Active managed-prompt/7](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md) | Explicit current-stage claim identity and child-lineage guidance; retains v6 sizing and strict provenance; offline validation only |
+| [Active managed-prompt/10](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md) | Application-owned identities and references, atomic child keys, strict wire decoding and durable receipts; offline validation only |
 | [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
 | Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
 | Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
@@ -365,11 +365,26 @@ an analysis checkpoint was accepted. The approval was consumed. The subsequent
 [9 November v5 evaluation](docs/codex/reports/phase_17h_v5_execution_window_renewal_and_rsa_authorization.md)
 made two calls and stopped on first-reducer child sizing. Its approval is consumed.
 Offline replay also exposed eight invalid child-stage origins in that reducer.
-Current [managed-prompt/7](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md)
-explicitly binds each new claim to CONTROL.stage_id and preserves child identities
-through lineage. Strict identity validation and v6 actual-wrapper sizing remain
-authoritative. This has synthetic offline validation only; fresh generation-bound
-configuration and separate operator authorizations are required for any live run.
+The [later v7 evaluation](docs/codex/reports/phase_17h_v7_controlled_four_call_execution.md)
+accepted chunk and first-reducer checkpoints, then rejected all eight root lineage
+pairs: immediate-child stage IDs were combined with earlier chunk claim IDs.
+Its three calls are settled and its approval is consumed.
+The [v8 evaluation](docs/codex/reports/phase_17h_v8_controlled_four_call_execution.md)
+then stopped after one chunk call on a foreign source UUID; no checkpoint or
+reducer was accepted. Its usage is settled and its approval is consumed.
+Current [managed-prompt/10](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
+uses `stage-proposal/1`: the model selects request-local E source keys and atomic
+C child-pair keys. Application code resolves only explicit authorized selections,
+assigns current-stage/positional identities and constructs unchanged canonical
+`stage-result/1`. Strict source enums now contain exact allowed E keys; every
+mode uses the same fail-closed decoder. Additive immutable provider records and
+decoding receipts accompany the fenced checkpoint manifest and are verified on
+reopening and publication. Historical v5–v9 results remain readable.
+G1/G2 and the 24,800 input, 28,000 context, 7,000 complete-child, 3,000 output and
+four-call L1 limits remain. See the [receipt decision](docs/adr/phase_17h_v10_generation_wire_receipt_decision.md).
+Synthetic correctness does not establish Azure schema acceptance or semantic
+compliance. A fresh v10-bound configuration, manual review and separate operator
+authorizations are required before any controlled live attempt.
 
 Full live hierarchical digestion, subsequent grounded Q&A and representative
 independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
@@ -711,6 +726,9 @@ Current key reports:
 - [managed-prompt/4 — Subject-Contract Implementation](docs/codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md)
 - [managed-prompt/5 — R0/R1 Evidence-Provenance Hardening](docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
 - [managed-prompt/6 — Offline Reducer Sizing Reconciliation](docs/codex/reports/phase_17h_v5_reducer_sizing_offline_reconciliation.md)
+- [managed-prompt/10 — Application-Owned Evidence and Lineage](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
+- [managed-prompt/9 — Source Identity Reliability and Offline Readiness](docs/codex/reports/phase_17h_v9_source_identity_reliability_and_offline_readiness.md)
+- [managed-prompt/8 — Lineage Hardening and Offline Readiness](docs/codex/reports/phase_17h_v8_lineage_hardening_and_offline_readiness.md)
 - [managed-prompt/7 — Claim-Identity Hardening and Offline Readiness](docs/codex/reports/phase_17h_v7_claim_identity_hardening_and_readiness.md)
 - [Attempt 6 — Closure and Phase 17H Gate Assessment](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 
@@ -783,7 +801,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/7 active with explicit current-stage identity, v6 sizing and strict provenance; Attempt 6 CLOSED/PASS; 9 November v5 live evaluation failed reducer sizing after two calls; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
+**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/10 active with application-owned evidence/identities, atomic child selections, durable decoding receipts and strict provenance; Attempt 6 CLOSED/PASS; 9 November v7 live evaluation rejected root lineage after three calls and v8 rejected chunk source membership after one call; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

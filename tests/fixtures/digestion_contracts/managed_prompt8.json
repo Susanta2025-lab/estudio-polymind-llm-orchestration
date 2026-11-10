@@ -1,0 +1,21 @@
+{
+  "generation_contract_sha256": "93ca9066491c197987f919c5d185417bf4f3d2787384acf2833011e32641c0df",
+  "managed_source_sha256": "7f67a5fcf123abd736ed8e88037f9f69df6d05e070410f8bba448f2215a8a334",
+  "requests": {
+    "chunk": {
+      "request": "8e75f50ce65a50c3a1d8af879ed63afdccf82cb5b98707031235885de195130d",
+      "generation": "f8b38c489f9f4b8476443e980199e03780d1a31b811667d5c48d48d2edcdefb0",
+      "payload": "4ec8f554ffae29f74d69ffc1ed207b8322e8481f9766c69cb0ce75547c029a83"
+    },
+    "structural": {
+      "request": "756277f9bf337d27bd92dfdc47c249c33f0e843d55b83486878ec6cc27323454",
+      "generation": "697b4310fb583e95a6ddb0b833a6913c8c6c904c9fbb1e7108be95eca77d22fb",
+      "payload": "a7ab78cfdb5300d8d41290226c68c30b03766f658b415db3274203ccf8ad28fc"
+    },
+    "root": {
+      "request": "de78e46ef657d97c4d9bdc6f310aafae8ba2daf1d62258ac7bb055637a356db1",
+      "generation": "2e6a4db5ca733b8d504e5fa117b6a7f6895920c09415d32481c70ba5c229aa9a",
+      "payload": "c964500c24891117096373a34b33cc11d81970e344e74a1d04202f347f48703c"
+    }
+  }
+}

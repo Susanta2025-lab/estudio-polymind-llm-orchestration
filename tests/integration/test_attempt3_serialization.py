@@ -4,6 +4,10 @@ import socket
 from copy import deepcopy
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from pydantic import ValidationError
 
 from documents.digestion.codec import decode, encode

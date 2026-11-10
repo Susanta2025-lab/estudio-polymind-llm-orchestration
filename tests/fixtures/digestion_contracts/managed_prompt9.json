@@ -1,0 +1,21 @@
+{
+  "generation_contract_sha256": "f270aa81cbd5764d2b4739bf3ac3692653b1fe4c8ffbd67860e642137cb2579d",
+  "managed_source_sha256": "6ed23248084f4f31fb6fcc16dcf25baceb54db9d55396c3fef8f9df49b9f85df",
+  "requests": {
+    "chunk": {
+      "request": "c733954fd2267e5fc2c90ec4eba45eefc1cfc9cb1739dc1889cc46370730eb91",
+      "generation": "e3c4dfe5ea712455a2d791e513d16db1eeba4d347b22ed2fbec29ccfdc4594a2",
+      "payload": "b7caaf70f91bdfe524c40b38cc4c7c9ab87db4e64f68846ee003f76823969a62"
+    },
+    "structural": {
+      "request": "7768e2056f0dd930baff545aa15dbc9cbdc1fa6a4c69e2036182d33f426e5ee9",
+      "generation": "bfd4ee5143d229df0f610ce5ea615f2988345175958f2f826e6084b413a0f0cf",
+      "payload": "f222bfe16670489a7174a406b19dd9d25c9d551df62e3589e49497ab66b20854"
+    },
+    "root": {
+      "request": "fa6f023981eec7b58b65b463b7b42a78129113ee82d15e95bf06186d6080188f",
+      "generation": "beb7e74cf8a1a28a9f5fa012281cbf10d0d5aab082eda2d35b1474f31cdc57bb",
+      "payload": "2d03e4d6506ddfbc35e95593b4d065e6e3b400cda48b773ddbdbf4a088172412"
+    }
+  }
+}

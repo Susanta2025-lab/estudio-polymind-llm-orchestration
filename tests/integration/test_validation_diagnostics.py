@@ -5,6 +5,10 @@ from uuid import UUID
 
 import pytest
 
+# Historical canonical-output workflow characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from documents.digestion import codec
 from documents.digestion.models import DigestionError, ValidationDiagnostic
 from tests.approval_helpers import approval_signer  # noqa: F401

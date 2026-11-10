@@ -18,14 +18,15 @@ from documents.jobs.sqlite import SQLiteJobLedger
 from documents.jobs.worker import LocalDispatcher, Worker, relay
 from llm.openai_compatible import OpenAICompatibleProvider
 from tests.integration.test_final_offline_azure_compatibility import (
-    contracts as contracts,  # noqa: PLC0414 - pytest fixture re-export.
-)
-from tests.integration.test_final_offline_azure_compatibility import (
     legacy_v5_contracts as legacy_v5_contracts,  # noqa: PLC0414
 )
 from tests.integration.test_final_offline_azure_compatibility import (
     legacy_v6_contracts as legacy_v6_contracts,  # noqa: PLC0414
 )
+from tests.integration.test_final_offline_azure_compatibility import (
+    legacy_v7_contracts as legacy_v7_contracts,  # noqa: PLC0414 - pytest fixture re-export.
+)
+from tests.historical_managed import generation_digest
 from tests.performance.foundry_l1 import generation_contract_digest
 
 IDENTITY_V6 = (
@@ -64,10 +65,10 @@ def adapter(record, stage):
 
 @pytest.mark.parametrize("stage", ["chunk", "intermediate", "structural", "root"])
 def test_v7_changes_exactly_identity_guidance_and_template_binding(
-    contracts, legacy_v6_contracts, stage
+    legacy_v7_contracts, legacy_v6_contracts, stage
 ):
     selected = "structural" if stage == "intermediate" else stage
-    old, new = legacy_v6_contracts[selected], contracts[selected]
+    old, new = legacy_v6_contracts[selected], legacy_v7_contracts[selected]
     old_generation, _ = adapter(old, stage).render(old.request)
     new_generation, _ = adapter(new, stage).render(new.request)
     before, after = (
@@ -102,12 +103,12 @@ def test_v7_changes_exactly_identity_guidance_and_template_binding(
 
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
-def test_frozen_v7_requests_generation_and_http_payload(contracts, stage):
+def test_frozen_v7_requests_generation_and_http_payload(legacy_v7_contracts, stage):
     root = Path(__file__).resolve().parents[2]
     expected = json.loads(
         (root / "tests/fixtures/digestion_contracts/managed_prompt7.json").read_text()
     )
-    record = contracts[stage]
+    record = legacy_v7_contracts[stage]
     for component, value in {
         "request": record.request.model_dump(mode="json"),
         "generation": asdict(record.generation),
@@ -122,21 +123,38 @@ def test_frozen_v7_requests_generation_and_http_payload(contracts, stage):
             == expected["requests"][stage][component]
         )
     assert (
-        sha256((root / "documents/digestion/managed.py").read_bytes()).hexdigest()
+        sha256(
+            (
+                root / "tests/fixtures/digestion_contracts/managed_prompt7.py.txt"
+            ).read_bytes()
+        ).hexdigest()
         == expected["managed_source_sha256"]
     )
-    assert generation_contract_digest() == expected["generation_contract_sha256"]
+    # Use the production inventory with only the reviewed historical renderer.
+    original_read = Path.read_bytes
+    managed_path = root / "documents/digestion/managed.py"
+    frozen = (
+        root / "tests/fixtures/digestion_contracts/managed_prompt7.py.txt"
+    ).read_bytes()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(
+            Path,
+            "read_bytes",
+            lambda path: frozen if path == managed_path else original_read(path),
+        )
+        assert generation_digest(7) == expected["generation_contract_sha256"]
+    assert generation_contract_digest() != expected["generation_contract_sha256"]
 
 
 @pytest.mark.parametrize("version", [5, 6])
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
 def test_v5_v6_configuration_and_request_cannot_execute_under_v7(
-    contracts, legacy_v5_contracts, legacy_v6_contracts, version, stage
+    legacy_v7_contracts, legacy_v5_contracts, legacy_v6_contracts, version, stage
 ):
     old = {5: legacy_v5_contracts, 6: legacy_v6_contracts}[version][stage]
-    current = adapter(contracts[stage], stage)
+    current = adapter(legacy_v7_contracts[stage], stage)
     with pytest.raises(ValidationError):
-        contracts[stage].managed.ManagedSettings.model_validate(
+        legacy_v7_contracts[stage].managed.ManagedSettings.model_validate(
             adapter(old, stage).settings.model_dump(mode="json")
         )
     with pytest.raises(DigestionError, match="^incompatible_checkpoint$"):
@@ -146,7 +164,7 @@ def test_v5_v6_configuration_and_request_cannot_execute_under_v7(
 
 @pytest.mark.parametrize("version", [5, 6])
 def test_historical_checkpoint_plan_is_rejected_by_v7_durable_handler(
-    contracts, legacy_v5_contracts, legacy_v6_contracts, tmp_path, version
+    legacy_v7_contracts, legacy_v5_contracts, legacy_v6_contracts, tmp_path, version
 ):
     old = {5: legacy_v5_contracts, 6: legacy_v6_contracts}[version]["structural"]
     child = old.request.children[0]
@@ -168,7 +186,9 @@ def test_historical_checkpoint_plan_is_rejected_by_v7_durable_handler(
         ledger,
         queue,
         store,
-        ManagedDigestionHandler(ledger, plan_ref, adapter(contracts["chunk"], "chunk")),
+        ManagedDigestionHandler(
+            ledger, plan_ref, adapter(legacy_v7_contracts["chunk"], "chunk")
+        ),
         owner="offline-v7-denial",
         classifier=classify_managed,
     )

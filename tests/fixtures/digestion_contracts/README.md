@@ -1,5 +1,20 @@
 # Approved digestion source references
 
+**V10 transition, 10 November 2026:** active generation is `managed-prompt/10`
+with `stage-proposal/1` output and deterministic construction of unchanged
+`stage-result/1`. The older migration sections below retain their historical
+checkpoints. `managed_prompt9.py.txt`, `v9_sources/` and
+`managed_prompt9_inventory.json` freeze the exact 15-file v9 source contract
+before this transition. `tests/historical_managed.py` executes only the hash-pinned
+managed fixture for explicit historical characterizations; other snapshots are
+hash/source data. Production does not load them or accept old managed settings.
+`managed_prompt10.json` pins the expanded 25-file generation-inventory/2 plus
+current representative request/generation/HTTP hashes. Tests never regenerate
+these fingerprints. See the
+[v10 decision](../../../docs/adr/phase_17h_v10_generation_wire_receipt_decision.md)
+and [implementation report](../../../docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md).
+
+
 These fixed source excerpts replace only the interpreter-dependent AST digests
 in `test_live_failure_observability.py`. The model and validation excerpts are
 test data, never imported or executed. Do not regenerate them from production during tests or automatically

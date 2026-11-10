@@ -8,6 +8,10 @@ import time
 from uuid import uuid4
 
 import pytest
+
+# Permanent historical canonical-output characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 import requests
 
 from tests.approval_helpers import approval_signer
@@ -109,7 +113,7 @@ def test_exact_one_call_and_accounting(rig):
     payload = kw['json']
     assert payload['model'] == DEPLOYMENT and payload['max_completion_tokens'] == 3000
     assert payload['response_format'] == dict(type='json_schema', json_schema=dict(
-        name='polymind_stage_result', strict=True, schema=harness.provider_schema(harness.generation_schema())))
+        name='polymind_stage_result', strict=True, schema=harness.provider_schema(rig[-1][3].schema)))
     assert http.calls[0]['stage'] == 'chunk'
     assert cfg.contract.cost(1) == Decimal('0.028379091869065')
     row = ledger.usage(p, authority)[0]

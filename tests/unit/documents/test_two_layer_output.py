@@ -6,9 +6,13 @@ import socket
 
 import jsonschema
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from pydantic import ValidationError
 
-from documents.digestion.managed import generation_schema, ManagedSettings
+from tests.historical_managed import generation_schema, ManagedSettings
 from documents.digestion.models import DigestionError, StageResult
 from documents.digestion.validation import validate_result
 from llm.azure_schema import provider_schema
@@ -255,7 +259,7 @@ def test_capability_and_managed_version_gate(monkeypatch):
     with pytest.raises(ValidationError): settings(capability=cap)
     chosen = settings(capability=cap, generation_profile='managed-generation/2')
     assert chosen.generation_profile == 'managed-generation/2'
-    import documents.digestion.managed as managed
+    from tests.historical_managed import _module as managed
     bad = generation_schema(); bad['unknown'] = True
     monkeypatch.setattr(managed, 'generation_schema', lambda: bad)
     with pytest.raises(InferenceConfigurationError):
@@ -304,7 +308,10 @@ def test_strict_downstream_and_provider_failures_settle(tmp_path, monkeypatch, c
         data = json.loads(result)
         if case == 'uuid':
             data['claims'][0]['evidence_ids'][0] = 'malformed'
-            jsonschema.validate(data, sent['response_format']['json_schema']['schema'])
+            assert not jsonschema.Draft202012Validator(
+                sent['response_format']['json_schema']['schema']).is_valid(data)
+            # Still return the malformed synthetic response: independent application
+            # rejection must preserve known usage if a provider violates its schema.
         response = original(self, sent, json.dumps(data), stage)
         if case != 'uuid':
             envelope = json.loads(b''.join(response.iter_content(1)))

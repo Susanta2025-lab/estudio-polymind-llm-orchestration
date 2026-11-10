@@ -9,6 +9,10 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from pydantic import ValidationError
 
 from documents.digestion.codec import decode
@@ -34,6 +38,10 @@ from tests.integration.test_final_offline_azure_compatibility import (
     legacy_v5_unbounded_contracts,
     legacy_v6_contracts,
     legacy_v6_unbounded_contracts,
+    legacy_v7_contracts,
+    legacy_v7_unbounded_contracts,
+    legacy_v8_contracts,
+    legacy_v8_unbounded_contracts,
     v4_g1_contracts,
     unbounded_contracts,
 )
@@ -353,7 +361,7 @@ def test_provider_result_metadata(case):
     p = client(Response(value))
     req = request(structured_output="json_schema", schema_profile="azure-strict/1")
     # Use the actual schema; the generic provider fixture's open object is not convertible.
-    from documents.digestion.managed import generation_schema
+    from tests.historical_managed import generation_schema
 
     req = replace(req, schema=generation_schema())
     fail = case in (
@@ -606,7 +614,7 @@ def test_complete_pre_edit_generation_contract(historical_contracts, stage, comp
 
 
 def test_generation_schema_and_renderer_source_remain_frozen():
-    from documents.digestion.managed import generation_schema
+    from tests.historical_managed import generation_schema
     from documents.jobs.models import fingerprint
     from llm.azure_schema import provider_schema
 
@@ -775,7 +783,7 @@ def test_historical_v5_generation_fingerprints(legacy_v5_contracts, stage):
 
 def test_historical_results_readable_but_requests_cannot_resume(historical_contracts, contracts):
     from documents.digestion.codec import encode, read
-    from documents.digestion.managed import (
+    from tests.historical_managed import (
         ManagedSettings,
         ManagedSynthesisInference,
         StageProfile,
@@ -808,14 +816,16 @@ def test_historical_results_readable_but_requests_cannot_resume(historical_contr
 
 @pytest.mark.parametrize("stage", ["chunk", "structural", "root"])
 @pytest.mark.parametrize("child_bytes", [None, 7000])
-@pytest.mark.parametrize("version", [4, 5, 6, 7])
+@pytest.mark.parametrize("version", [4, 5, 6, 7, 8, 9])
 def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
     legacy_v4_contracts, v4_g1_contracts, legacy_v5_contracts, legacy_v5_unbounded_contracts,
     legacy_v6_contracts, legacy_v6_unbounded_contracts,
+    legacy_v7_contracts, legacy_v7_unbounded_contracts,
+    legacy_v8_contracts, legacy_v8_unbounded_contracts,
     unbounded_contracts, contracts, stage, child_bytes, version
 ):
     from documents.digestion.codec import read
-    from documents.digestion.managed import (
+    from tests.historical_managed import (
         ManagedSettings,
         ManagedSynthesisInference,
         StageProfile,
@@ -827,7 +837,9 @@ def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
         4: (legacy_v4_contracts, v4_g1_contracts),
         5: (legacy_v5_unbounded_contracts, legacy_v5_contracts),
         6: (legacy_v6_unbounded_contracts, legacy_v6_contracts),
-        7: (unbounded_contracts, contracts),
+        7: (legacy_v7_unbounded_contracts, legacy_v7_contracts),
+        8: (legacy_v8_unbounded_contracts, legacy_v8_contracts),
+        9: (unbounded_contracts, contracts),
     }[version]
     selected = (unbounded if child_bytes is None else bounded)[stage]
     incompatible = (bounded if child_bytes is None else unbounded)[stage]
@@ -877,7 +889,7 @@ def test_versioned_original_and_g1_bindings_round_trip_without_upgrade(
 
 @pytest.mark.parametrize("stage", ["chunk", "intermediate", "structural", "root"])
 def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, stage):
-    from documents.digestion.managed import (
+    from tests.historical_managed import (
         ManagedSettings,
         ManagedSynthesisInference,
         StageProfile,
@@ -905,17 +917,17 @@ def test_active_subject_rules_have_valid_witnesses_for_all_profiles(contracts, s
     generation, _ = adapter.render(r.request)
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/7"
+    assert control["profile"]["template_version"] == r.request.profile.prompt_profile == "managed-prompt/9"
     fixture = Path(__file__).resolve().parents[1] / "fixtures/digestion_contracts/managed_prompt4_subject.txt"
     assert " ".join(fixture.read_text().split()) in " ".join(generation.system.split())
     for instruction in (
         "Include every schema field, including default values, empty arrays and nulls.",
-        "Cite ONLY allowed evidence IDs; never invent references.",
+        "copy complete UUIDs exactly from that set. Treat each as indivisible:",
         "Use CONTROL.claim_ids_in_order consecutively for this response.",
         "Represent unknown or unsupported conclusions explicitly using kind/status.",
         "For analysis, reference EVERY allowed evidence ID across the claims.",
         "For reduction, include EVERY required_child_link across claim lineage;",
-        *EVIDENCE_COPY_RULES,
+        "reconstruct, splice, shorten or alter it. Claim/stage IDs are not source IDs.",
     ):
         assert instruction in generation.system
     data = json.loads(r.raw)
@@ -998,7 +1010,7 @@ def test_byte_diagnostic_cannot_mask_refusal():
         ]
     )
     p = client(Response(value))
-    from documents.digestion.managed import generation_schema
+    from tests.historical_managed import generation_schema
 
     req = replace(
         request(structured_output="json_schema", schema_profile="azure-strict/1"),

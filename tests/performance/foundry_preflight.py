@@ -32,33 +32,63 @@ class OfflineHTTP:
             return self.response(sent, result, 'question')
         control = json.loads(sent['messages'][0]['content'].split('\nCONTROL\n')[1])
         data = json.loads(sent['messages'][1]['content'])
-        claims = []
-        if control['kind'] == 'analysis':
-            ordinary = []
-            for piece in data['UNTRUSTED_DOCUMENT_DATA']:
-                matched = [(page, text) for page, text in FACTS.items() if text in piece['text']]
-                if not matched:
-                    ordinary.append(piece['evidence_id'])
-                for page, text in matched:
-                    claim = dict(kind='fact', text=text, evidence_ids=[piece['evidence_id']])
-                    if page in (5, 180):
-                        claim.update(subject='orion-performance', stance='affirmed' if page == 5 else 'denied',
-                                     qualifications=[dict(text='Only in 2025 and the specified load regime.',
-                                                          evidence_ids=[piece['evidence_id']])])
-                    claims.append(claim)
-            if ordinary:
-                claims.append(dict(kind='fact', text='Synthetic source observation; no semantic quality asserted.',
-                                   evidence_ids=ordinary))
+        if 'request_binding' in control:
+            claims = []
+            if control['kind'] == 'analysis':
+                ordinary = []
+                for piece in data['UNTRUSTED_DOCUMENT_DATA']:
+                    matched = [(page, text) for page, text in FACTS.items() if text in piece['text']]
+                    if not matched:
+                        ordinary.append(piece['evidence_ref'])
+                    for page, text in matched:
+                        claim = dict(text=text, kind='fact', status='supported', stance='unknown',
+                            subject=None, evidence_refs=[piece['evidence_ref']],
+                            contradicting_evidence_refs=[], qualifications=[], child_refs=[])
+                        if page in (5, 180):
+                            claim.update(subject='orion-performance', stance='affirmed' if page == 5 else 'denied',
+                                qualifications=[dict(text='Only in 2025 and the specified load regime.',
+                                    evidence_refs=[piece['evidence_ref']])])
+                        claims.append(claim)
+                if ordinary:
+                    claims.append(dict(text='Synthetic source observation; no semantic quality asserted.',
+                        kind='fact', status='supported', stance='unknown', subject=None,
+                        evidence_refs=ordinary, contradicting_evidence_refs=[], qualifications=[], child_refs=[]))
+            else:
+                claims.append(dict(text='Inherited findings and qualifications apply.',
+                    kind='commentary', status='supported', stance='unknown', subject=None,
+                    evidence_refs=[], contradicting_evidence_refs=[], qualifications=[],
+                    child_refs=control['required_child_refs']))
+            result = json.dumps(dict(schema_version='stage-proposal/1',
+                request_binding=control['request_binding'], outcome='analyzed', claims=claims,
+                open_questions=[], limitations=[]))
         else:
-            claims.append(dict(kind='commentary', text='Inherited findings and qualifications apply.',
-                               lineage=control['required_child_links']))
-        for i, claim in enumerate(claims):
-            claim.update(claim_id=control['claim_ids_in_order'][i], originating_stage=control['stage_id'])
-        result = json.dumps(dict(stage_id=control['stage_id'], kind=control['kind'], claims=claims))
-        if sent.get('response_format', {}).get('json_schema', {}).get('strict'):
-            # Fake provider emits explicit defaults as the strict generation contract requires.
-            from documents.digestion.models import StageResult
-            result = StageResult.model_validate_json(result).model_dump_json()
+            claims = []
+            if control['kind'] == 'analysis':
+                ordinary = []
+                for piece in data['UNTRUSTED_DOCUMENT_DATA']:
+                    matched = [(page, text) for page, text in FACTS.items() if text in piece['text']]
+                    if not matched:
+                        ordinary.append(piece['evidence_id'])
+                    for page, text in matched:
+                        claim = dict(kind='fact', text=text, evidence_ids=[piece['evidence_id']])
+                        if page in (5, 180):
+                            claim.update(subject='orion-performance', stance='affirmed' if page == 5 else 'denied',
+                                         qualifications=[dict(text='Only in 2025 and the specified load regime.',
+                                                              evidence_ids=[piece['evidence_id']])])
+                        claims.append(claim)
+                if ordinary:
+                    claims.append(dict(kind='fact', text='Synthetic source observation; no semantic quality asserted.',
+                                       evidence_ids=ordinary))
+            else:
+                claims.append(dict(kind='commentary', text='Inherited findings and qualifications apply.',
+                                   lineage=control['required_child_links']))
+            for i, claim in enumerate(claims):
+                claim.update(claim_id=control['claim_ids_in_order'][i], originating_stage=control['stage_id'])
+            result = json.dumps(dict(stage_id=control['stage_id'], kind=control['kind'], claims=claims))
+            if sent.get('response_format', {}).get('json_schema', {}).get('strict'):
+                # Fake provider emits explicit defaults as the strict generation contract requires.
+                from documents.digestion.models import StageResult
+                result = StageResult.model_validate_json(result).model_dump_json()
         return self.response(sent, result, control['profile']['stage'])
 
     def response(self, sent, result, stage):

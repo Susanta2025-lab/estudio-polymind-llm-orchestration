@@ -95,8 +95,10 @@ def test_authorized_composition_with_intercepted_http(composition,auth,header,va
     assert cfg.generation_contract_sha256 == launch.generation_contract_digest()
     for _, kwargs in http.sent[:3]:
         control = json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
-        assert control['profile']['template_version'] == 'managed-prompt/7'
-        assert set(control['schema']['required']) == set(control['schema']['properties'])
+        assert control['profile']['template_version'] == 'managed-prompt/10'
+        schema = kwargs['json']['response_format']['json_schema']['schema']
+        assert set(schema['required']) == set(schema['properties'])
+        assert 'schema' not in control and 'allowed_evidence_ids' not in control
     assert {json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
             ['profile']['stage'] for _, kwargs in http.sent[:3]} == {'chunk', 'structural', 'root'}
     for url,kwargs in http.sent:
@@ -108,11 +110,18 @@ def test_authorized_composition_with_intercepted_http(composition,auth,header,va
         assert kwargs['json']['max_completion_tokens']==3000
         response_format = kwargs['json']['response_format']
         if '\nCONTROL\n' in kwargs['json']['messages'][0]['content']:
-            from documents.digestion.managed import generation_schema
-            from llm.azure_schema import provider_schema
-            assert response_format == {'type': 'json_schema', 'json_schema': {
-                'name': 'polymind_stage_result', 'strict': True,
-                'schema': provider_schema(generation_schema())}}
+            control = json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
+            schema = response_format['json_schema']['schema']
+            assert response_format['type'] == 'json_schema'
+            assert response_format['json_schema']['strict'] is True
+            assert schema['properties']['schema_version']['enum'] == ['stage-proposal/1']
+            assert schema['properties']['request_binding']['enum'] == [control['request_binding']]
+            for definition, allowed in [('SourceEvidence', list(control['source_references'])),
+                                        ('ChildReference', control['required_child_refs'])]:
+                node = schema['$defs'][definition]
+                assert [v for branch in node.get('anyOf',[node]) for v in branch.get('enum',[])] == allowed
+            assert 'stage_id' not in schema['properties']
+            assert 'claim_id' not in schema['$defs']['Claim']['properties']
         else:
             # Interactive Q&A retains its separate JSON-object contract.
             assert response_format == {'type': 'json_object'}

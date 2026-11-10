@@ -4,6 +4,10 @@ import json
 from uuid import UUID
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from jsonschema import Draft202012Validator
 
 from documents.digestion.codec import encode
@@ -11,6 +15,7 @@ from documents.digestion.models import DigestionError
 from documents.digestion.validation import EvidenceIndex, validate_result
 from documents.digestion.workflow import DigestionHandler
 from documents.models import stable_id
+from tests.integration.test_final_offline_azure_compatibility import schema_source_ids
 from tests.reducer_sizing_fixtures import eight_claim_result
 from tests.unit.documents.test_managed_sizing import checkpoint, setup
 
@@ -62,8 +67,8 @@ def test_current_stage_identity_and_rendered_control_are_consistent(stage_case):
     assert (
         "never copy a child's originating_stage into a new claim" in generation.system
     )
-    assert "claim IDs and stage IDs are not source evidence IDs" in generation.system
-    assert control["profile"]["template_version"] == "managed-prompt/7"
+    assert "Claim/stage IDs are not source IDs" in generation.system
+    assert control["profile"]["template_version"] == "managed-prompt/9"
     child_bytes = [encode(child) for child in request.children]
     assert validate_result(encode(result), request, index) == result
     for i, claim in enumerate(result.claims):
@@ -111,9 +116,7 @@ def test_correct_ids_and_valid_evidence_cannot_mask_incorrect_origin(
     raw = json.dumps(payload).encode()
     original = encode(result)
     children = [encode(c) for c in request.children]
-    allowed = set(
-        json.loads(generation.system.split("\nCONTROL\n")[1])["allowed_evidence_ids"]
-    )
+    allowed = set(schema_source_ids(generation.schema))
     assert all(set(c["evidence_ids"]) <= allowed for c in payload["claims"])
     assert all(
         c["claim_id"] == str(stable_id(str(request.stage_id), str(i)))

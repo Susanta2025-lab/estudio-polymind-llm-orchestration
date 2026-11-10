@@ -4,6 +4,10 @@ import json
 from uuid import UUID
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from test_phase17hl_offline_e2e import assert_accounting, reopen
 from test_phase17hl_offline_e2e import l1 as l1  # noqa: PLC0414
 from test_phase17hl_offline_e2e import offline as offline  # noqa: PLC0414

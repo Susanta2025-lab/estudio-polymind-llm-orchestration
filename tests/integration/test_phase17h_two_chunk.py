@@ -2,6 +2,10 @@
 import json
 
 import pytest
+
+# Historical canonical-output workflow characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from jsonschema import Draft202012Validator
 from test_phase17hl_offline_e2e import assert_accounting, corrupt, reopen
 from test_phase17hl_offline_e2e import (

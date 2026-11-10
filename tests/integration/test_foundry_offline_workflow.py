@@ -4,6 +4,10 @@ import socket
 
 import pytest
 
+# Permanent historical canonical-output characterization.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from tests.performance.foundry_preflight import execute
 
 

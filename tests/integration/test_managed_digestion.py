@@ -4,8 +4,12 @@ from uuid import uuid4
 
 import pytest
 
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from test_document_digestion import setup, profile, SCOPE
-from documents.digestion.managed import (
+from tests.historical_managed import (
     ManagedDigestionHandler, ManagedSettings, ManagedSynthesisInference, StageProfile, classify_managed,
 )
 from documents.digestion.workflow import admit, load_digest, prepare

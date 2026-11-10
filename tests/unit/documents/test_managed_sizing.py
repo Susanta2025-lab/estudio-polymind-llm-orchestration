@@ -5,8 +5,12 @@ from uuid import UUID
 
 import pytest
 
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from documents.digestion.codec import encode, put
-from documents.digestion.managed import (
+from tests.historical_managed import (
     ManagedSettings,
     ManagedSynthesisInference,
     StageProfile,
@@ -32,6 +36,11 @@ from llm.inference import InferenceContextError
 from tests.performance.fixtures import NOW, SCOPE, pdf, profile
 from tests.performance.foundry_envelopes import NoInference, maximal_result
 from tests.performance.foundry_recalibration import candidate_capability
+
+from tests.integration.test_final_offline_azure_compatibility import (
+    legacy_v8_contracts as legacy_v8_contracts,  # noqa: PLC0414
+)
+
 
 
 def adapter(child_bytes=None):
@@ -101,7 +110,18 @@ def plain_result(request, index, escape=None):
 
 
 @pytest.mark.parametrize('chunks', [1, 2])
-def test_legacy_10k_results_reproduce_escaped_downstream_overflow(tmp_path, chunks):
+def test_legacy_10k_results_reproduce_escaped_downstream_overflow(tmp_path, chunks, monkeypatch, legacy_v8_contracts):
+    # This regression describes the original v8 envelope. V9 deliberately removes
+    # redundant schema copies, so preserve the historical witness with its renderer.
+    from tests.integration.test_managed_prompt7_contract import adapter as historical_adapter
+
+    def old_adapter(child_bytes=None):
+        old = historical_adapter(legacy_v8_contracts['chunk'], 'chunk')
+        settings = type(old.settings).model_validate({
+            **old.settings.model_dump(mode='json'), 'child_input_bytes': child_bytes})
+        return type(old)(old.provider, settings, None)
+
+    monkeypatch.setitem(setup.__globals__, 'adapter', old_adapter)
     store, artifact, inference, plan = setup(tmp_path, chunk_characters=3200 if chunks == 1 else 800)
     assert len(plan.chunks) == chunks
     index, cps, refs = EvidenceIndex(artifact), {}, {}
@@ -161,7 +181,7 @@ def test_bounded_plan_admits_over_3907_bytes_and_every_reducer_fits(tmp_path, es
         checkpoint(store, plan, request, result, cps, refs)
 
 
-@pytest.mark.parametrize('child_bytes', [8000, 16000])
+@pytest.mark.parametrize('child_bytes', [9000, 16000])
 def test_impossible_fanin_is_rejected_during_planning(tmp_path, child_bytes):
     _, artifact, _, plan = setup(tmp_path)
     inference = adapter(child_bytes)

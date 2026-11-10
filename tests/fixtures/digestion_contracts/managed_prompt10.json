@@ -1,0 +1,48 @@
+{
+  "inventory_version": "generation-inventory/2",
+  "generation_contract_sha256": "e5fb249cc9b166b5e438f1534eb855fa5ab7531e08aa09314c110a1905327ebd",
+  "sources": {
+    "documents/digestion/managed.py": "f589d902446bc1bc748484b81a37ceb0f535e60ddd1090b2c05777ba98c447c1",
+    "documents/digestion/models.py": "2205a42a68acbbfdb633270645b1882f5075121b636d863b0053e0f1bc78745f",
+    "documents/digestion/validation.py": "09096c9802a4cd267c07dc6231dbc3c6477639c19b3d57b25915eaa6a168f3bf",
+    "documents/digestion/planning.py": "b8d9f5798aba1bde0d069fc8af794447f29669a96ca554c7a78d65627db52361",
+    "documents/digestion/sizing.py": "04231aa22d6b7b2ffd543de970f24597e4b44d2fd860f0af401cd7507f9b00e5",
+    "documents/digestion/workflow.py": "351279b0158810660d46f2c5cdbd34bc06d28ac381d571fb807e549b4ad6f349",
+    "documents/digestion/diagnostics.py": "aef3693b502bd2fd33bf89a3acf9c1fb1aa00cd0469c82b4c9ead98cc9f52811",
+    "documents/digestion/wire.py": "e993578c448216192fb15635487b72513bfaeac84dc1c9c2bd032796680a35f5",
+    "documents/digestion/receipts.py": "e4dc1189289bb8413aa10fc55c38d4c14eee19c12bd98b730215427078656149",
+    "documents/digestion/codec.py": "9e5c7afbb0ac2574a909fda4da7eaacc9376e61b7e10960daa8c4e327953b768",
+    "documents/models.py": "08203853f6303748bac47988324f923f800bfcca97d695d1f3583ead29681a46",
+    "documents/jobs/models.py": "443f30d81ee2ff02d3c9417098e5ab5ecc742fd4036d2337b6ab5fea5b1aabbf",
+    "documents/jobs/worker.py": "d180140e6401357d3cc29e551d416c899d3c4c3824165f1859b8776ba503e637",
+    "documents/jobs/sqlite.py": "6ad2e3c7b92fd8d47103d5f5a13fb53f4504834a8e032e2e98cffe550c17258e",
+    "documents/storage.py": "9b7b3a7fa71e8ff4d276009627eca052628ebf1a2d24e17179dc0dfd15eb9782",
+    "tests/performance/foundry_l1.py": "2caa28a07b09afac95bf91e23048ce33ed993dcb91269784bc58b44fd0e154af",
+    "tests/performance/foundry_single_call.py": "0bd59ae9b90814762ecd12a917b6dfff60e2691b316cef76a80db1f72838ad9c",
+    "documents/publication/analysis.py": "32b567ac8faebad419cb6342b2dadef4f21762641f402397791d2e4da7738261",
+    "llm/structured.py": "ce24763d62ce3ded77c41630fcdd9aa2766212183d89baac5bc24777d13c9334",
+    "llm/bounded_http.py": "8aff0e76883576f8f0130bb79920840112981028c4ceb9d6c4179593860eba01",
+    "llm/openai_compatible.py": "d0505c5297e8259f6737324cfe5a65867d7551c0f2b98949c103f2a14df752db",
+    "llm/azure_schema.py": "36cab2377fb6cbf850c1e58e83f03e8861c056ee4d44bba8cc6e0749cc7abf25",
+    "tests/performance/fixtures.py": "a33f17840fa31080086afea070256f6616e1d315cef79517a3c3c60b0d944dbc",
+    "tests/performance/foundry_preflight.py": "088a27f87a29975d6002f3ea671ac09d680b94acaeb8232bd5d2763d7e9d436f",
+    "tests/performance/foundry_recalibration.py": "96b4b5670482f66875823916cee8daeb935dc51c8e7df9ac8ef4c90c75f60fd7"
+  },
+  "requests": {
+    "chunk": {
+      "request": "c0b55f93c5aae04d5aa32056de39a5824bffd3877ca9e542fa341bacaa96b682",
+      "generation": "1f92df18987727a61e447abff35b3ebfb86eb6ec3bde804ee021b3403c3cae09",
+      "payload": "07b1c127a9cea8a8a05e6e5be91f42eeaed8885a30cd22354e44a6b3eab96a92"
+    },
+    "structural": {
+      "request": "3e6a0752011455d599123b84bae7a04632526054ea7846de672dba1a157d121b",
+      "generation": "9cf14784d2a8175225f01709b5ce8b637e34984bbd2b2ec30cf35c679fe7c445",
+      "payload": "f875861faca372bc71096e239b218f00e92706a653e8985abeadfceec351b1d3"
+    },
+    "root": {
+      "request": "15a9f5fd2dea66128be2f393c55e9a0a7adcb7065aa9bb467d75cdeef0f0e9f1",
+      "generation": "d2f500ef31472d97e0cca42a1d237ff10733ad23072fa634931e8b5e56aeb267",
+      "payload": "970a515b069079a9955cc89e283354b9cfc6f63af613a8e7050430f04b947079"
+    }
+  }
+}

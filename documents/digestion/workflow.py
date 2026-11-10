@@ -142,13 +142,18 @@ class DigestionHandler:
             if key == expected[0].unit_id:
                 continue
             child = steps[key]
-            if child.state != 'SUCCEEDED' or len(child.manifest) != 1:
+            wire = plan.profile.prompt_profile == 'managed-prompt/10'
+            if child.state != 'SUCCEEDED' or len(child.manifest) != (3 if wire else 1):
                 raise DigestionError('incompatible_checkpoint')
             ref = child.manifest[0]
             cp = read(store, scope, ref, Checkpoint, limit)
             if cp.plan_hash != plan_hash or str(cp.result.stage_id) != key:
                 raise DigestionError('incompatible_checkpoint')
             checkpoints[cp.result.stage_id], refs[cp.result.stage_id] = cp, ref
+        if plan.profile.prompt_profile == 'managed-prompt/10':
+            # Verification needs all ancestors to reconstruct each exact request,
+            # including when this invocation only consumes immediate children.
+            self._verify_proposals(store, job, steps, plan)
         if step.spec.unit_id == 'digest':
             store.inspect(scope, plan.structure.extraction, max_bytes=limit)
             store.inspect(scope, self.plan_ref, max_bytes=limit)
@@ -174,7 +179,12 @@ class DigestionHandler:
             return (put(store, scope, digest, limit), put(store, scope, digest.coverage, limit))
         stage_id = UUID(step.spec.unit_id)
         request = self.request(plan, stage_id, checkpoints, refs, self._nodes)
-        result = validate_result(self.analyze(request, job, step, store, plan), request, index)
+        output = self.analyze(request, job, step, store, plan)
+        from documents.digestion.receipts import ProposedResult
+        wire = plan.profile.prompt_profile == 'managed-prompt/10'
+        if wire and not isinstance(output, ProposedResult):
+            raise DigestionError('incompatible_checkpoint')
+        result = validate_result(output.canonical if wire else output, request, index)
         parents = ((self.plan_ref, plan.structure.extraction) if request.stage == 'analysis'
                    else tuple(child.artifact for child in request.children))
         inherited, propositions = inherited_summary(result, request,
@@ -182,7 +192,50 @@ class DigestionHandler:
         cp = Checkpoint(plan_hash=plan_hash, parents=parents, result=result,
                         inherited=inherited, propositions=propositions)
         validate_child_material(result, inherited, self.plan_ref, plan.profile)
-        return (put(store, scope, cp, limit),)
+        cp_ref = put(store, scope, cp, limit)
+        if wire:
+            from hashlib import sha256
+            from documents.digestion.receipts import DecodingReceipt, ProposalRecord
+            from documents.digestion.wire import references
+            table = references(request)
+            record = read(store, scope, output.proposal, ProposalRecord, limit)
+            receipt = DecodingReceipt(proposal=output.proposal, checkpoint=cp_ref,
+                request_sha256=table.request_sha256, table_sha256=table.digest,
+                canonical_sha256=sha256(encode(result)).hexdigest(),
+                generation_sha256=record.generation_sha256,
+                audit_request_sha256=record.audit_request_sha256)
+            manifest = (cp_ref, put(store, scope, receipt, limit), output.proposal)
+            from documents.digestion.receipts import verify
+            verify(self.ledger, store, job, step.model_copy(update={'manifest': manifest}),
+                   self.plan_ref, request, cp_ref, cp, committed=False)
+            return manifest
+        return (cp_ref,)
+
+    def _verify_proposals(self, store, job, steps, plan):
+        from documents.digestion.receipts import verify
+        scope, limit = job.admission.scope, plan.profile.max_artifact_bytes
+        checkpoints, refs = {}, {}
+        for key in [c.chunk_id for c in plan.chunks] + [n.stage_id for n in plan.reducers]:
+            accepted = steps[str(key)]
+            if accepted.state != 'SUCCEEDED':
+                continue
+            if len(accepted.manifest) != 3:
+                raise DigestionError('incompatible_checkpoint')
+            ref = accepted.manifest[0]
+            cp = read(store, scope, ref, Checkpoint, limit)
+            request = self.request(plan, key, checkpoints, refs, self._nodes)
+            verify(self.ledger, store, job, accepted, self.plan_ref, request, ref, cp)
+            parents = ((self.plan_ref, plan.structure.extraction) if request.stage == 'analysis'
+                       else tuple(child.artifact for child in request.children))
+            if cp.plan_hash != self._plan_hash or cp.parents != parents:
+                raise DigestionError('incompatible_checkpoint')
+            validate_result(encode(cp.result), request, self._loaded[1])
+            inherited, propositions = inherited_summary(cp.result, request,
+                tuple(checkpoints[c.result.stage_id] for c in request.children))
+            if cp.inherited != inherited or cp.propositions != propositions:
+                raise DigestionError('incompatible_checkpoint')
+            validate_child_material(cp.result, inherited, ref, plan.profile)
+            checkpoints[key], refs[key] = cp, ref
 
 
 def load_digest(ledger, store, scope, job_id):

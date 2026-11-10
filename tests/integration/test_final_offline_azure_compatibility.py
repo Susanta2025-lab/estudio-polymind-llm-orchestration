@@ -11,6 +11,10 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from jsonschema import Draft202012Validator
 
 from documents.digestion import workflow
@@ -30,7 +34,7 @@ FOREIGN = str(UUID(int=17000001))
 
 @pytest.fixture(scope="module")
 def contracts(tmp_path_factory):
-    return capture_contracts(tmp_path_factory)
+    return capture_contracts(tmp_path_factory, historical_version=9)
 
 
 @pytest.fixture(scope="module")
@@ -61,6 +65,26 @@ def legacy_v6_unbounded_contracts(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
+def legacy_v7_contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory, historical_version=7)
+
+
+@pytest.fixture(scope="module")
+def legacy_v7_unbounded_contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_version=7)
+
+
+@pytest.fixture(scope="module")
+def legacy_v8_contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory, historical_version=8)
+
+
+@pytest.fixture(scope="module")
+def legacy_v8_unbounded_contracts(tmp_path_factory):
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_version=8)
+
+
+@pytest.fixture(scope="module")
 def v4_g1_contracts(tmp_path_factory):
     """The prior generation contract, retaining its original G1 admission."""
     return capture_contracts(tmp_path_factory, historical_version=4)
@@ -68,7 +92,7 @@ def v4_g1_contracts(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def unbounded_contracts(tmp_path_factory):
-    return capture_contracts(tmp_path_factory, historical_settings=True)
+    return capture_contracts(tmp_path_factory, historical_settings=True, historical_version=9)
 
 
 def capture_contracts(tmp_path_factory, *, historical_settings=False, historical_version=None):
@@ -86,7 +110,7 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False, historical
         fixture = Path(__file__).resolve().parents[1] / f"fixtures/digestion_contracts/managed_prompt{version}.py.txt"
         source = fixture.read_bytes()
         expected = json.loads(fixture.with_suffix("").with_suffix(".json").read_text())
-        expected_source = (expected["managed_source_sha256"] if version in (5, 6) else
+        expected_source = (expected["managed_source_sha256"] if version in (5, 6, 7, 8, 9) else
                            "36e0fba04c1dd952dc7617759fc36f2106d407578ecba194204a215b1ef88a36")
         assert sha256(source).hexdigest() == expected_source
         module = ModuleType(f"tests._historical_managed_prompt{version}")
@@ -96,6 +120,7 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False, historical
             exec(compile(source, str(fixture), "exec"), module.__dict__)  # noqa: S102
             for name in ("StageProfile", "ManagedSettings", "ManagedSynthesisInference"):
                 patch.setattr(managed, name, getattr(module, name))
+            patch.setattr(ManagedDigestionHandler, 'analyze', module.ManagedDigestionHandler.analyze)
             return capture_contracts(tmp_path_factory, historical_settings=historical_settings)
 
     records = []
@@ -116,6 +141,9 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False, historical
 
     def analyze(handler, request, *args):
         active["request"] = request
+        if request.profile.prompt_profile != 'managed-prompt/10':
+            from tests.historical_managed import _module
+            return _module.ManagedDigestionHandler.analyze(handler, request, *args)
         return original_analyze(handler, request, *args)
 
     def execute(provider, generation):
@@ -176,6 +204,12 @@ def schema_nodes(node):
     elif isinstance(node, list):
         for child in node:
             yield from schema_nodes(child)
+
+
+def schema_source_ids(schema):
+    """Read the bounded generation authority from an actual request schema."""
+    source = schema["$defs"]["SourceEvidence"]
+    return [value for branch in source.get("anyOf", [source]) for value in branch.get("enum", [])]
 
 
 def qualification_witness(raw, case):
@@ -248,10 +282,10 @@ def test_multi_reference_qualification_membership(contracts, case):
 def test_exact_rendered_contract_and_unmodified_witness(contracts, stage):
     record = contracts[stage]
     request, generation, payload = record.request, record.generation, record.payload
-    schema = provider_schema(generation_schema())
+    schema = provider_schema(generation.schema)
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(json.loads(record.raw))
-    assert generation.schema == generation_schema()
+    assert generation.schema != generation_schema()
     assert record.url == "https://offline.invalid/openai/v1/chat/completions"
     assert payload["response_format"] == {
         "type": "json_schema",
@@ -271,10 +305,10 @@ def test_exact_rendered_contract_and_unmodified_witness(contracts, stage):
     assert generation.max_response_envelope_bytes == 26192
     control = json.loads(generation.system.split("\nCONTROL\n")[1])
     assert control["profile"]["stage"] == stage
-    assert control["profile"]["template_version"] == "managed-prompt/7"
+    assert control["profile"]["template_version"] == "managed-prompt/9"
     assert control["kind"] == request.stage
     assert control["stage_id"] == str(request.stage_id)
-    assert control["schema"] == generation.schema
+    assert "schema" not in control and "allowed_evidence_ids" not in control
     assert control["max_result_bytes"] == control["max_response_bytes"] == 10000
     assert control["max_claim_characters"] == request.profile.max_claim_characters
     assert control["max_annotations"] == request.profile.max_annotations
@@ -294,7 +328,7 @@ def test_exact_rendered_contract_and_unmodified_witness(contracts, stage):
         for claim in child.result.claims
         for e in (*claim.evidence_ids, *claim.contradicting_evidence_ids)
     }
-    assert set(control["allowed_evidence_ids"]) == expected_evidence
+    assert set(schema_source_ids(generation.schema)) == expected_evidence
     assert validate_result(record.raw, request, record.index) == record.result
     # Canonicalization changes representation only; every generated value survives.
     assert json.loads(encode(record.result)) == json.loads(record.raw)
@@ -426,10 +460,9 @@ def mutate(record, case):
     elif case == "foreign_evidence":
         claim["evidence_ids"] = [FOREIGN]
     elif case == "duplicate_evidence":
-        control = json.loads(record.generation.system.split("\nCONTROL\n")[1])
         # Root source sets can be carried exclusively by lineage. In that case
         # any direct reference also fails membership, independently of duplication.
-        evidence = control["allowed_evidence_ids"]
+        evidence = schema_source_ids(record.generation.schema)
         claim["evidence_ids"] = [evidence[0] if evidence else FOREIGN] * 2
     elif case == "foreign_contradiction":
         claim["contradicting_evidence_ids"] = [FOREIGN]
@@ -459,12 +492,15 @@ def mutate(record, case):
 
 @pytest.mark.parametrize("stage", STAGES)
 @pytest.mark.parametrize("case,diagnostic", CASES)
-def test_provider_valid_application_invalid(contracts, stage, case, diagnostic):
+def test_provider_membership_and_independent_application_rejection(contracts, stage, case, diagnostic):
     record = contracts[stage]
     data = mutate(record, case)
-    Draft202012Validator(
+    schema_valid = Draft202012Validator(
         record.payload["response_format"]["json_schema"]["schema"]
-    ).validate(data)
+    ).is_valid(data)
+    restricted = case in {"malformed_evidence_uuid", "foreign_evidence", "foreign_contradiction", "foreign_qualification_source"}
+    restricted |= case == "duplicate_evidence" and not schema_source_ids(record.generation.schema)
+    assert schema_valid is not restricted
     raw = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
     assert len(raw) <= record.request.profile.response_byte_limit
     with pytest.raises(DigestionError) as caught:
@@ -523,7 +559,7 @@ def test_zero_claim_outcome_rules(contracts, stage):
 @pytest.mark.parametrize("stage", STAGES)
 def test_render_rejects_wrong_profile_and_config_before_provider(contracts, stage):
     record = contracts[stage]
-    from documents.digestion.managed import (
+    from tests.historical_managed import (
         ManagedSettings,
         ManagedSynthesisInference,
         StageProfile,
@@ -709,21 +745,18 @@ def test_qualification_copy_is_not_equivalent_to_lineage_inheritance(
 
     def response(http, sent, result, stage):
         if stage in ("chunk", "structural"):
-            control = json.loads(sent["messages"][0]["content"].split("\nCONTROL\n")[1])
             data = json.loads(result)
             data["claims"][0]["qualifications"] = [
                 {
                     "text": "Synthetic original qualification",
-                    "evidence_ids": [control["allowed_evidence_ids"][0]],
+                    "evidence_ids": [schema_source_ids(sent["response_format"]["json_schema"]["schema"])[0]],
                 }
             ]
             # Author the synthetic provider output before transport/validation;
             # the real workflow then persists its exact immutable child artifact.
             result = json.dumps(data)
         elif stage == "root":
-            observed["control"] = json.loads(
-                sent["messages"][0]["content"].split("\nCONTROL\n")[1]
-            )
+            observed["source_ids"] = schema_source_ids(sent["response_format"]["json_schema"]["schema"])
         return original_response(http, sent, result, stage)
 
     def validate(raw, request, index):
@@ -748,7 +781,7 @@ def test_qualification_copy_is_not_equivalent_to_lineage_inheritance(
     with pytest.raises(DigestionError) as caught:
         original_validate(json.dumps(copied).encode(), request, index)
     assert caught.value.validation_diagnostic.value == "evidence_validation"
-    assert evidence not in observed["control"]["allowed_evidence_ids"]
+    assert evidence not in observed["source_ids"]
 
 
 @pytest.mark.parametrize("stage", STAGES)
@@ -808,7 +841,7 @@ def test_actual_single_analysis_contract_with_deployment_alias(tmp_path):
                     "originating_stage": control["stage_id"],
                     "kind": "fact",
                     "text": "Synthetic source observation",
-                    "evidence_ids": control["allowed_evidence_ids"],
+                    "evidence_ids": schema_source_ids(generation.schema),
                 }
             ],
         }

@@ -1,0 +1,21 @@
+{
+  "version": "generation-inventory/1",
+  "generation_contract_sha256": "f270aa81cbd5764d2b4739bf3ac3692653b1fe4c8ffbd67860e642137cb2579d",
+  "sources": {
+    "documents/digestion/managed.py": "6ed23248084f4f31fb6fcc16dcf25baceb54db9d55396c3fef8f9df49b9f85df",
+    "documents/digestion/models.py": "2205a42a68acbbfdb633270645b1882f5075121b636d863b0053e0f1bc78745f",
+    "documents/digestion/validation.py": "09096c9802a4cd267c07dc6231dbc3c6477639c19b3d57b25915eaa6a168f3bf",
+    "documents/digestion/planning.py": "b8d9f5798aba1bde0d069fc8af794447f29669a96ca554c7a78d65627db52361",
+    "documents/digestion/sizing.py": "11048ad9868267eea6f6d0cb878e41afd0696a31e0d9d4e58e7d12f5516d5380",
+    "documents/digestion/workflow.py": "d6d287cfc6aa86a6c284e168d86f475006ba1cd6f07e6358db1ecee549563fc3",
+    "documents/digestion/diagnostics.py": "aef3693b502bd2fd33bf89a3acf9c1fb1aa00cd0469c82b4c9ead98cc9f52811",
+    "documents/publication/analysis.py": "32b567ac8faebad419cb6342b2dadef4f21762641f402397791d2e4da7738261",
+    "llm/structured.py": "ce24763d62ce3ded77c41630fcdd9aa2766212183d89baac5bc24777d13c9334",
+    "llm/bounded_http.py": "8aff0e76883576f8f0130bb79920840112981028c4ceb9d6c4179593860eba01",
+    "llm/openai_compatible.py": "d0505c5297e8259f6737324cfe5a65867d7551c0f2b98949c103f2a14df752db",
+    "llm/azure_schema.py": "36cab2377fb6cbf850c1e58e83f03e8861c056ee4d44bba8cc6e0749cc7abf25",
+    "tests/performance/fixtures.py": "a33f17840fa31080086afea070256f6616e1d315cef79517a3c3c60b0d944dbc",
+    "tests/performance/foundry_preflight.py": "9604ae7414aaf5a14a5f26dadf7050dbe47d764dc8f700548c68364d2ec986ec",
+    "tests/performance/foundry_recalibration.py": "96b4b5670482f66875823916cee8daeb935dc51c8e7df9ac8ef4c90c75f60fd7"
+  }
+}

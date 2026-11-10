@@ -6,6 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
 from test_phase17hl_offline_e2e import assert_accounting, reopen
 from test_phase17hl_offline_e2e import l1 as l1  # noqa: PLC0414
 from test_phase17hl_offline_e2e import offline as offline  # noqa: PLC0414
@@ -218,7 +222,7 @@ def test_four_call_completion_publication_retrieval_and_qa_at_boundary(
     record_property("qa_input_bytes", qa_input)
     record_property("qa_output_utf8_bytes", qa_output)
     if target == 7000:
-        from documents.digestion.managed import (
+        from tests.historical_managed import (
             ManagedDigestionHandler,
             classify_managed,
         )
@@ -310,7 +314,7 @@ def test_new_contract_rejects_stale_generation_digest_and_prompt_version(old, te
         StageProfile(
             stage="root", input_tokens=24800, output_tokens=3000
         ).template_version
-        == "managed-prompt/7"
+        == "managed-prompt/10"
     )
     with pytest.raises(ValueError):
         StageProfile(
@@ -331,6 +335,10 @@ def test_generation_digest_binds_child_sizing_and_checkpoint_validation():
         "documents/digestion/sizing.py",
         "documents/digestion/workflow.py",
         "documents/digestion/diagnostics.py",
+        "documents/digestion/wire.py", "documents/digestion/receipts.py", "documents/digestion/codec.py",
+        "documents/models.py", "documents/jobs/models.py", "documents/jobs/worker.py",
+        "documents/jobs/sqlite.py", "documents/storage.py", "tests/performance/foundry_l1.py",
+        "tests/performance/foundry_single_call.py",
         "documents/publication/analysis.py",
         "llm/structured.py",
         "llm/bounded_http.py",

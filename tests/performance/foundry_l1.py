@@ -29,12 +29,18 @@ from tests.performance.foundry_recalibration import DEPLOYMENT, RESOURCE, deploy
 
 
 def generation_contract_digest():
-    """Bind the L1 prompt, profiles and composition to the reviewed configuration."""
+    """generation-inventory/2: additive wire, identity and durable-association sources."""
     root = Path(__file__).resolve().parents[2]
     paths = ('documents/digestion/managed.py', 'documents/digestion/models.py',
              'documents/digestion/validation.py', 'documents/digestion/planning.py',
              'documents/digestion/sizing.py', 'documents/digestion/workflow.py',
              'documents/digestion/diagnostics.py',
+             'documents/digestion/wire.py', 'documents/digestion/receipts.py',
+             'documents/digestion/codec.py',
+             'documents/models.py', 'documents/jobs/models.py',
+             'documents/jobs/worker.py', 'documents/jobs/sqlite.py',
+             'documents/storage.py', 'tests/performance/foundry_l1.py',
+             'tests/performance/foundry_single_call.py',
              'documents/publication/analysis.py', 'llm/structured.py',
              'llm/bounded_http.py', 'llm/openai_compatible.py', 'llm/azure_schema.py',
              'tests/performance/fixtures.py', 'tests/performance/foundry_preflight.py',

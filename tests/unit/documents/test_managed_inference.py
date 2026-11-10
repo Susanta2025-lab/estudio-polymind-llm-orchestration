@@ -7,13 +7,17 @@ from uuid import UUID, uuid4
 
 import pytest
 
+# Frozen canonical-output v9 characterization; v10 has separate wire regressions.
+pytestmark = pytest.mark.usefixtures("managed_v9")
+
+
 from documents.extraction import extract
 from documents.storage import LocalObjectStore
 from documents.models import Scope
 from documents.digestion.models import DigestionProfile, DigestionError, StageRequest
 from documents.digestion.planning import build_plan
 from documents.digestion.validation import EvidenceIndex, validate_result
-from documents.digestion.managed import (
+from tests.historical_managed import (
     ExecutionContext, ManagedSettings, ManagedSynthesisInference, StageProfile, classify_managed,
 )
 from llm.admission import AdmissionPolicy, CallIdentity, SQLiteInferenceAdmission
@@ -277,8 +281,8 @@ def test_generation_schema_exposes_canonical_defaults_and_versions_prompt(tmp_pa
         if 'properties' in node:
             assert set(node['required']) == set(node['properties'])
     assert 'schema_version' not in StageResult.model_json_schema()['required']
-    assert request.profile.prompt_profile == 'managed-prompt/7'
-    assert control['profile']['template_version'] == 'managed-prompt/7'
+    assert request.profile.prompt_profile == 'managed-prompt/9'
+    assert control['profile']['template_version'] == 'managed-prompt/9'
     assert 'complete compact ASCII JSON' in generation.system
     assert control['max_result_bytes'] == generation.response_bytes == 3000
 
