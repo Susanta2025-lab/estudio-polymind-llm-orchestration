@@ -81,21 +81,27 @@ def composition(tmp_path,identity,monkeypatch,approval_signer):
     return cfg,run,http,token,verifier
 
 
+@pytest.mark.parametrize('version', ['managed-prompt/10', 'managed-prompt/11'])
 @pytest.mark.parametrize('auth,header,value',[('api_key','api-key','TEST-CREDENTIAL'),
                                              ('entra_bearer','Authorization','Bearer TEST-CREDENTIAL')])
-def test_authorized_composition_with_intercepted_http(composition,auth,header,value):
+def test_authorized_composition_with_intercepted_http(composition,auth,header,value,version):
     cfg,run,http,_,_=composition
-    cfg=launch.LaunchConfiguration.model_validate({**cfg.model_dump(),'authentication':auth})
+    cfg=launch.LaunchConfiguration.model_validate({**cfg.model_dump(),'authentication':auth,
+        'managed_prompt_version':version})
     result=run(cfg)
     assert result['job_state']=='COMPLETED' and result['questions']['status']=='COMPLETE'
     assert result['calls']==4 and len(result['run_records'])==4
+    assert result['billable_calls'] == 4
+
+    saved = json.loads((cfg.audit_directory / 'result.json').read_text())
+    assert saved['calls'] == saved['billable_calls'] == 4
     assert all(r['state']=='SETTLED' for r in result['governance_records'])
     assert len({r['identity'] for r in result['governance_records']})==4
     assert result['publication']['citations']==8
     assert cfg.generation_contract_sha256 == launch.generation_contract_digest()
     for _, kwargs in http.sent[:3]:
         control = json.loads(kwargs['json']['messages'][0]['content'].split('\nCONTROL\n')[1])
-        assert control['profile']['template_version'] == 'managed-prompt/10'
+        assert control['profile']['template_version'] == version
         schema = kwargs['json']['response_format']['json_schema']['schema']
         assert set(schema['required']) == set(schema['properties'])
         assert 'schema' not in control and 'allowed_evidence_ids' not in control

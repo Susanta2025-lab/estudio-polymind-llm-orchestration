@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from documents.digestion.managed import ManagedSettings
 from documents.digestion.models import DigestionError
 from documents.digestion.validation import validate_result
+from tests.historical_managed_v10 import activate, generation_digest, sources
 from tests.integration.test_final_offline_azure_compatibility import (
     capture_contracts,
 )
@@ -37,7 +38,11 @@ from tests.performance.foundry_l1 import LaunchConfiguration, generation_contrac
 
 @pytest.fixture(scope="module")
 def v10_contracts(tmp_path_factory):
-    return capture_contracts(tmp_path_factory)
+    with (
+        pytest.MonkeyPatch.context() as patch,
+        activate(patch, tmp_path_factory.mktemp("frozen-v10")),
+    ):
+        return capture_contracts(tmp_path_factory)
 
 
 @pytest.mark.parametrize("version", [5, 6, 7, 8, 9])
@@ -107,17 +112,15 @@ def test_frozen_v10_request_schema_transport_and_complete_inventory(
             ).encode()
         ).hexdigest()
         assert digest == expected["requests"][stage][key]
-    assert expected["generation_contract_sha256"] == generation_contract_digest()
-    hashes = {
-        name: sha256((root / name).read_bytes()).hexdigest()
-        for name in expected["sources"]
-    }
+    assert expected["generation_contract_sha256"] == generation_digest()
+    assert expected["generation_contract_sha256"] != generation_contract_digest()
+    hashes = {name: sha256(raw).hexdigest() for name, raw in sources().items()}
     assert hashes == expected["sources"]
     assert (
         sha256(
             json.dumps(hashes, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
-        == generation_contract_digest()
+        == generation_digest()
     )
     assert {
         "documents/digestion/wire.py",
@@ -131,3 +134,39 @@ def test_frozen_v10_request_schema_transport_and_complete_inventory(
     }.issubset(hashes)
     assert record.request.profile.output_schema == "stage-result/1"
     assert record.request.profile.prompt_profile == "managed-prompt/10"
+
+
+def test_frozen_executed_v10_associations_reopen_with_current_readers(
+    tmp_path, monkeypatch
+):
+    from documents.digestion import workflow
+    from documents.jobs.sqlite import SQLiteJobLedger
+    from documents.publication.planning import accepted
+    from documents.storage import LocalObjectStore
+    from tests.performance import foundry_preflight
+
+    original = workflow.admit
+    captured = []
+
+    def observe(*args, **kwargs):
+        job = original(*args, **kwargs)
+        captured.append((args[0], job))
+        return job
+
+    run_root = tmp_path / "audit"
+    run_root.mkdir()
+    with monkeypatch.context() as patch, activate(patch, tmp_path / "frozen"):
+        patch.setattr(workflow, "admit", observe)
+        result = foundry_preflight.execute(run_root, "L1")
+    assert result["job_state"] == "COMPLETED"
+    ledger, job = captured[0]
+    reopened = SQLiteJobLedger(ledger.settings)
+    digest = accepted(
+        reopened,
+        LocalObjectStore(run_root / "objects"),
+        job.admission.scope,
+        job.job_id,
+    )[2]
+    assert digest.status == "COMPLETE" and digest.coverage.fraction == 1
+    # Frozen-generation fixtures are synthetic accepted outputs, not regenerated
+    # historical provider responses or the unavailable private live checkpoint.

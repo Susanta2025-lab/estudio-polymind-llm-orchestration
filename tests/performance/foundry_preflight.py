@@ -118,7 +118,7 @@ def synthetic_contract():
         maximum='5', fixed_cost='0', extra_cost='0', context=28000)
 
 
-def execute(root, stage, *, runtime=None):
+def execute(root, stage, *, runtime=None, template_version=None):
     from documents.config import ExtractionSettings
     from documents.extraction import extract
     from documents.serialization import serialize
@@ -141,6 +141,9 @@ def execute(root, stage, *, runtime=None):
     if runtime is not None:
         if stage != 'L1':
             raise ValueError('Live composition supports L1 only')
+        if template_version is not None:
+            raise ValueError('Runtime generation must come from LaunchConfiguration')
+        template_version = runtime.config.managed_prompt_version
         principal = operator = runtime.principal
         authority = runtime.authority
         scope = principal.scope
@@ -218,7 +221,8 @@ def execute(root, stage, *, runtime=None):
         child_input_bytes=7000 if stage == 'L1' else None,
         generation_profile='managed-generation/2' if stage == 'L1' else 'managed-generation/1',
         max_response_envelope_bytes=26192 if stage == 'L1' else None, profiles=tuple(StageProfile(stage=s, input_tokens=24800,
-        output_tokens=3000) for s in ('chunk', 'intermediate', 'structural', 'root')))
+        output_tokens=3000, **({} if template_version is None else
+            {'template_version': template_version})) for s in ('chunk', 'intermediate', 'structural', 'root')))
     governed = GovernedExecution(provider, guard, ledger, authority,
         authority.snapshot(principal, (artifact.document.document_id,), Action.DOCUMENT_DELETE))
     inference = ManagedSynthesisInference(provider, settings, guard, governance=governed)
@@ -276,6 +280,7 @@ def execute(root, stage, *, runtime=None):
         summary['questions'] = questions(root, stage, artifact, manifest, replica, provider, candidate_capability(),
                                          governed, guard, virtual, authority, principal, runtime=runtime)
     summary['calls'] = len(provider_records)
+    summary['billable_calls'] = 0 if runtime is None else len(provider_records)
     summary['run_records'] = guard.records()
     summary['governance_records'] = [r for r in ledger.usage(principal, authority) if r['ticket'] not in prior_tickets]
     for record, expense in zip(provider_records, summary['governance_records']):

@@ -27,3 +27,19 @@ def managed_v9(monkeypatch):
     from tests.historical_managed import activate
     with activate(monkeypatch):
         yield
+
+
+@pytest.fixture(scope="module", params=["managed-prompt/10", "managed-prompt/11"])
+def managed_wire_version(request):
+    """Exercise the same wire/G1/G2/durability cases under both explicit profiles."""
+    from functools import partial
+
+    from documents.digestion import managed
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(
+            managed,
+            "StageProfile",
+            partial(managed.StageProfile, template_version=request.param),
+        )
+        yield request.param

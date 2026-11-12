@@ -43,4 +43,4 @@ def analysis_size(request):
     evidence = sorted({str(p.evidence_id()) for p in request.source_data})
     return (reduction_size(request.profile, request.structural_path, 0)
             + escaped_size(pieces) + escaped_size(evidence)
-            + (64 * len(evidence) if request.profile.prompt_profile == 'managed-prompt/10' else 0))
+            + (64 * len(evidence) if request.profile.prompt_profile in ('managed-prompt/10', 'managed-prompt/11') else 0))

@@ -166,7 +166,7 @@ def construct(raw, request, table):
         _fail("synthesis_limit_exceeded")
     if table != references(request):
         _fail("incompatible_checkpoint")
-    if request.profile.prompt_profile != "managed-prompt/10":
+    if request.profile.prompt_profile not in ("managed-prompt/10", "managed-prompt/11"):
         _fail("incompatible_checkpoint")
 
     def unique(pairs):

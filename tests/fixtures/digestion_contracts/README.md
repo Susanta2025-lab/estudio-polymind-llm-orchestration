@@ -1,3 +1,55 @@
+# V11 reducer-quality profile (12 November 2026)
+
+`managed-prompt/11` is an explicit opt-in profile. Set `template_version` to
+`managed-prompt/11` on **all four** configured `StageProfile` objects, including
+chunk and intermediate. Mixed versions are rejected. The default remains v10;
+no existing caller silently receives new reducer instructions. No capability,
+byte, token, child, financial or quota limit is enlarged. Configure the existing
+`ManagedSettings.profiles` input (or its existing environment-driven equivalent);
+there is no new provider-specific switch or executable live-evaluation packet.
+
+```python
+profiles = tuple(
+    StageProfile(stage=stage, input_tokens=24800, output_tokens=3000,
+                 template_version="managed-prompt/11")
+    for stage in ("chunk", "intermediate", "structural", "root")
+)
+```
+
+`managed_prompt11.json` pins the current 25-file `generation-inventory/2`, its
+aggregate source hash, and nine synthetic request/generation/HTTP payload hashes.
+The complete source inventory already includes the renderer containing all v11
+instructions; no inventory-format expansion or untracked production dependency
+is needed. The aggregate identifies the implementation supporting both versions;
+selected profile, capability, provider/model and the six implementation source
+hashes additionally bind each managed configuration and plan. Changing sources
+even with the v10 setting does **not** retain the executed historical v10 hash.
+
+The unchanged `managed_prompt10.json` remains the executed v10 baseline. Seven
+changed inventory members are frozen verbatim under `v10_sources/`, including
+the pre-reporting-correction `foundry_preflight.py`. The other eighteen members
+must still match their pinned source hashes. `tests/historical_managed_v10.py`
+verifies all 25 and materializes the original renderer/config binding solely in
+temporary test stores. Original nine golden hashes remain unchanged. This is
+synthetic historical-contract replay, never regeneration of live responses or
+loading old implementation code into production. The baseline is also recoverable
+from commit `ec22fa3d116696b80a1bb12ad17e2eb37db38cb3`.
+
+Current readers reopen accepted v10 checkpoint/receipt/raw-record associations
+under the historical request and config. Current managed execution rejects the
+old config. v10/v11 requests and proposals cannot be transplanted, and accepted
+checkpoints are not reused across versions. The general resume API can create a
+new queued reprocessing job with zero reused stages; this grants no inference
+permission. Old approvals fail the current source-inventory binding.
+
+The v11 fixture and fake-output regressions establish deterministic compatibility
+and acceptance only. Real-model improvement and independent semantic approval
+remain unverified. See the
+[implementation report](../../../docs/codex/reports/phase_17h_v11_reducer_semantic_quality_implementation.md)
+and [quality assessment](../../../docs/evaluation/phase_17h_v11_reducer_quality_and_closure_assessment.md).
+
+---
+
 # Approved digestion source references
 
 **V10 transition, 10 November 2026:** active generation is `managed-prompt/10`
@@ -140,3 +192,25 @@ delta, preserve schema equality, and reject cross-version execution. All four
 stage profiles must include the new instructions. See the
 [R0/R1 engineering report](../../../docs/codex/reports/phase_17h_r0_r1_evidence_provenance_hardening.md)
 for the generation-contract transition and remaining live-validation boundary.
+
+### V11 controlled-launch preparation
+
+`managed_prompt11_offline_implementation.json` preserves the byte-identical
+preceding offline implementation fixture (generation `072aa2cd2a3be2ddb8e63b0577119e87312f44613c9532b56b6d6d9c5ff78fba`).
+The active `managed_prompt11.json` inventory now includes the explicit launcher
+selection addition in `foundry_l1.py` and `foundry_preflight.py`; its request,
+generation-rendering and transport witnesses are unchanged. The preparation
+report records the new generation hash and the exact two-file difference.
+The additional frozen `v10_sources/tests/performance/foundry_l1.py.txt` is the
+original committed launcher, preserving the historical v10 inventory recipe.
+
+Protected launch configuration opts in with
+`"managed_prompt_version": "managed-prompt/11"`. The launcher binds that field
+into its canonical configuration hash and applies it to chunk, intermediate,
+structural and root profiles. Missing selection retains v10; the field is omitted
+from default-v10 serialization to preserve the established shape. Changing or
+removing a reviewed v11 selection changes the digest. Runtime overrides are
+rejected. This mechanism grants no execution authority. A zero-network rehearsal
+can use `foundry_preflight.execute(root, "L1", template_version="managed-prompt/11")`;
+its identities, prices, outputs and embeddings are synthetic. It is not an
+operational packet preflight or a semantic-quality result.

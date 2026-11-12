@@ -16,9 +16,11 @@ from documents.models import stable_id
 from llm.azure_schema import provider_schema
 from tests.generation_wire_fixtures import cases, proposal
 
+pytestmark = pytest.mark.usefixtures("managed_wire_version")
+
 
 @pytest.fixture(scope="module")
-def records(tmp_path_factory):
+def records(tmp_path_factory, managed_wire_version):
     return cases(tmp_path_factory.mktemp("wire-unit"))[1]
 
 

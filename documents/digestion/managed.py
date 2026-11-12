@@ -73,7 +73,7 @@ class StageProfile(FrozenModel):
     input_tokens: int = Field(gt=0)
     output_tokens: int = Field(gt=0)
     schema_version: Literal['stage-proposal/1'] = 'stage-proposal/1'
-    template_version: Literal['managed-prompt/10'] = 'managed-prompt/10'
+    template_version: Literal['managed-prompt/10', 'managed-prompt/11'] = 'managed-prompt/10'
     constraints: Literal['retain-evidence-qualifications-conflicts/1'] = 'retain-evidence-qualifications-conflicts/1'
 
 
@@ -106,6 +106,8 @@ class ManagedSettings(BaseSettings):
         generation_schema_for_capability(self.capability, wire_schema())
         if sorted(p.stage for p in self.profiles) != ['chunk', 'intermediate', 'root', 'structural']:
             raise ValueError('Exactly four stage profiles required')
+        if len({p.template_version for p in self.profiles}) != 1:
+            raise ValueError('All stages must select the same managed prompt version')
         for p in self.profiles:
             if (p.output_tokens > self.capability.max_output_tokens or
                     p.input_tokens+p.output_tokens+self.capability.overhead_tokens+self.capability.safety_tokens
@@ -254,6 +256,38 @@ class ManagedSynthesisInference:
                 'intermediate': 'Combine child findings with complete lineage.',
                 'structural': 'Summarize this structural section with complete lineage.',
                 'root': 'Produce a concise whole-document synthesis with complete lineage.'}[self.stage]
+        if profile.template_version == 'managed-prompt/11' and self.stage != 'chunk':
+            task = (
+                'Separate substantive content from provenance metadata. Write claim.text as '
+                'grounded domain findings, not a report about processing children, wrappers, '
+                'claim counts or reference arrays. Put support in evidence_refs, '
+                'contradicting_evidence_refs, qualifications[].evidence_refs and child_refs. '
+                'Do not use generated request-local E/C aliases as explanatory prose. '
+                'Retain meaningful literal identifiers from the source domain. Describe '
+                'processing machinery only when it is itself the source subject. '
+                'Read the substantive immediate-child findings; retain important named entities, '
+                'measurements, procedures, requirements, results and relationships. Combine '
+                'genuinely connected findings and avoid repetition without losing distinctions. '
+                'Preserve material qualifications, uncertainty, conflicts and limitations in '
+                'the synthesis as well as the structured fields. Do not invent facts or '
+                'relationships to satisfy coverage. Cover every authorized immediate-child key '
+                'in child_refs using actual support; never substitute grandchild references. '
+                'Inherited source support is distinct from direct source authority. Do not '
+                'claim direct inspection of source material absent from this request. '
+                + {
+                    'intermediate': 'Combine related child findings into useful domain conclusions '
+                                    'for the next reducer, preserving their supported scope.',
+                    'structural': 'Synthesize meaningful section-level conclusions about the '
+                                  'underlying document from the supplied immediate children. '
+                                  'Explain what the section says in understandable language; '
+                                  'do not merely enumerate child claims or their counts.',
+                    'root': 'Write a coherent, concise, standalone whole-document synthesis '
+                            'understandable without the internal reference scheme. Identify the '
+                            'main subject or purpose where supported. Integrate important '
+                            'conclusions and essential relationships across sections, including '
+                            'consequential exceptions and contradictions. Do not infer unsupported '
+                            'cross-section conclusions or restate child wrappers.',
+                }[self.stage])
         system = (
             'Return exactly one stage-proposal/1 JSON object matching the supplied schema. '
             'Include every field, including empty arrays and nulls. No Markdown or prose. '

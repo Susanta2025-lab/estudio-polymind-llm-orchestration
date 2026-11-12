@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
 from documents.models import FrozenModel
 from governance.ledger import GovernanceLedger, QuotaPolicy
@@ -50,6 +50,7 @@ def generation_contract_digest():
 
 
 class LaunchConfiguration(FrozenModel):
+    managed_prompt_version: Literal['managed-prompt/10', 'managed-prompt/11'] = 'managed-prompt/10'
     resource: Literal['epolymind-foundry-dev-susanta']
     deployment: Literal['epolymind-gpt-54-mini']
     model: Literal['gpt-5.4-mini']
@@ -80,6 +81,15 @@ class LaunchConfiguration(FrozenModel):
     policy: AdmissionPolicy
     governance_policy: QuotaPolicy
     contract: Contract
+
+    @model_serializer(mode='wrap')
+    def serialize(self, handler):
+        value = handler(self)
+        # Preserve the established default-v10 canonical configuration shape.
+        # Explicit v11 selection is included in the configuration/signature binding.
+        if self.managed_prompt_version == 'managed-prompt/10':
+            value.pop('managed_prompt_version', None)
+        return value
 
     @model_validator(mode='after')
     def bounded(self):

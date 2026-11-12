@@ -142,7 +142,7 @@ class DigestionHandler:
             if key == expected[0].unit_id:
                 continue
             child = steps[key]
-            wire = plan.profile.prompt_profile == 'managed-prompt/10'
+            wire = plan.profile.prompt_profile in ('managed-prompt/10', 'managed-prompt/11')
             if child.state != 'SUCCEEDED' or len(child.manifest) != (3 if wire else 1):
                 raise DigestionError('incompatible_checkpoint')
             ref = child.manifest[0]
@@ -150,7 +150,7 @@ class DigestionHandler:
             if cp.plan_hash != plan_hash or str(cp.result.stage_id) != key:
                 raise DigestionError('incompatible_checkpoint')
             checkpoints[cp.result.stage_id], refs[cp.result.stage_id] = cp, ref
-        if plan.profile.prompt_profile == 'managed-prompt/10':
+        if plan.profile.prompt_profile in ('managed-prompt/10', 'managed-prompt/11'):
             # Verification needs all ancestors to reconstruct each exact request,
             # including when this invocation only consumes immediate children.
             self._verify_proposals(store, job, steps, plan)
@@ -181,7 +181,7 @@ class DigestionHandler:
         request = self.request(plan, stage_id, checkpoints, refs, self._nodes)
         output = self.analyze(request, job, step, store, plan)
         from documents.digestion.receipts import ProposedResult
-        wire = plan.profile.prompt_profile == 'managed-prompt/10'
+        wire = plan.profile.prompt_profile in ('managed-prompt/10', 'managed-prompt/11')
         if wire and not isinstance(output, ProposedResult):
             raise DigestionError('incompatible_checkpoint')
         result = validate_result(output.canonical if wire else output, request, index)

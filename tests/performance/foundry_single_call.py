@@ -278,7 +278,7 @@ def execute_stage(config, principal, authority, ledger, guard, provider, prepare
         authority.revalidate(snapshot)
         audit['application_validation'] = 'failed'
         raw = response.text.encode('utf-8')
-        if request.profile.prompt_profile == 'managed-prompt/10':
+        if request.profile.prompt_profile in ('managed-prompt/10', 'managed-prompt/11'):
             from documents.digestion.wire import construct, references
             from documents.digestion.receipts import generation_hash
             table = references(request)

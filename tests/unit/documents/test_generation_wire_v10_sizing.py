@@ -23,6 +23,8 @@ from llm.inference import InferenceContextError
 from tests.generation_wire_fixtures import cases, inference
 from tests.performance.fixtures import NOW, SCOPE, profile
 
+pytestmark = pytest.mark.usefixtures("managed_wire_version")
+
 
 def measured(generation):
     return len(

@@ -141,7 +141,7 @@ def capture_contracts(tmp_path_factory, *, historical_settings=False, historical
 
     def analyze(handler, request, *args):
         active["request"] = request
-        if request.profile.prompt_profile != 'managed-prompt/10':
+        if request.profile.prompt_profile not in ('managed-prompt/10', 'managed-prompt/11'):
             from tests.historical_managed import _module
             return _module.ManagedDigestionHandler.analyze(handler, request, *args)
         return original_analyze(handler, request, *args)

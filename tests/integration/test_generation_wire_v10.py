@@ -6,6 +6,8 @@ import pytest
 
 from tests.performance import foundry_preflight
 
+pytestmark = pytest.mark.usefixtures("managed_wire_version")
+
 
 def test_v10_native_four_call_workflow(tmp_path, monkeypatch):
     from documents.digestion import managed
@@ -554,3 +556,139 @@ def test_corrupted_artifact_hash_is_rejected(run, position):
                 cp,
             )
     assert len(state.calls) == 4
+
+
+def test_version_change_cannot_execute_or_reuse_accepted_checkpoints(run):
+    from documents.digestion.managed import (
+        ManagedDigestionHandler,
+        ManagedSynthesisInference,
+    )
+    from documents.digestion.models import DigestionError
+    from documents.digestion.workflow import admit, prepare
+
+    state = run()
+    ledger, store, job = reopen(state)
+    original = state.handler.inference
+    other = (
+        "managed-prompt/11"
+        if state.plan.profile.prompt_profile == "managed-prompt/10"
+        else "managed-prompt/10"
+    )
+    settings = original.settings.model_copy(
+        update={
+            "profiles": tuple(
+                p.model_copy(update={"template_version": other})
+                for p in original.settings.profiles
+            )
+        }
+    )
+    inference = ManagedSynthesisInference(
+        original.provider, settings, original.admission
+    )
+    assert inference.config != original.config
+    wrong = ManagedDigestionHandler(ledger, state.plan_ref, inference)
+    step = next(
+        s for s in ledger.steps(job.admission.scope, job.job_id) if len(s.manifest) == 3
+    )
+    with pytest.raises(DigestionError, match="incompatible_checkpoint"):
+        wrong(job, step, store)
+    plan, ref = prepare(
+        state.artifact,
+        state.plan.structure.extraction,
+        inference.profile(state.plan.profile),
+        store,
+    )
+    resumed = admit(
+        ledger,
+        store,
+        plan,
+        ref,
+        request_key="cross-version",
+        resume_from=job.job_id,
+        retry=job.admission.profile.retry,
+    )
+    # The general reprocessing API permits a new queued job, but transfers no
+    # checkpoint authority across the incompatible generation. Do not run it.
+    assert resumed.state == "QUEUED"
+    assert all(
+        not s.manifest and s.reused_from is None and s.attempt_count == 0
+        for s in ledger.steps(job.admission.scope, resumed.job_id)
+    )
+    assert state.calls == ["chunk", "structural", "root", "question"]
+
+
+def test_original_v5_wrapper_shape_remains_admissible_without_budget_expansion(run):
+    from documents.digestion.codec import encode, read
+    from documents.digestion.models import Checkpoint, ChildInput
+    from documents.digestion.sizing import child_contribution, result_contribution
+    from documents.jobs.models import canonical
+    from tests.generation_wire_fixtures import proposal
+    from tests.reducer_sizing_fixtures import eight_claim_result
+
+    def witness(raw, stage):
+        if stage not in ("structural", "root"):
+            return raw
+        request = run.state.requests[-1]
+        result = eight_claim_result(request, canonical_bytes=4783)
+        assert len(encode(result)) == 4783
+        assert result_contribution(result) + 1024 == 7271
+        return canonical(proposal(request, result))
+
+    state = run(witness)
+    assert state.result["job_state"] == "COMPLETED" and state.result["calls"] == 4
+    ledger, store, job = reopen(state)
+    for step in ledger.steps(job.admission.scope, job.job_id):
+        if len(step.manifest) != 3:
+            continue
+        cp = read(store, job.admission.scope, step.manifest[0], Checkpoint, 32000000)
+        if cp.result.kind != "reduction":
+            continue
+        child = ChildInput(
+            artifact=step.manifest[0].model_copy(update={"byte_size": 32000000}),
+            result=cp.result,
+            inherited=cp.inherited,
+        )
+        assert child_contribution(child) == 6867
+        assert state.plan.profile.managed_input_budget.child_bytes == 7000
+
+
+@pytest.mark.parametrize("stage,count", [("chunk", 1), ("structural", 2), ("root", 3)])
+def test_output_limit_is_terminal_without_retry_or_downstream_calls(
+    run, monkeypatch, stage, count
+):
+    from tests.unit.test_structured_provider import Response
+
+    original = foundry_preflight.OfflineHTTP.response
+
+    def response(http, sent, result, current):
+        if current == stage:
+            return Response(
+                {
+                    "model": "offline-model",
+                    "choices": [
+                        {
+                            "message": {"content": "Incomplete proposal"},
+                            "finish_reason": "length",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 30,
+                        "completion_tokens": 40,
+                        "total_tokens": 70,
+                    },
+                }
+            )
+        return original(http, sent, result, current)
+
+    monkeypatch.setattr(foundry_preflight.OfflineHTTP, "response", response)
+    state = run()
+    assert state.result["job_state"] == "FAILED"
+    assert state.result["terminal_category"] == "inference_output_limit"
+    assert state.result["calls"] == count
+    assert "publication" not in state.result and "questions" not in state.result
+    assert all(r["state"] == "SETTLED" for r in state.result["governance_records"])
+    ledger, _, job = reopen(state)
+    failed = [
+        s for s in ledger.steps(job.admission.scope, job.job_id) if s.state == "FAILED"
+    ]
+    assert len(failed) == 1 and failed[0].attempt_count == 1 and not failed[0].manifest
