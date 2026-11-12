@@ -1,5 +1,24 @@
 # Phase 17H v11: reducer quality and closure assessment
 
+## Current project decision — 12 November 2026
+
+`PHASE_17_ENGINEERING_COMPLETE` within the implemented reference scope.
+Human acceptance: `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2 completed).
+Administrative acceptance: `PHASE_17_FORMAL_CLOSURE_PENDING`.
+Progression: `NEXT_PHASE_DEVELOPMENT_PERMITTED`, subject to each workstream's own
+prerequisites. Technical completion and controlled v11 live validation are PASS;
+bounded source-grounded semantic assessment is PASS as preliminary assistant
+evidence. This does not establish general production semantic reliability.
+
+See the [completion decision and handoff](phase_17_engineering_completion_and_deferred_acceptance.md),
+[deferred-review register](phase_17_deferred_human_semantic_review.md) and unchanged
+[frozen human protocol](phase_17h_v11_live_semantic_validation_protocol.md).
+The successful v11 run needs no repetition for human review. Two qualified human
+reviews and any necessary adjudication remain required for formal acceptance;
+no human scores or reviewer approvals have been populated.
+
+## Historical offline quality assessment — before v11 live execution
+
 12 November 2026. V11 real-model semantic improvement is **NOT YET VERIFIED**.
 Formal Phase 17H closure remains **PENDING**. This assessment separates the
 successful historical live workflow, deterministic engineering evidence, authored

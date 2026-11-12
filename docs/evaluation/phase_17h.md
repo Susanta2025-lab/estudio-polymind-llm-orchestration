@@ -1,6 +1,25 @@
 # Phase 17H evaluation methodology and operator runbook
 
-Status — 1 November 2026: this methodology remains the offline reliability and
+## Current project decision — 12 November 2026
+
+`PHASE_17_ENGINEERING_COMPLETE` within the implemented reference scope.
+Human acceptance: `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2 completed).
+Administrative acceptance: `PHASE_17_FORMAL_CLOSURE_PENDING`.
+Progression: `NEXT_PHASE_DEVELOPMENT_PERMITTED`, subject to each workstream's own
+prerequisites. Technical completion and controlled v11 live validation are PASS;
+bounded source-grounded semantic assessment is PASS as preliminary assistant
+evidence. This does not establish general production semantic reliability.
+
+See the [completion decision and handoff](phase_17_engineering_completion_and_deferred_acceptance.md),
+[deferred-review register](phase_17_deferred_human_semantic_review.md) and unchanged
+[frozen human protocol](phase_17h_v11_live_semantic_validation_protocol.md).
+The successful v11 run needs no repetition for human review. Two qualified human
+reviews and any necessary adjudication remain required for formal acceptance;
+no human scores or reviewer approvals have been populated.
+
+## Historical methodology status — 1 November 2026
+
+At the 1 November 2026 checkpoint, this methodology remains the offline reliability and
 quality rubric. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 adds one accepted, financially settled live analysis under then-active managed-prompt/4;
 it does not close full Phase 17H, which remains PARTIAL. Full live hierarchical
@@ -130,7 +149,7 @@ required findings, qualifications/opposition and abstentions. Instantiate
 reviewer record. A category label alone is not certification. Preserve all negative
 and insufficient-evidence cases, disagreements, sample selection and denominators.
 Use the proposed 100%/95%/90%/zero-critical targets only after representative
-independent review. Current question-answer semantic assessment is PENDING.
+independent review. Independent human question-answer semantic acceptance is DEFERRED; representative quality remains unestablished.
 
 ## Recovery and cleanup
 
@@ -180,5 +199,8 @@ adversarial cases; include unsupported critical conclusions in the review. Clean
 means bounded local audit retention and operator-approved removal of temporary
 validation artifacts, never deletion of shared documents/deployments. No capacity
 changes, model deployments or credentials retrieval are authorized by this spec.
-Foundry and expert semantic validation remain PENDING; Phase 17I needs a separate
-exposure/consent/privacy/quota/cleanup approval after these gates.
+The historical specification above is not a new execution requirement. Controlled
+v11 Foundry validation is now PASS; independent human semantic acceptance is
+DEFERRED. Phase 17I preparation may proceed independently, with external exposure
+subject to appropriate quality evidence and separate consent/privacy/quota/cleanup
+approval. See the current completion decision for the exact handoff.

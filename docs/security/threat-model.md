@@ -1,15 +1,20 @@
 # PolyMind production threat model
 
-Scope update — 1 November 2026: the Phase 11 mitigations and residual-risk snapshot
+Scope update — 12 November 2026: the Phase 11 mitigations and residual-risk snapshot
 below describe the original static-bearer deployment boundary. Subsequent chart
 hardening implements a read-only root filesystem and graceful bounded stream
 draining; see the [current deployment/security runbook](production-security.md).
 The separate [Phase 17G contract](phase_17g.md) adds reference OIDC/Entra identity,
 tenant/owner authorization, revocation and durable quota/cost governance.
 Distributed authority, physical purge and public-user production readiness remain
-unestablished. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-is a single-analysis live milestone; Phase 17H remains PARTIAL. Historical deferred
-items below must be read against these later scoped implementations.
+unestablished. The [v11 controlled workflow](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+passed full live digestion, provenance, publication and grounded Q&A within one
+bounded benchmark. The [completion decision](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+Historical deferred items below must be read against later scoped implementations;
+this status does not establish production security or general semantic reliability.
 
 ## Scope and assets
 

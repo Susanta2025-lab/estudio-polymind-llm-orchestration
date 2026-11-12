@@ -1,5 +1,24 @@
 # Phase 17H readiness and predeclared evaluation design
 
+## Current project decision — 12 November 2026
+
+`PHASE_17_ENGINEERING_COMPLETE` within the implemented reference scope.
+Human acceptance: `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2 completed).
+Administrative acceptance: `PHASE_17_FORMAL_CLOSURE_PENDING`.
+Progression: `NEXT_PHASE_DEVELOPMENT_PERMITTED`, subject to each workstream's own
+prerequisites. Technical completion and controlled v11 live validation are PASS;
+bounded source-grounded semantic assessment is PASS as preliminary assistant
+evidence. This does not establish general production semantic reliability.
+
+See the [completion decision and handoff](phase_17_engineering_completion_and_deferred_acceptance.md),
+[deferred-review register](phase_17_deferred_human_semantic_review.md) and unchanged
+[frozen human protocol](phase_17h_v11_live_semantic_validation_protocol.md).
+The successful v11 run needs no repetition for human review. Two qualified human
+reviews and any necessary adjudication remain required for formal acceptance;
+no human scores or reviewer approvals have been populated.
+
+## Historical pre-implementation readiness assessment
+
 Baseline: clean master, `45555394c350da7dfc18ed9409569dedefc8e789`.
 Assessment precedes implementation. No production limits are changed.
 
@@ -80,4 +99,7 @@ one final full regression, compile/Compose, diff/secret/artifact review and repo
 Hard invariants are application limits, authorization, provenance, fencing and
 accounting. Resource budgets are operator-adjustable harness caps. Timing is an
 empirical single-host observation; fake token counts are not provider billing.
-Real-model/expert and live Foundry gates remain PENDING; Phase 17I is not started.
+At this historical checkpoint, real-model/expert and live Foundry gates were
+PENDING. The current decision above supersedes that live-engineering status.
+Representative workload targets, production deployment limits and external-user
+exposure prerequisites remain unverified; Phase 17I is still NOT STARTED.

@@ -1,12 +1,22 @@
 # Reusable evaluation policy
 
-Status — 1 November 2026: [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
+Status — 12 November 2026: the [v11 controlled evaluation](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+completed 4/4 calls and settled EUR 0.009675030297596252 locally, with zero
+outstanding reservations and one consumed approval. Final Azure invoice, VAT and
+network charges are not verified. The
+[completion decision](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+The [deferred-review register](../evaluation/phase_17_deferred_human_semantic_review.md)
+tracks acceptance; no policy, accounting threshold or spend authority changes.
+Unknown usage continues to retain obligations and block continuation.
+
+Historical 1 November checkpoint: [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
 closed PASS with one accepted analysis, known usage SETTLED and no automatic paid
-retry. Its EUR 0.008817317845829546 is local accounting under the pinned October
-catalog, not an independently verified current Azure price or invoice. No budget
-reset, policy amendment or new inference authorization follows from that result.
-Unknown usage continues to retain obligations and block continuation. Full Phase
-17H remains PARTIAL and full live L1 digestion is NOT VALIDATED.
+retry. EUR 0.008817317845829546 remains its pinned October local-catalog cost,
+not a current price or independently verified invoice. No budget reset or new
+inference authorization follows from either historical result.
 
 `polymind-evaluation/1` is an optional, versioned overlay inside the existing
 `QuotaPolicy.evaluation` configuration. It is not a second database or a replacement

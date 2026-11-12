@@ -5,12 +5,16 @@ A provider schema reduces structural generation errors. Only the application can
 accept a result for persistence. Passing the first layer does not imply passing
 the second.
 
-Status — 1 November 2026: [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-completed one strict provider response under active managed-prompt/4, passed
-application validation and settled known usage with no automatic retries. This
-supplies exact-deployment single-analysis evidence beyond the historical capability
-review below. It does not validate every schema, representative model quality,
-full live hierarchical digestion or grounded Q&A. Phase 17H remains PARTIAL.
+Status — 12 November 2026: the [v11 controlled execution](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+completed four provider calls with application acceptance, durable receipts,
+G1/G2 provenance, full digest, publication and grounded Q&A. This supplies bounded
+live evidence for the executed explicit v11 profile, not every schema or arbitrary
+document. The [completion decision](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+Representative semantic reliability remains unestablished; source membership and
+strict structure alone cannot certify entailment.
 
 ## Assess capability before selecting a mode
 

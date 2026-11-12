@@ -260,12 +260,17 @@ databases, available audit capacity and a fresh verified JWKS cache. Missing
 security components deny serving. The final Phase 17G closure verified the added readiness paths and schema-drift
 checks; see the authoritative report. No live IdP check was run.
 
-Status — 1 November 2026: Phase 17G remains **COMPLETED/PASS** within its accepted
-single-host/reference scope. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-is **CLOSED/PASS** for one governed strict response accepted by the application,
-with known usage durably SETTLED and zero automatic retries. Active generation is
-[managed-prompt/4](../codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md).
-Full live L1 hierarchical digestion, publication/retrieval and grounded Q&A remain
-**NOT VALIDATED**. Phase 17H remains **PARTIAL**; representative semantic review,
-workload reliability and Phase 17I external verification remain gated. Production
-readiness is **NOT ESTABLISHED**. No authorization requirement is changed here.
+Status — 12 November 2026: Phase 17G remains **COMPLETED/PASS** within its accepted
+single-host/reference scope. The [v11 controlled live execution](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+passes all four calls, accepted chunk/structural/root checkpoints, G1/G2,
+receipts/provenance, complete digest, publication and grounded Q&A. Local token
+settlement is EUR 0.009675030297596252 with zero outstanding reservations; final
+Azure invoice verification remains separate. Its approval is consumed once.
+
+[Phase 17 engineering completion](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+is `PHASE_17_ENGINEERING_COMPLETE`; human review is
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2), and administrative acceptance
+is `PHASE_17_FORMAL_CLOSURE_PENDING`. `NEXT_PHASE_DEVELOPMENT_PERMITTED` applies
+to independent engineering; Phase 17I exposure, representative workload/semantic
+reliability and production security remain separately gated. Production readiness
+is **NOT ESTABLISHED**. No authorization requirement changes here.

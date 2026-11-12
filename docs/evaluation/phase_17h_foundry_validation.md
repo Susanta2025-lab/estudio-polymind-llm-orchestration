@@ -1,12 +1,19 @@
 # Phase 17H-L: zero-cost preparation and live approval contract
 
-> **Current status — 1 November 2026:** [Attempt 6 CLOSED/PASS](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-> establishes one governed first-chunk analysis: strict response completed,
-> application validation accepted, known usage SETTLED, one call and no automatic
-> retries. That historical run used [managed-prompt/4](../codex/reports/phase_17hl_managed_prompt4_subject_contract_implementation.md).
-> Phase 17G is COMPLETED/PASS within reference scope; Phase 17H remains PARTIAL.
-> Full live L1 digestion and subsequent grounded Q&A are NOT VALIDATED. Production
-> readiness is NOT ESTABLISHED. All further live work requires separate authorization.
+> **Current status — 12 November 2026:** controlled v11 Azure Foundry evaluation
+> completed 4/4 successful calls, 3/3 checkpoints, G1/G2, provenance, complete
+> digest, publication and grounded Q&A PASS. `PHASE_17_ENGINEERING_COMPLETE`;
+> `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2);
+> `PHASE_17_FORMAL_CLOSURE_PENDING`; `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+> See the [completion decision](phase_17_engineering_completion_and_deferred_acceptance.md)
+> and [review register](phase_17_deferred_human_semantic_review.md). Production
+> readiness remains unestablished. This runbook grants no new execution authority.
+
+## Historical engineering checkpoints
+
+The dated v10/v9 notes below preserve their original engineering-task conclusions.
+Their active-profile and unfinished-live statements apply to those checkpoints;
+the 12 November status above supersedes them for current project tracking.
 
 **10 November v10 engineering update (active contract):**
 [managed-prompt/10](../codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
@@ -87,28 +94,23 @@ synthetic success. Full live four-call compliance and semantic quality remain op
 
 ## Current interpretation of the historical runbook
 
-The L0 proposal and dated handoffs below preserve their original checkpoints,
-including earlier NOT STARTED, missing-key and JSON-object observations. They
-are historical, not current launcher configuration. The current adapter supports
-explicit API-key or bearer selection. Strict digestion uses `managed-generation/2`,
-`azure-strict/1` and full local `stage-result/1` acceptance, with independent
-10,000-byte raw/canonical ceilings, 3,000 completion tokens and a 26,192-byte HTTP
-envelope. Strict schema completion alone does not establish application acceptance.
-The broader [archived prompt proposal](../codex/proposals/phase_17hl_generation_instruction_clarifications.md)
-is inactive; v4 implements the narrower fact-only subject instruction correction.
+The dated proposals and handoffs below preserve earlier NOT STARTED, missing-key,
+JSON-object and L0/L1/L2 checkpoints. Their pending states describe their dates,
+not the current v11 workflow. Current explicit v11 uses `stage-proposal/1` with
+application-owned `stage-result/1` identities, immutable raw records and receipts;
+all G1/G2, complete-child, context and transport limits remain enforced. Default
+v10 selection remains compatible. The successful
+[v11 execution](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+needs no repeat to obtain two human reviews under the unchanged
+[frozen protocol](phase_17h_v11_live_semantic_validation_protocol.md).
 
-The single-analysis approval audience is `polymind-single-analysis-live`; the
-full-L1 audience is `polymind-l1-live`. Attempt 6 consumed its one-use approval;
-it cannot authorize a full-L1 continuation. Identity authentication, resource
-permissions, financial approval and independent exact-configuration RSA approval
-remain separate gates. Launch must precede the exclusive cutoff defined in the
-[operator procedure](phase_17hl_operator_approval.md#single-analysis-timing-and-preparation-handoff).
-An API-key use deadline is manually attested, not an Azure key expiry claim.
-
-Full Phase 17H still needs accepted first and second/root reductions, complete
-live digest, publication/retrieval, grounded Q&A, independent claim/citation
-review, representative documents and workload reliability evidence. Attempt 6's
-settled cost is local catalog accounting, not independent Azure invoice evidence.
+The single-analysis and full-L1 approvals have separate audiences; every consumed
+historical approval, including v11's, grants no further authority. Identity,
+permissions, credential use, financial acceptance, exact-configuration RSA signing
+and paid execution remain separate gates. Local EUR 0.009675030297596252 token
+settlement is not final Azure invoice/VAT/network verification. Representative
+production quality, scale, workload reliability and external exposure remain
+separate prerequisites; the engineering-completion decision does not pass them.
 
 ## Historical L0 proposal and subsequent dated handoffs
 

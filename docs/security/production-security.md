@@ -1,15 +1,20 @@
 # PolyMind production security runbook
 
-Scope update — 1 November 2026: the deployment instructions below describe the
+Scope update — 12 November 2026: the deployment instructions below describe the
 Helm chart's static-bearer control plane. The application also implements generic
 OIDC and an explicit [Entra v2 profile](entra_v2.md), with reference
 [SecurityAuthority and governance](phase_17g.md). These single-host components
 do not establish distributed multi-user production deployment; OIDC legacy
 query/stream routes fail closed and authorized analysis requires explicit
 composition. [Phase 17G](../codex/reports/phase_17g_report.md) is COMPLETED/PASS in
-reference scope. [Attempt 6](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-closed PASS for one accepted, settled Azure analysis. Phase 17H remains PARTIAL;
-full live digestion/Q&A and production readiness remain unestablished.
+reference scope. The [v11 controlled workflow](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+subsequently passed full live digestion, publication and grounded Q&A. The
+[completion decision](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+Human acceptance and production deployment remain separate gates; production
+readiness is unestablished.
 
 ## Application authentication and endpoints
 

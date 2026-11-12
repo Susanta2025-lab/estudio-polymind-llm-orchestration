@@ -5,12 +5,16 @@ Microsoft public-cloud tenant. Generic `oidc` remains the default and retains it
 required `token_use=access` discriminator and configurable role mapping. The server
 selects the profile; token claims never select a verifier or a trust URL.
 
-Status — 1 November 2026: the [Attempt 6 closure](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-records separately authorized live identity preparation and one accepted Azure
-analysis. The no-live statements below describe the original implementation task,
-not the entire subsequent project history. Authentication remains separate from
-domain permissions, financial approval and independent RSA execution approval.
-Full Phase 17H remains PARTIAL; production identity deployment is not established.
+Status — 12 November 2026: the [v11 execution report](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+records separately authorized live identity preparation and a successful four-call
+Azure workflow. No-live statements below describe the original implementation
+task. Authentication remains separate from domain permissions, financial approval
+and independent RSA execution approval. The
+[completion decision](../evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+Production identity deployment is not established.
 
 ## Private .env configuration
 

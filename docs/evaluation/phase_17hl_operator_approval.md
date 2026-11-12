@@ -1,10 +1,17 @@
 # Phase 17H-L separate operator approval
 
-Status — 1 November 2026: [Attempt 6 is CLOSED/PASS](../codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md)
-for one application-accepted analysis with settled usage and zero automatic
-retries. Its approval is consumed. No current authorization is conveyed by this
-procedure; earlier zero-spend statements describe the implementation task. Full
-live L1 digestion and grounded Q&A remain NOT VALIDATED; Phase 17H remains PARTIAL.
+Status — 12 November 2026: [v11 controlled execution](../codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+completed four successful calls, full digest, publication and grounded Q&A;
+G1/G2 and durable provenance PASS, reservations settled, RSA approval consumed
+once. Earlier Attempt 6 and v10 approvals remain consumed historical authorities.
+No further execution authority is conveyed by this procedure.
+
+The [completion decision](phase_17_engineering_completion_and_deferred_acceptance.md)
+records `PHASE_17_ENGINEERING_COMPLETE`,
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2),
+`PHASE_17_FORMAL_CLOSURE_PENDING` and `NEXT_PHASE_DEVELOPMENT_PERMITTED`.
+Human review follows the [register](phase_17_deferred_human_semantic_review.md)
+and frozen protocol, without new signing or inference.
 
 The L1 launcher verifies two independent signatures: the identity provider's
 access-token signature authenticates the operator; a separately trusted operator

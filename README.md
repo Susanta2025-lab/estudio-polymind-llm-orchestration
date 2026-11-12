@@ -22,27 +22,27 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 9 November 2026
+## Current engineering status — 12 November 2026
 
-Phases 17A–17F have implemented application contracts. The current evidence is
-bounded to the reference architecture and the evaluations below; production
-readiness is **NOT ESTABLISHED**.
+Phase 17 engineering is complete, including successful v11 offline validation and controlled Azure Foundry live evaluation. Independent human semantic review is deferred and remains a prerequisite for formal Phase 17 acceptance. Development may proceed to subsequent phases.
 
-| Scope | Verified status |
+| Scope | Current status |
 |---|---|
-| [Phase 17G acceptance](docs/codex/reports/phase_17g_report.md) | **COMPLETED/PASS** within single-host/local reference scope |
-| [Phase 17H evaluation](docs/codex/reports/phase_17h_report.md) | **PARTIAL**; representative quality and workload reliability gates remain |
-| Scoped Phase 17H–L diagnostic hardening | **COMPLETE**; [offline integration evidence](docs/codex/reports/phase_17hl_attempt6_offline_integration_readiness.md) |
-| [Active managed-prompt/10](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md) | Application-owned identities and references, atomic child keys, strict wire decoding and durable receipts; offline validation only |
-| [Azure Foundry Attempt 6](docs/codex/reports/phase_17hl_attempt6_closure_and_phase17h_gate_assessment.md) | **CLOSED/PASS**; one governed provider call, completed strict response, application acceptance and durable financial settlement; zero automatic retries |
-| Full live L1 hierarchical digestion and subsequent grounded Q&A | **NOT VALIDATED**; first and second/root reductions, complete digest, publication/retrieval and independent claim/citation review remain |
-| Phase 17I | **PLANNED**, subject to established approval gates; no separate 17J–17L completion is inferred |
+| Phase 17 engineering, within the implemented reference scope | `PHASE_17_ENGINEERING_COMPLETE` |
+| Independent human semantic review | `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` — 0/2 completed |
+| Official administrative acceptance | `PHASE_17_FORMAL_CLOSURE_PENDING` |
+| Subsequent engineering | `NEXT_PHASE_DEVELOPMENT_PERMITTED` — subject to its own prerequisites |
+| Phase 17H v11 | 2,996 offline tests passed; controlled Azure Foundry 4/4 calls, 3/3 checkpoints, G1/G2, durable provenance, complete digest, publication and grounded Q&A PASS |
+| Bounded source-grounded semantic assessment | PASS as preliminary independent-assistant evidence; human acceptance deferred |
+| Phase 17I — External User Verification | PLANNED / NOT STARTED; independent preparation may proceed; external exposure remains separately gated |
 
-Attempt 6 cost is local catalog accounting, not an independently verified Azure
-invoice. One accepted synthetic analysis does not establish end-to-end live
-digestion or semantic quality. Operational boundaries are documented in the
-[security contract](docs/security/phase_17g.md), [Entra v2 profile](docs/security/entra_v2.md),
-[evaluation governance](docs/governance/evaluation-policy.md),
+The [completion decision and next-workstream handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+define this scope; the [deferred acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
+tracks the two required human reviews. No separate 17J–17L completion is inferred.
+Production readiness and general semantic reliability are **NOT ESTABLISHED** by
+one four-page benchmark. Local token settlement is not final Azure invoice verification.
+Operational boundaries remain in the [security contract](docs/security/phase_17g.md),
+[Entra v2 profile](docs/security/entra_v2.md), [evaluation governance](docs/governance/evaluation-policy.md),
 [Foundry runbook](docs/evaluation/phase_17h_foundry_validation.md) and
 [independent operator approval procedure](docs/evaluation/phase_17hl_operator_approval.md).
 
@@ -251,7 +251,7 @@ Provider-specific HTTP/authentication behavior stays inside `llm/`.
 |---|---|
 | Ollama | Supported for local inference |
 | OpenAI-compatible | Supported for generation, streaming and bounded structured execution |
-| Azure Foundry | Phase 16 application inference and Attempt 6 single-analysis acceptance validated; full live L1 digestion remains unvalidated |
+| Azure Foundry | Phase 16 inference, Attempt 6 single analysis and controlled v11 full live digestion/publication/Q&A validated; human semantic acceptance deferred |
 | OpenAI-style endpoint | Protocol compatibility validated locally; no live OpenAI account required |
 | External vLLM | Protocol compatibility validated locally; vLLM is not deployed by this repository |
 
@@ -372,7 +372,7 @@ Its three calls are settled and its approval is consumed.
 The [v8 evaluation](docs/codex/reports/phase_17h_v8_controlled_four_call_execution.md)
 then stopped after one chunk call on a foreign source UUID; no checkpoint or
 reducer was accepted. Its usage is settled and its approval is consumed.
-Current [managed-prompt/10](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
+The application-owned wire introduced in [managed-prompt/10](docs/codex/reports/phase_17h_v10_application_owned_evidence_and_lineage_implementation.md)
 uses `stage-proposal/1`: the model selects request-local E source keys and atomic
 C child-pair keys. Application code resolves only explicit authorized selections,
 assigns current-stage/positional identities and constructs unchanged canonical
@@ -382,12 +382,13 @@ decoding receipts accompany the fenced checkpoint manifest and are verified on
 reopening and publication. Historical v5–v9 results remain readable.
 G1/G2 and the 24,800 input, 28,000 context, 7,000 complete-child, 3,000 output and
 four-call L1 limits remain. See the [receipt decision](docs/adr/phase_17h_v10_generation_wire_receipt_decision.md).
-Synthetic correctness does not establish Azure schema acceptance or semantic
-compliance. A fresh v10-bound configuration, manual review and separate operator
-authorizations are required before any controlled live attempt.
-
-Full live hierarchical digestion, subsequent grounded Q&A and representative
-independent quality evaluation remain open Phase 17H gates. Provider JSON Schema
+Explicit `managed-prompt/11` adds content-focused structural/root synthesis to this
+wire. The [v11 execution report](docs/codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+records successful controlled live hierarchical digestion, complete digest,
+publication and grounded Q&A on 12 November. The default remains v10 unless v11
+is explicitly selected. No successful run needs repeating for human review.
+Independent human semantic acceptance is deferred; representative reliability
+remains unestablished. Provider JSON Schema
 conformance and application domain acceptance are separate checks; neither alone
 certifies semantic support. The broader historical prompt proposal is inactive;
 v4 implements the narrower subject-contract correction.
@@ -698,11 +699,17 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17B | Canonical Document Model, Object Storage & Extraction Plane | ✅ Complete |
 | 17C | Durable Job Orchestration, Idempotency & Recovery | ✅ Complete |
 | 17D | Hierarchical Evidence-Grounded Digestion | ✅ Complete |
-| 17E | Managed Inference Integration | ✅ Complete — later single-analysis live acceptance; full live digestion unvalidated |
+| 17E | Managed Inference Integration | ✅ Engineering complete — controlled v11 full live workflow subsequently PASS |
 | 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
 | 17G | Multi-User Security, Quotas & Cost Governance | ✅ PASS — local/reference scope |
-| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | PARTIAL — Attempt 6 accepted one analysis; full live workflow, representative quality and reliability remain |
-| 17I | External User Verification | Planned |
+| 17H | 200–1000+ Page Reliability, Failure & Quality Validation | ENGINEERING_COMPLETE_REVIEW_DEFERRED — bounded offline/live evidence PASS; two human reviews and formal closure pending; representative production reliability unestablished |
+| 17I | External User Verification | Planned / NOT STARTED — independent engineering preparation permitted; exposure prerequisites retained |
+
+Overall Phase 17 status: `ENGINEERING_COMPLETE_REVIEW_DEFERRED`. The
+[acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
+keeps formal closure pending. This engineering decision covers the implemented
+17A–17H reference scope; planned 17I is not represented as completed. See the
+[next-workstream handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md#next-workstream-handoff).
 
 After Phase 17, the planned direction is broader Azure productionization of the document pipeline, including durable cloud storage/state, distributed worker/admission infrastructure, identity hardening and production reliability controls.
 
@@ -713,6 +720,11 @@ After Phase 17, the planned direction is broader Azure productionization of the 
 Detailed engineering evidence is retained in `docs/codex/reports/`.
 
 Current key reports:
+
+- [Phase 17 engineering completion and deferred acceptance](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+- [Deferred human semantic-review register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
+- [V11 controlled live execution and reconciliation](docs/codex/reports/phase_17h_v11_controlled_live_execution_and_reconciliation.md)
+- [Frozen human semantic-validation protocol](docs/evaluation/phase_17h_v11_live_semantic_validation_protocol.md)
 
 - [Phase 16 — Target Environment Validation](docs/codex/reports/phase_16_report.md)
 - [Phase 17A — Architecture, Cost & Risk Assessment](docs/codex/reports/phase_17a_report.md)
@@ -744,7 +756,7 @@ The repository should **not** currently be interpreted as claiming:
 - Azure Blob-backed canonical document storage;
 - a production distributed document-job database/queue;
 - production distributed inference admission;
-- full live Phase 17 Foundry hierarchical digestion and subsequent grounded Q&A;
+- representative large-document production reliability beyond the accepted four-page v11 live workflow;
 - live OpenAI validation;
 - live external vLLM validation;
 - self-hosted vLLM/GPU infrastructure;
@@ -801,7 +813,7 @@ Focus areas:
 # Project status
 
 **Status:** Active development — production-style portfolio platform  
-**Current milestone:** Phase 17G COMPLETED/PASS within reference scope; scoped diagnostic hardening COMPLETE; managed-prompt/10 active with application-owned evidence/identities, atomic child selections, durable decoding receipts and strict provenance; Attempt 6 CLOSED/PASS; 9 November v7 live evaluation rejected root lineage after three calls and v8 rejected chunk source membership after one call; Phase 17H PARTIAL. Full live L1 digestion and grounded Q&A remain NOT VALIDATED.
+**Current milestone:** `PHASE_17_ENGINEERING_COMPLETE` within the implemented reference scope; v11 offline and controlled Azure live validation PASS. Human semantic review is `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2); administrative acceptance is `PHASE_17_FORMAL_CLOSURE_PENDING`. `NEXT_PHASE_DEVELOPMENT_PERMITTED`, subject to each workstream's own prerequisites. [Completion and handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md).
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 
