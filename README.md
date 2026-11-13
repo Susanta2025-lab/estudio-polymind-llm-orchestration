@@ -22,7 +22,7 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 12 November 2026
+## Current engineering status — 13 November 2026
 
 Phase 17 engineering is complete, including successful v11 offline validation and controlled Azure Foundry live evaluation. Independent human semantic review is deferred and remains a prerequisite for formal Phase 17 acceptance. Development may proceed to subsequent phases.
 
@@ -31,13 +31,43 @@ Phase 17 engineering is complete, including successful v11 offline validation an
 | Phase 17 engineering, within the implemented reference scope | `PHASE_17_ENGINEERING_COMPLETE` |
 | Independent human semantic review | `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` — 0/2 completed |
 | Official administrative acceptance | `PHASE_17_FORMAL_CLOSURE_PENDING` |
-| Subsequent engineering | `NEXT_PHASE_DEVELOPMENT_PERMITTED` — subject to its own prerequisites |
+| Phase 17 engineering progression | `NEXT_PHASE_DEVELOPMENT_PERMITTED` — subject to its own prerequisites |
 | Phase 17H v11 | 2,996 offline tests passed; controlled Azure Foundry 4/4 calls, 3/3 checkpoints, G1/G2, durable provenance, complete digest, publication and grounded Q&A PASS |
 | Bounded source-grounded semantic assessment | PASS as preliminary independent-assistant evidence; human acceptance deferred |
-| Phase 17I — External User Verification | PLANNED / NOT STARTED; independent preparation may proceed; external exposure remains separately gated |
+| Phase 17I bounded engineering | `PHASE_17I_ENGINEERING_COMPLETE` — Stage 1 assessment, Stage 2 implementation/offline verification and Stage 3 documentation complete |
+| Phase 17I documentation | `PHASE_17I_DOCUMENTATION_COMPLETE`; `PHASE_17I_STAGE3_DOCUMENTATION_PASS` |
+| Phase 17I external-user verification | `PHASE_17I_EXTERNAL_VERIFICATION_DEFERRED` — 0 actual participants; `PHASE_17I_FORMAL_ACCEPTANCE_PENDING` |
+| Subsequent engineering | `SUBSEQUENT_ENGINEERING_PERMITTED` — subject to its own prerequisites |
 
-The [completion decision and next-workstream handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
-define this scope; the [deferred acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
+Phase 17I implements **Option A — Private, Operator-Supervised Local Verification**
+through `documents.pilot.SupervisedPilot`. This trusted local workflow covers
+approved native PDF/text intake, durable v11 synthesis, COMPLETE digest publication,
+selected-document Q&A/canonical citations, inert presentation, structured feedback
+and closure/withdrawal with residual inventory. It is bounded to three approved
+sessions, one open job and one exclusive admitted provider request within the
+supported shared authority. It is not a public SaaS deployment or participant
+login/upload portal.
+
+The [Stage 2 implementation report](docs/codex/reports/phase_17i_implementation_and_verification.md)
+records **3,052 tests passed** (2,163 unit / 889 integration, including 56 new
+Phase 17I cases), zero failures/errors/skips. Its synthetic end-to-end rehearsal
+reached COMPLETE with coverage 1.0, four deterministic provider calls and zero
+outstanding synthetic reservations. These are recorded Stage 2 outcomes, not
+reruns or actual-model semantic acceptance. New billable inference and actual
+participants remain zero.
+
+The [Phase 17I completion decision](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md)
+owns the engineering/documentation classifications. The
+[operator guide](docs/evaluation/phase_17i_operator_workflow.md),
+[current gate reconciliation](docs/evaluation/phase_17i_external_user_readiness_gates.md#post-implementation--stage-3-reconciliation--13-november-2026)
+and [deferred external-acceptance record](docs/evaluation/phase_17i_deferred_external_verification.md)
+retain pending independent real-document/answer quality, consent, privacy,
+retention, exposure and financial decisions. New paid model authorization is
+not granted; actual external sessions and formal external acceptance remain
+pending. Phase 17H's separate two-human-review obligation remains **0/2**.
+
+The earlier [Phase 17A–17H completion decision and handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
+define that reference scope; the [deferred acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
 tracks the two required human reviews. No separate 17J–17L completion is inferred.
 Production readiness and general semantic reliability are **NOT ESTABLISHED** by
 one four-page benchmark. Local token settlement is not final Azure invoice verification.
@@ -703,13 +733,17 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17F | RAG Publication, Provenance & Interactive Document Analysis | ✅ Complete |
 | 17G | Multi-User Security, Quotas & Cost Governance | ✅ PASS — local/reference scope |
 | 17H | 200–1000+ Page Reliability, Failure & Quality Validation | ENGINEERING_COMPLETE_REVIEW_DEFERRED — bounded offline/live evidence PASS; two human reviews and formal closure pending; representative production reliability unestablished |
-| 17I | External User Verification | Planned / NOT STARTED — independent engineering preparation permitted; exposure prerequisites retained |
+| 17I | External User Verification | Bounded engineering and all three development stages complete; actual external verification DEFERRED, formal acceptance PENDING; subsequent engineering permitted |
 
 Overall Phase 17 status: `ENGINEERING_COMPLETE_REVIEW_DEFERRED`. The
 [acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
 keeps formal closure pending. This engineering decision covers the implemented
-17A–17H reference scope; planned 17I is not represented as completed. See the
-[next-workstream handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md#next-workstream-handoff).
+17A–17H reference scope. The separate
+[Phase 17I decision and handoff](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md#operator-ownership-and-handoff)
+completes bounded 17I engineering/documentation while preserving its external
+acceptance obligation. Exactly three formal development stages apply; deferred
+acceptance is an outstanding obligation, not a fourth stage. Historical reports
+retain their contemporaneous planned/not-started statements.
 
 After Phase 17, the planned direction is broader Azure productionization of the document pipeline, including durable cloud storage/state, distributed worker/admission infrastructure, identity hardening and production reliability controls.
 
@@ -720,6 +754,11 @@ After Phase 17, the planned direction is broader Azure productionization of the 
 Detailed engineering evidence is retained in `docs/codex/reports/`.
 
 Current key reports:
+
+- [Phase 17I documentation and closure](docs/codex/reports/phase_17i_documentation_and_closure.md)
+- [Phase 17I engineering completion and deferred acceptance](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md)
+- [Phase 17I implementation and offline verification](docs/codex/reports/phase_17i_implementation_and_verification.md)
+- [Phase 17I deferred external-user acceptance](docs/evaluation/phase_17i_deferred_external_verification.md)
 
 - [Phase 17 engineering completion and deferred acceptance](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md)
 - [Deferred human semantic-review register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
@@ -812,8 +851,9 @@ Focus areas:
 
 # Project status
 
-**Status:** Active development — production-style portfolio platform  
-**Current milestone:** `PHASE_17_ENGINEERING_COMPLETE` within the implemented reference scope; v11 offline and controlled Azure live validation PASS. Human semantic review is `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2); administrative acceptance is `PHASE_17_FORMAL_CLOSURE_PENDING`. `NEXT_PHASE_DEVELOPMENT_PERMITTED`, subject to each workstream's own prerequisites. [Completion and handoff](docs/evaluation/phase_17_engineering_completion_and_deferred_acceptance.md).
+**Status:** Active development — production-style portfolio platform
+
+**Current milestone:** `PHASE_17I_ENGINEERING_COMPLETE` and `PHASE_17I_DOCUMENTATION_COMPLETE` within bounded Option A; `PHASE_17I_EXTERNAL_VERIFICATION_DEFERRED`, `PHASE_17I_FORMAL_ACCEPTANCE_PENDING` and `SUBSEQUENT_ENGINEERING_PERMITTED`. [Phase 17I completion and handoff](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md). The earlier Phase 17A–17H reference engineering and controlled Azure v11 technical evaluation remain complete; separate human review is `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2), with `PHASE_17_FORMAL_CLOSURE_PENDING`.
 
 The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
 

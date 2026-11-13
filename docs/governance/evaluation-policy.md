@@ -153,3 +153,9 @@ and grant revocation on every call, retain replay prevention, cancellation and
 usage settlement, and deny production or high-risk operations. This would require
 an explicit future security change and tests; it is not implemented here. Production
 migrations and high-risk operations retain explicit operator approval controls.
+
+## Phase 17I accounting handoff — 13 November 2026
+
+[Phase 17I bounded engineering/documentation is complete](../evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md). Its recorded Stage 2 rehearsal used four deterministic provider calls, four synthetic settlements and zero outstanding synthetic reservations; that financial arithmetic is not Azure spending. Actual participants and new billable inference remain zero. [External-user acceptance is deferred](../evaluation/phase_17i_deferred_external_verification.md); new paid authority is not granted.
+
+The pilot reuses the same financial ledger and shared `SQLiteInferenceAdmission`, with opt-in `exclusive=True` for pilot calls; all shared consumers must use the updated implementation. Operational intents are not a second monetary ledger. Forecasting detects the illustrative 18-call/16-request rolling-window and 500,400/500,000 UTC-day token conflicts; it neither reserves capacity nor expands limits. Use the [operator reference](../evaluation/phase_17i_operator_workflow.md#stop-recovery-and-retention) for durable stop, in-flight billing and UNKNOWN reconciliation. No timeout or expiry refunds obligations. Historical policy/catalog/settlements and consumed approvals remain unchanged; future calls require independently reviewed current capacity and exact execution authorization.

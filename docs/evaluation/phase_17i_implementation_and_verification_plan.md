@@ -1,6 +1,6 @@
 # Phase 17I — Implementation and Verification Plan
 
-12 November 2026. **STAGE 1 COMPLETE / STAGE 2 IMPLEMENTATION AUTHORIZED / NO PARTICIPANTS OR PAID CALLS AUTHORIZED.** Historical baseline and conclusions remain in the unchanged [readiness assessment](../codex/reports/phase_17i_readiness_assessment.md). The [risk and gate register](phase_17i_external_user_readiness_gates.md) retains the assessment snapshot; current engineering evidence and G01–G16 reconciliation are in the [Stage 2 report](../codex/reports/phase_17i_implementation_and_verification.md). The [operator workflow](phase_17i_operator_workflow.md) describes the implemented runner and pending approval packet. Engineering authorization is distinct from external participation, privacy/retention acceptance and paid execution.
+13 November 2026. **STAGE 1 COMPLETE / STAGE 2 ENGINEERING PASS / STAGE 3 DOCUMENTATION PASS / NO PARTICIPANTS OR PAID CALLS AUTHORIZED.** Historical baseline and conclusions remain in the unchanged [readiness assessment](../codex/reports/phase_17i_readiness_assessment.md). The [risk and gate register](phase_17i_external_user_readiness_gates.md) retains the assessment snapshot; current engineering evidence and G01–G16 reconciliation are in the [Stage 2 report](../codex/reports/phase_17i_implementation_and_verification.md). The [operator workflow](phase_17i_operator_workflow.md) describes the implemented runner and pending approval packet. The [Stage 3 completion decision](phase_17i_engineering_completion_and_deferred_acceptance.md) is authoritative for current status; the workstreams and candidate acceptance criteria below remain the unchanged planning basis. Bounded engineering and documentation are complete; [external acceptance is deferred](phase_17i_deferred_external_verification.md). Engineering authorization is distinct from external participation, privacy/retention acceptance and paid execution.
 
 ## Scope and dependencies
 
@@ -14,7 +14,7 @@ COMPLETE and committed at `69c8f6642f95c88911bc1feeca01ee51cbf04bda`. Preserve t
 
 ## Stage 2 — Implementation and verification
 
-ACTIVE under the operator master prompt. The former five proposed stages are consolidated below as engineering workstreams and separately gated operational work; they are not formal development stages. Implement the bounded Option A workflow and all safely verifiable local controls/tests. Real participation and new provider execution require separate approvals. Stage 2 can finish with those external evidence obligations pending.
+COMPLETE — ENGINEERING PASS, committed at `ed7dbd5ed63548bccfac9ef27a8a0f7b771ca26a`; recorded final regression 3,052 passed (2,163 unit / 889 integration). The former five proposed stages are consolidated below as engineering workstreams and separately gated operational work; they are not formal development stages. Implement the bounded Option A workflow and all safely verifiable local controls/tests. Real participation and new provider execution require separate approvals. Stage 2 can finish with those external evidence obligations pending.
 
 ### Access and data-governance workstream
 
@@ -64,7 +64,7 @@ Tests/measurements: all objective and subjective items below; inspect every smal
 
 ## Stage 3 — Documentation and closure
 
-FUTURE / NOT STARTED. Reconcile the Stage 2 implementation report, finalize API/operator/security documentation, update README/readiness gates, reconcile independently approved human/external-review evidence and any authorized pilot results, and determine final Phase 17I closure. Implementation support documents and the Stage 2 report do not perform this closure. Exactly three formal development stages apply.
+COMPLETE — DOCUMENTATION PASS on 13 November 2026. The [Stage 3 report](../codex/reports/phase_17i_documentation_and_closure.md) reconciles implemented interfaces, README/roadmap, operator/security/evaluation references and all sixteen gates. The [completion decision](phase_17i_engineering_completion_and_deferred_acceptance.md) marks bounded engineering and documentation complete, with actual external verification DEFERRED and formal acceptance PENDING. There are no real participant or independent human-review results to reconcile as accepted evidence. Exactly three formal development stages apply. Future external acceptance is an outstanding obligation, not a fourth formal stage.
 
 ## Candidate study and acceptance thresholds
 

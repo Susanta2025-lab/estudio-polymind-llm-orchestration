@@ -110,3 +110,7 @@ a trusted operator signing key and obtaining a reviewed, unexpired live approval
 are separate prerequisites. No live authentication or Azure inference was
 performed. Financial and other L1 gates in the
 [runbook](../evaluation/phase_17h_foundry_validation.md) remain mandatory.
+
+## Phase 17I operator reuse — 13 November 2026
+
+The [bounded Phase 17I workflow](../evaluation/phase_17i_operator_workflow.md) reuses an existing verified operator `Principal` and publication authority. A participant study code is a private approval-record identifier, not an Entra principal or login credential. Never share the `PolyMind.L1Operator` role, token, device-code session or host control with participants. [Engineering/documentation completion](../evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md) grants no new identity enrollment, external participation or provider-execution authority; those remain separately gated. This task changes no issuer configuration or authentication contract.

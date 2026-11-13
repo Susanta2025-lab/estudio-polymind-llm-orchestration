@@ -274,3 +274,9 @@ is `PHASE_17_FORMAL_CLOSURE_PENDING`. `NEXT_PHASE_DEVELOPMENT_PERMITTED` applies
 to independent engineering; Phase 17I exposure, representative workload/semantic
 reliability and production security remain separately gated. Production readiness
 is **NOT ESTABLISHED**. No authorization requirement changes here.
+
+## Phase 17I supervised local composition — 13 November 2026
+
+[Phase 17I engineering and documentation are complete](../evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md) within Option A. `documents.pilot.SupervisedPilot` composes this same authority/governance boundary with approved source/session records, explicit v11, `AuthorizedPublication` and `AuthorizedAnalysis`. It adds no HTTP route or participant credentials; operator `PUBLICATION_MANAGE` is not a participant role. One exclusive provider call relies on the same updated shared admission consumers. Final session/security/publication generation-and-epoch guards deny stale/revoked presentation; delivered bytes cannot be recalled.
+
+Use the [operator reference](../evaluation/phase_17i_operator_workflow.md) for exact construction, resource limits, stop/reconciliation and residual inventory. Logical closure/metadata retirement remains `PURGE_PENDING`; parser resource containment is not a native-code security sandbox. [External verification is deferred](../evaluation/phase_17i_deferred_external_verification.md), 0 actual participants, and all applicable exposure gates remain required. Phase 17H's separate human count stays 0/2. No production, privacy, quality or new paid authority follows from completion.

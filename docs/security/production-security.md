@@ -125,3 +125,7 @@ command. Use immutable image tags or digests for production. Dependency scanning
 container scanning, SBOMs, signing, gateway rate limiting, production OIDC
 deployment, mTLS, and cloud secret-manager deployment remain explicit future
 controls. Reference OIDC token verification is implemented as linked above.
+
+## Phase 17I boundary — 13 November 2026
+
+The [completed bounded Phase 17I engineering](../evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md) is a private, operator-supervised local Python workflow. It adds no pilot listener, public ingress, participant login or Streamlit document portal. These deployment instructions are not a deployment of that workflow or approval to expose existing probes/metrics/admin routes. Use its [operator reference](../evaluation/phase_17i_operator_workflow.md) and [current readiness gates](../evaluation/phase_17i_external_user_readiness_gates.md#post-implementation--stage-3-reconciliation--13-november-2026) for actual private host/display/egress acceptance. External verification remains deferred, formal acceptance pending and production readiness NOT ESTABLISHED. No services or infrastructure are changed by Stage 3.
