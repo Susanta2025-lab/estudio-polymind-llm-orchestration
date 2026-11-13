@@ -127,11 +127,11 @@ class SQLiteInferenceAdmission:
             if db is not None:
                 db.close()  # Rolls back any uncommitted exception path.
 
-    def acquire(self, identity, estimated_input, reserved_output, workload='DOCUMENT_BACKGROUND'):
+    def acquire(self, identity, estimated_input, reserved_output, workload='DOCUMENT_BACKGROUND', *, exclusive=False):
         if (workload not in ('INTERACTIVE', 'DOCUMENT_BACKGROUND')
                 or type(estimated_input) is not int or estimated_input < 0
                 or type(reserved_output) is not int or reserved_output <= 0
-                or identity.attempt < 1):
+                or identity.attempt < 1 or type(exclusive) is not bool):
             raise InferenceConfigurationError('Invalid inference reservation.')
         tokens = estimated_input + reserved_output
         p = self.policy
@@ -151,7 +151,8 @@ class SQLiteInferenceAdmission:
             same = lambda r: r['job'] == str(identity.job) and r['scope'] == identity.scope
             reserved = lambda rs: sum(r['estimated_input'] + r['reserved_output'] for r in rs)
             denied = (len(recent) >= p.rpm or reserved(recent)+tokens > p.tpm
-                      or len(active) >= p.concurrent)
+                      or len(active) >= p.concurrent or (exclusive and bool(active))
+                      or any(r['outcome'] == 'unknown_exclusive' for r in active))
             if background:
                 denied |= (len(docs) >= p.rpm-p.interactive_rpm
                            or reserved(docs)+tokens > token_cap
@@ -164,7 +165,8 @@ class SQLiteInferenceAdmission:
             db.execute('INSERT INTO inference_calls VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                        (ticket, self.quota_key, json.dumps(asdict(identity), default=str, sort_keys=True),
                         identity.scope, str(identity.job), str(identity.step), identity.attempt,
-                        workload, now, estimated_input, reserved_output, 1, 'unknown', None))
+                        workload, now, estimated_input, reserved_output, 1,
+                        'unknown_exclusive' if exclusive else 'unknown', None))
             return ticket
 
     def finish(self, ticket, *, usage, outcome):

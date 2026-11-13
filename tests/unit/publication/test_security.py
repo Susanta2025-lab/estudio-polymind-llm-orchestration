@@ -77,6 +77,12 @@ def test_real_analysis_denies_before_search_or_provider_and_shared_owner_resolut
     # The legacy whole-corpus BM25 cannot be used by authorized requests.
     analysis.replica.snapshot[1].get_scores=lambda q:(_ for _ in ()).throw(AssertionError('unscoped BM25'))
     secured.analyze(b,request)
+    # N7: selected source ownership is not the interactive financial caller.
+    charged = secured.ledger.usage(b, auth)
+    assert len(charged) == 2 and all(r['owner'] == str(b.scope.owner)
+        and r['tenant'] == str(b.scope.tenant) and r['workload'] == 'INTERACTIVE'
+        and r['state'] == 'SETTLED' for r in charged)
+    assert secured.ledger.usage(a, auth) == []
     auth.share(a,UUID(int=3),b.scope.owner,revoke=True)
     calls=len(provider.calls);searches=len(searched)
     with pytest.raises(SecurityError):secured.analyze(b,request)
