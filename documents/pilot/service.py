@@ -348,12 +348,13 @@ class SupervisedPilot:
         from documents.pilot.scheduling import forecast
 
         calls = []
+        forecast_now = self.governance.clock()
         for i in range(row["data"]["planned_calls"] + self.policy.max_questions):
             synthesis = i < row["data"]["planned_calls"]
             role = ModelRole.SUMMARIZATION if synthesis else ModelRole.GENERAL
             calls.append(
                 {
-                    "at": self.clock() + 61 * i,
+                    "at": forecast_now + 61 * i,
                     "input": self.policy.max_input,
                     "output": self.policy.max_output,
                     "provider": self.provider.name,
@@ -362,7 +363,7 @@ class SupervisedPilot:
                 }
             )
         forecast_result = forecast(
-            self.governance, self.admission, self.authority, principal, calls
+            self.governance, self.admission, self.authority, principal, calls, now=forecast_now
         )
 
         # Idempotent replay after a crash between admission and session update

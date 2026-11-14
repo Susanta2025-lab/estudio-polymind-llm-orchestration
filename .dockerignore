@@ -45,3 +45,11 @@ experiments/
 *.sqlite-*
 *.db
 *.db-*
+
+# Browser identity and local demonstration authorities/keys never enter images.
+.streamlit/
+.document-demo/
+*.pem
+*.key
+playwright-report/
+test-results/

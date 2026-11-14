@@ -11,12 +11,12 @@ from documents.pilot.models import PilotError
 from security.models import Action
 
 
-def forecast(ledger, admission, authority, principal, calls):
+def forecast(ledger, admission, authority, principal, calls, *, now=None):
     authority.authorize(principal, Action.PUBLICATION_MANAGE)
     if not calls or len(calls) > 18:
         raise PilotError("pilot_limit")
     _, owner_limits, tenant_limits = ledger.policy.select(principal.scope)
-    now = ledger.clock()
+    now = ledger.clock() if now is None else now
     with ledger.transaction() as db:
         ledger._current_policy(db)
         rows = [

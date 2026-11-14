@@ -85,6 +85,13 @@ app = FastAPI(
 app.add_middleware(ApplicationSecurityMiddleware, configuration=settings,
                    runtime_getter=lambda:getattr(app.state,'security_runtime',None))
 
+# Fixed operator routes precede dynamic document routes. The runtime must be
+# explicitly composed; the legacy application never creates a fixture provider.
+from api.operator import operator_router, pilot_error
+from documents.pilot.models import PilotError
+app.include_router(operator_router())
+app.add_exception_handler(PilotError, pilot_error)
+
 
 @app.exception_handler(RequestValidationError)
 async def bounded_validation_error(_request: Request, _exc: RequestValidationError):

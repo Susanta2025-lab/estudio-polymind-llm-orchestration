@@ -18,7 +18,11 @@ def test_api_additive_route_and_unconfigured_failure():
         assert analyze_documents(req) == {'answer':'alpha'}
         paths = {r.path for r in app.routes}
         assert {'/query','/query/stream','/documents/analyze'} <= paths
-        assert not any('publish' in p or 'revoke' in p or 'rollback' in p for p in paths)
+        # Phase 18 adds the explicitly protected owning-operator surface. It
+        # does not expose the generic publication management service.
+        assert '/documents/operator/sessions/{session_id}/publish' in paths
+        legacy_paths = {p for p in paths if not p.startswith('/documents/operator/')}
+        assert not any('publish' in p or 'revoke' in p or 'rollback' in p for p in legacy_paths)
     finally:
         app.state.document_analysis = old
 

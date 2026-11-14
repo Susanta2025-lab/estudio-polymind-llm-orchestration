@@ -193,7 +193,9 @@ def test_pilot_schedule_rejects_18_calls_and_500400_daily_units_without_quota_ch
             "workload": "DOCUMENT_BACKGROUND",
         }
 
-    now = clock[0]
+    # Keep the 18-call daily-limit case in one UTC day, including when the
+    # suite runs just before midnight. Forecasting is not execution permission.
+    now = (int(clock[0]) // 86400 + 1) * 86400
     with pytest.raises(PilotError, match="limit"):
         forecast(
             p.governance,

@@ -1,0 +1,24 @@
+# Dedicated single-host synthetic profile. Initialize explicitly before startup.
+# All services share one network namespace: only loopback TLS is published.
+services:
+  documents:
+    build: .
+    working_dir: /runtime/state
+    command: ["python", "-m", "development.document_demo", "serve", "/runtime/state"]
+    environment:
+      PYTHONPATH: /app
+      DOCUMENTS_PROFILE: synthetic
+      DEPLOYMENT_ENV: compose
+      DOCUMENT_BIND: 0.0.0.0
+    ports:
+      - "127.0.0.1:9443:9443"
+      - "127.0.0.1:9444:9444"
+    volumes:
+      - ${DOCUMENT_DEMO_ROOT:?Initialize a dedicated private runtime first}:/runtime
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 75s
+    restart: "no"

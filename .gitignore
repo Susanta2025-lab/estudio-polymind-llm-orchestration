@@ -31,3 +31,9 @@ logs/
 # Memory files (Optional: keep if these are sample memory files, remove if they contain sensitive info)
 memory/chat_history.json
 docs/codex/prompts/phase_16.md
+
+# Private local document/auth runtime, never source fixtures.
+.streamlit/
+.document-demo/
+playwright-report/
+test-results/

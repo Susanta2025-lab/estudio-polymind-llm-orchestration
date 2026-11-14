@@ -1,6 +1,7 @@
 from typing import Any, Dict, Literal, Optional
 from urllib.parse import urlparse
 import re
+import os
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,6 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
 
     DEPLOYMENT_ENV: Literal["local", "compose", "production"] = "local"
+    DOCUMENTS_PROFILE: Literal["legacy", "synthetic"] = "legacy"
+    DOCUMENTS_API_URL: str = "http://127.0.0.1:8001"
 
     # =========================
     # Inference providers
@@ -116,6 +119,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_inference_configuration(self):
         mode = self.authentication_mode
+        if self.DOCUMENTS_PROFILE == "synthetic" and self.DEPLOYMENT_ENV == "production":
+            raise ValueError("Fixture document profile is forbidden in production")
         if (self.API_AUTH_MODE == 'disabled' and self.API_AUTH_ENABLED
                 or mode == 'oidc_jwt' and (self.API_AUTH_ENABLED or self.API_AUTH_TOKEN is not None)):
             raise ValueError('Conflicting legacy and explicit authentication configuration')
@@ -234,4 +239,4 @@ class Settings(BaseSettings):
         return self
 
 
-settings = Settings()
+settings = Settings(_env_file=None) if os.environ.get("DOCUMENTS_PROFILE") == "synthetic" else Settings()

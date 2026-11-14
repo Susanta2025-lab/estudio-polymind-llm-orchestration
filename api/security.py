@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from starlette.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
+from anyio import from_thread
 
 from llm.metrics import metrics
 from llm.operational import normalize_request_id, reset_request_id, set_request_id
@@ -65,6 +67,10 @@ class _RequestTooLarge(Exception):
     pass
 
 
+class _ReleaseDenied(Exception):
+    """Transport denial must bypass endpoint exception-to-response handlers."""
+
+
 class ApplicationSecurityMiddleware:
     """Correlate, authenticate, and bound requests without buffering bodies."""
 
@@ -96,9 +102,21 @@ class ApplicationSecurityMiddleware:
             if message["type"] == "http.response.start":
                 message.setdefault("headers", []).append((b"x-request-id", correlation_id.encode("ascii")))
             snapshot = scope['state'].get('release_snapshot')
-            if mode == 'oidc_jwt' and snapshot is not None:
-                with runtime.authority.release(snapshot):
-                    await asyncio.wait_for(send(message),timeout=5)
+            guard = scope['state'].get('release_guard')
+            if mode == 'oidc_jwt' and (guard is not None or snapshot is not None):
+                from security.models import SecurityError
+                async def bounded_send():
+                    await asyncio.wait_for(send(message), timeout=5)
+                def handoff():
+                    # SQLite locks never block the event loop. Acquire/release
+                    # each connection on the same worker thread; await only the
+                    # bounded transport send on the originating event loop.
+                    with (guard() if guard is not None else runtime.authority.release(snapshot)):
+                        from_thread.run(bounded_send)
+                try:
+                    await run_in_threadpool(handoff)
+                except SecurityError:
+                    raise _ReleaseDenied from None
             else:
                 await send(message)
             if message['type'] == 'http.response.start':
@@ -106,7 +124,11 @@ class ApplicationSecurityMiddleware:
 
         async def respond(status_code: int, detail: str, authenticate: bool = False):
             response_headers = {"WWW-Authenticate": "Bearer"} if authenticate else None
-            response = JSONResponse(status_code=status_code, content={"detail": detail}, headers=response_headers)
+            content = {"detail": detail}
+            if scope.get('path', '').startswith('/documents/operator/'):
+                content.update(category={401: 'authentication_required', 403: 'access_denied',
+                    413: 'request_too_large'}.get(status_code, 'service_unavailable'), request_id=correlation_id)
+            response = JSONResponse(status_code=status_code, content=content, headers=response_headers)
             await response(scope, receive, correlated_send)
 
         try:
@@ -123,16 +145,19 @@ class ApplicationSecurityMiddleware:
                     scheme,separator,token=values[0].decode('ascii').partition(' ')
                     if not separator or scheme.lower() != 'bearer' or not token or any(c.isspace() for c in token):
                         raise SecurityError('authentication_required')
-                    principal=runtime.verifier.verify(token)
-                    runtime.authority.register(principal)
+                    def authenticate():
+                        verified = runtime.verifier.verify(token)
+                        runtime.authority.register(verified)
+                        return verified, runtime.authority.snapshot(verified)
+                    principal, snapshot = await run_in_threadpool(authenticate)
                     scope['state']['principal']=principal
-                    scope['state']['release_snapshot']=runtime.authority.snapshot(principal)
+                    scope['state']['release_snapshot']=snapshot
                     metrics.observe_authentication(protected_class,'accepted')
                 except (SecurityError,UnicodeError):
                     metrics.observe_authentication(protected_class,'rejected')
                     if runtime is not None:
                         try:
-                            runtime.authority.audit_authentication(False)
+                            await run_in_threadpool(runtime.authority.audit_authentication, False)
                         except SecurityError:
                             await respond(503,'Security service is unavailable.')
                             return
@@ -203,10 +228,11 @@ class ApplicationSecurityMiddleware:
                 await reject()
         except Exception as exc:
             from security.models import SecurityError
-            if not isinstance(exc, SecurityError):
+            if not isinstance(exc, (SecurityError, _ReleaseDenied)):
                 raise
             # Final release can fail after endpoint execution or between chunks.
             scope['state'].pop('release_snapshot',None)
+            scope['state'].pop('release_guard',None)
             if response_started:
                 await send({'type':'http.response.body','body':b'', 'more_body':False})
             else:

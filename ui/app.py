@@ -14,6 +14,11 @@ st.set_page_config(
     layout="wide"
 )
 
+if settings.DOCUMENTS_PROFILE == "synthetic":
+    from ui.documents import render
+    render(settings.DOCUMENTS_API_URL)
+    st.stop()
+
 # =====================================================
 # SIDEBAR
 # =====================================================

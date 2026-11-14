@@ -21,6 +21,33 @@ def pytest_unconfigure(config):
     _settings_patch.undo()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def stable_reference_job_clock():
+    """Keep default job time advancing despite host wall-clock corrections.
+
+    Queue-draining fixtures do not wait for a backwards-adjusted host clock to
+    catch up with newly recorded outbox timestamps. Anchor UTC once per session,
+    then advance by actual monotonic elapsed time. Explicit fake clocks and the
+    production SystemClock implementation remain unchanged. Lease timeout tests
+    still observe real elapsed time unless they inject their own clock.
+    """
+    from datetime import datetime, timedelta, timezone
+    import time
+
+    # Configuration-isolation tests also copy this conftest into a minimal
+    # project containing no document package. Never import an application plane
+    # just to install a test clock; collection already loads it where relevant.
+    models = sys.modules.get("documents.jobs.models")
+    if models is None:
+        yield
+        return
+
+    anchor, started = datetime.now(timezone.utc), time.monotonic()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(models.SystemClock, "now", lambda self: anchor + timedelta(seconds=time.monotonic() - started))
+        yield
+
+
 @pytest.fixture
 def managed_v9(monkeypatch):
     """Explicit historical generation; current G1/G2 and durable storage remain real."""
