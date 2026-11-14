@@ -1,5 +1,18 @@
 # Microsoft Entra v2 access tokens — Phase 17H-L
 
+## Phase 18 browser-authentication distinction — 14 November 2026
+
+The [Phase 18 local Documents application](../operations/phase_18_local_document_demo.md)
+now has verified native Streamlit authorization-code/PKCE login through a
+**loopback development issuer**, followed by server-verified API access tokens
+and explicit owning-operator enrollment. It does not use this Entra profile and
+does not establish real Azure Entra browser authentication. The configuration
+below remains the existing separate access-token verifier contract. Real tenant
+redirects/consent/assignment, browser token acquisition, enrollment, cookie/session
+posture, network and deployment evidence require a separately reviewed plan.
+Neither a working local login nor historical Entra launcher verification grants
+publication, financial or paid-execution authority to a new browser deployment.
+
 The existing OIDC verifier supports an explicit `entra_v2` profile for a single
 Microsoft public-cloud tenant. Generic `oidc` remains the default and retains its
 required `token_use=access` discriminator and configurable role mapping. The server

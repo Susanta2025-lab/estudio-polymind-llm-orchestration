@@ -1,5 +1,42 @@
 # PolyMind production security runbook
 
+## Phase 18 local Documents boundary — 14 November 2026
+
+The [completed Phase 18 local engineering scope](../evaluation/phase_18_engineering_completion_and_deferred_deployment.md)
+adds a dedicated authenticated **synthetic owning-operator** composition. Follow
+the [local operator guide](../operations/phase_18_local_document_demo.md) and
+[implemented API contracts](../operations/phase_18_operator_api.md). The static
+Helm instructions below remain a separate query-plane configuration; they are
+not an OIDC Documents deployment. Azure deployment was not performed and
+production readiness is not established. `AKS_NOT_REQUIRED` remains the initial
+document deployment decision; a private VM/Docker candidate requires separate
+resource/security/cost review.
+
+Native Streamlit code login uses loopback test identity, PKCE S256 and state/nonce;
+FastAPI verifies a separate API-audience access token. Exact operator enrollment,
+`PUBLICATION_MANAGE`, owning scope, current document/session/security epochs and
+publication generation remain independent requirements. Ordinary users must not
+receive operator permissions. API release guards run in session → security →
+publication order at actual ASGI sends; no database transaction spans inference.
+
+The gateway provides private local HTTPS, exact host/origin checks and Secure
+cookies; tested identity/token cookies are HttpOnly/SameSite=Lax. Native cookies
+are signed and browser-readable, not encrypted opaque server sessions. API-token
+expiry (15 minutes) is distinct from native identity-cookie persistence. Logout
+does not revoke every copied bearer; durable authority disable/epoch changes and
+workflow close/stop deny subsequent release. Delivered information cannot be
+recalled. Local automatic fixture login and ephemeral certificates are not real
+Entra authentication or publicly trusted production TLS.
+
+Keep runtime/secrets outside Git/build context. One locked API/runner process
+owns the private authorities, immutable objects and derived state. Coherent
+quiesced same-path restore must preserve consumed approvals, revocations and
+financial obligations. UNKNOWN remains reserved; no resets or invented refunds.
+Close/withdraw and supported logical metadata retirement do not prove physical
+deletion: `PURGE_PENDING` remains explicit. Public/confidential workloads require
+additional independent security/privacy review and production identity/session,
+isolation, retention and deployment evidence. No such acceptance is granted here.
+
 Scope update — 12 November 2026: the deployment instructions below describe the
 Helm chart's static-bearer control plane. The application also implements generic
 OIDC and an explicit [Entra v2 profile](entra_v2.md), with reference

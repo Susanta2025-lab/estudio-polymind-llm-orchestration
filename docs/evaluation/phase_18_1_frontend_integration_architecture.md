@@ -183,3 +183,27 @@ For release, `pilot.present/question` guarded sinks are necessary but insufficie
 | Withdrawal | Epoch tombstone, pilot session closure and conservative inventory | Close before UI reset; report retained originals/artifacts/answers/audit and PURGE_PENDING | Proven purge/tombstone replay across caches, indexes, object versions, provider retention and backups |
 
 Preserve API request/response formats and all legacy static/local workflows; preserve NDJSON versus upstream SSE separation. Do not introduce provider branches into UI/graph/RAG, rename config or relabel existing immutable scope/schema/profile identities. New factories must reuse `SecurityRuntime.authority/governance/admission`; per-browser databases/providers would bypass global limits. No browser can access Redis, Chroma, SQL, raw checkpoints, storage paths or cluster administration. This decision creates no public-service, HA, large-document or semantic-verification claim.
+
+## Implementation status — 14 November 2026
+
+This dated assessment and its NOT IMPLEMENTED tables above remain unchanged
+historical design evidence. Implementation commit
+`f7d091ad16a458c4d4a7403e3fe3ad2b47fafc67` now supplies the private synthetic
+Streamlit Documents view, native fixture OIDC login, all eleven operator routes,
+shared authorities, durable action mapping and single local runner. The
+[current architecture and operations guide](../operations/phase_18_local_document_demo.md)
+and [implemented API reference](../operations/phase_18_operator_api.md) document
+actual contracts, including differences from proposed response/error fields.
+The global v10 default, existing Chat/query/memory/NDJSON and separately composed
+authorized-analysis contracts remain preserved. The dedicated profile denies
+legacy query and direct analyze shortcuts.
+
+[Stage 18.2](../codex/reports/phase_18_2_implementation_and_verification.md)
+records local engineering/integration/offline PASS, actual Chromium and Docker
+verification, 3,128 tests and zero external provider attempts. Stage 18.3 closes
+documentation in that local scope per the
+[engineering decision](phase_18_engineering_completion_and_deferred_deployment.md).
+Native signed browser cookies are not opaque encrypted sessions; automatic
+loopback identity is not real Entra authentication. Public/confidential use,
+ordinary-user uploads, distributed authorities, actual Azure deployment,
+external-user acceptance and production readiness remain outside that result.

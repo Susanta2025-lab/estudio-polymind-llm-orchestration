@@ -1,5 +1,47 @@
 # PolyMind observability contract
 
+## Phase 18 local Documents signals — 14 November 2026
+
+The dedicated [Documents runtime](phase_18_local_document_demo.md) reuses this
+process-local metric library; it does not instantiate all legacy query-plane
+dependencies or add a monitoring stack. Its internal loopback API exposes
+unauthenticated `/health`, `/ready` and `/metrics`; these are not public browser
+routes or published Compose management ports. Inspect from the trusted host or
+inside the scoped container. Authenticated status is described in the
+[operator API reference](phase_18_operator_api.md).
+
+`/health` returns `status=alive`. `/ready` returns 200 `status=ready` or 503
+`status=unavailable`, with `worker`, `publication` (`idle`, `current`,
+`unavailable`), `stopped`, `unsettled`, `audit_full`; an exception returns 503
+`status=authority_unavailable`. It checks security/governance/admission/JWKS,
+pilot/action authority readiness, worker alive with heartbeat under 70 seconds,
+current expected publication, pilot stop, unresolved financial/ACTIVE/UNKNOWN
+operation history and audit capacity. Empty publication can be healthy idle.
+After restart an active generation needs fresh authorized Start/replica reload;
+readiness never loads or rebuilds it. Early readiness can also be unavailable
+until a valid JWKS cache is present; the verifier readiness check can refresh
+JWKS from the loopback issuer. Liveness alone does not establish serving
+readiness or absence of unresolved obligations.
+
+The readiness handler sets `component_readiness{component="document_operator"}`.
+Runner outcomes are `IDLE`, `ACTIVE`, `WAITING_ADMISSION`,
+`RECONCILIATION_REQUIRED`; they are process state, not durable job truth. The
+runner loops every two seconds and observes a durable 61-second provider-call
+spacing check. Protected status exposes job/step progress, timestamps and
+owning-scope synthetic financial totals/UNKNOWN counts. There are no new durable
+queue-age/lease/financial metric series or document IDs as labels. Legacy query
+histograms do not automatically become Documents SLIs.
+
+Status/health/readiness cause no inference, publication, index rebuild or
+settlement, although authentication/required audit can write authority records.
+On stale worker, unresolved use, audit exhaustion, missing objects or mismatched
+generation, inspect protected records and follow stop/recovery in the guide.
+Preserve UNKNOWN and consumed approvals; do not clear data to restore a green
+probe. Use only content-free categories/correlation, never tokens, questions,
+source text or raw packets in monitoring. Production disk/certificate/backup,
+availability and alert delivery remain future operator work; synthetic timings
+establish no production SLO.
+
 ## Architecture and ownership
 
 PolyMind exposes bounded Prometheus text at `GET /metrics` from every process.

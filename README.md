@@ -22,7 +22,37 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 13 November 2026
+## Current engineering status — 14 November 2026
+
+Phase 18 local engineering and documentation are complete within the **private,
+synthetic, owning-operator** scope: `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE`
+and `PHASE_18_3_DOCUMENTATION_PASS`. Operator administrative acceptance of the
+closure documents remains pending. The authenticated Streamlit Documents view
+supports approved source selection, durable processing, validated COMPLETE
+digests, explicit publication, canonical evidence/citations, selected-document
+Q&A and closure/withdrawal under local security and financial governance.
+Synthetic offline inference and a private Docker demonstration are supported.
+
+The [local operator guide](docs/operations/phase_18_local_document_demo.md) gives
+Python/Compose initialization, TLS/login, workflow and same-path backup/restore.
+The [implemented API reference](docs/operations/phase_18_operator_api.md) covers
+all eleven operator contracts. The [completion decision](docs/evaluation/phase_18_engineering_completion_and_deferred_deployment.md)
+records the exact baseline, evidence and deferred deployment obligations.
+`AKS_NOT_REQUIRED`; the initial cloud candidate remains a private Linux VM with
+Docker and persistent storage. `AZURE_DEPLOYMENT_NOT_PERFORMED` and
+`PRODUCTION_READINESS_NOT_ESTABLISHED` remain explicit. This is not a public SaaS,
+general upload portal or production multi-user deployment.
+
+Recorded Phase 18.2 verification: **3,128 passed** (2,192 unit / 936 integration,
+including 76 new tests), zero failures/errors/skips/pytest warnings, **1,130.78 s**;
+T01–T15 PASS in local scope. Actual Chromium authentication/workflow and local
+container checks are separate evidence, not extra pytest cases or new Stage 18.3
+runs. Implementation commit `f7d091ad16a458c4d4a7403e3fe3ad2b47fafc67` has
+[successful CI run 43543837534](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/runs/43543837534).
+The [historical implementation report](docs/codex/reports/phase_18_2_implementation_and_verification.md)
+retains its original uncommitted handoff statements; the closure decision records
+the subsequently committed baseline. Earlier Phase 17 results below retain their
+own scope and acceptance obligations.
 
 Phase 17 engineering is complete, including successful v11 offline validation and controlled Azure Foundry live evaluation. Independent human semantic review is deferred and remains a prerequisite for formal Phase 17 acceptance. Development may proceed to subsequent phases.
 
@@ -143,7 +173,8 @@ Final Response
 
 ## 2. Document-intelligence plane
 
-Implemented through Phase 17F:
+Core document services implemented through Phase 17, with the authenticated local
+operator integration completed in Phase 18:
 
 ```text
 PDF / Text
@@ -251,13 +282,22 @@ Streaming emits bounded `metadata`, `chunk`, `done` and sanitized `error` events
 
 ## Streamlit UI
 
-The Streamlit interface provides:
+The legacy Chat interface provides:
 
 - chat history;
 - source display;
 - route/model visualization;
 - session management;
 - streaming responses.
+
+The explicit synthetic Documents profile adds native OIDC login, verified
+operator context, approved text/PDF selection, backend job polling, COMPLETE
+digest/evidence presentation, publication, bounded Q&A, cancel/close/withdraw,
+logout and durable stop. Browser state holds display IDs/action keys; backend
+authorities own document, financial, publication and revocation truth. Native
+identity/token cookies are signed and browser-readable, not an encrypted opaque
+session vault. The local issuer/TLS are development fixtures; real Entra browser
+authentication and public/confidential use remain separately gated.
 
 ---
 
@@ -481,6 +521,14 @@ Production HA, durable Chroma storage, complete network isolation and broad prod
 
 For local Kubernetes validation, guarded Kind workflows remain under `deployment/kind/`.
 
+**AKS was previously validated during Phase 16, but is not required for the initial
+Phase 18 document application deployment.** Phase 18 verified local Docker only;
+conditional Kind workload validation was unavailable. The historical chart is not
+a deployment of the single-host Documents runtime. Current Azure VM sizing,
+regional prices, identity/networking and production restore/monitoring remain
+unverified; the [deployment status addendum](docs/evaluation/phase_18_1_azure_deployment_readiness.md#implementation-status--14-november-2026)
+preserves the private-VM candidate and separate review requirements.
+
 ---
 
 # Observability
@@ -591,6 +639,20 @@ estudio-polymind-llm-orchestration/
 ---
 
 # Quick start
+
+The commands below start the **legacy Chat/RAG** configuration. For authenticated
+Documents, use the [dedicated local guide](docs/operations/phase_18_local_document_demo.md).
+Its supported Python entrypoint, after activating the pinned environment, is:
+
+```bash
+python -m development.document_demo initialize /tmp/polymind-documents
+python -m development.document_demo serve /tmp/polymind-documents
+```
+
+Choose a new private runtime; open `https://localhost:9443` using only its local
+test certificate. Initialize refuses existing state. Approval/token/certificate
+lifetimes and restart reauthorization are detailed in the guide. Do not substitute
+`make dev` or expose internal loopback API/Streamlit ports for that profile.
 
 ## Clone
 
@@ -734,6 +796,7 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17G | Multi-User Security, Quotas & Cost Governance | ✅ PASS — local/reference scope |
 | 17H | 200–1000+ Page Reliability, Failure & Quality Validation | ENGINEERING_COMPLETE_REVIEW_DEFERRED — bounded offline/live evidence PASS; two human reviews and formal closure pending; representative production reliability unestablished |
 | 17I | External User Verification | Bounded engineering and all three development stages complete; actual external verification DEFERRED, formal acceptance PENDING; subsequent engineering permitted |
+| 18 | Secure Document Productization and Azure Deployment Readiness | 18.1 assessment COMPLETE; 18.2 local implementation/verification ENGINEERING PASS; 18.3 documentation/engineering closure COMPLETE in local synthetic scope, operator acceptance pending. `AKS_NOT_REQUIRED`; Azure deployment NOT PERFORMED; production readiness NOT ESTABLISHED |
 
 Overall Phase 17 status: `ENGINEERING_COMPLETE_REVIEW_DEFERRED`. The
 [acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
@@ -745,7 +808,12 @@ acceptance obligation. Exactly three formal development stages apply; deferred
 acceptance is an outstanding obligation, not a fourth stage. Historical reports
 retain their contemporaneous planned/not-started statements.
 
-After Phase 17, the planned direction is broader Azure productionization of the document pipeline, including durable cloud storage/state, distributed worker/admission infrastructure, identity hardening and production reliability controls.
+Phase 18's [local engineering decision](docs/evaluation/phase_18_engineering_completion_and_deferred_deployment.md)
+and [operator guide](docs/operations/phase_18_local_document_demo.md) provide the
+current handoff. Broader Azure productionization, shared cloud state/distributed
+workers, identity hardening and production reliability remain future work with
+their own reviewed scope. Exactly three formal Phase 18 stages apply; no further
+Phase 18 stage or new deployment authorization is created.
 
 ---
 
@@ -754,6 +822,11 @@ After Phase 17, the planned direction is broader Azure productionization of the 
 Detailed engineering evidence is retained in `docs/codex/reports/`.
 
 Current key reports:
+
+- [Phase 18.3 documentation and closure](docs/codex/reports/phase_18_3_documentation_and_closure.md)
+- [Phase 18 local engineering completion and deferred deployment](docs/evaluation/phase_18_engineering_completion_and_deferred_deployment.md)
+- [Phase 18.2 implementation and verification](docs/codex/reports/phase_18_2_implementation_and_verification.md)
+- [Phase 18.1 assessment](docs/codex/reports/phase_18_1_assessment.md)
 
 - [Phase 17I documentation and closure](docs/codex/reports/phase_17i_documentation_and_closure.md)
 - [Phase 17I engineering completion and deferred acceptance](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md)
@@ -791,6 +864,8 @@ The reports distinguish verified behavior from deferred production claims.
 
 The repository should **not** currently be interpreted as claiming:
 
+- actual Phase 18 Azure deployment, real Entra browser login or public SaaS acceptance;
+- unrestricted document uploads, confidential-data suitability or physical erasure;
 - production multi-user document authorization;
 - Azure Blob-backed canonical document storage;
 - a production distributed document-job database/queue;
@@ -853,8 +928,22 @@ Focus areas:
 
 **Status:** Active development — production-style portfolio platform
 
-**Current milestone:** `PHASE_17I_ENGINEERING_COMPLETE` and `PHASE_17I_DOCUMENTATION_COMPLETE` within bounded Option A; `PHASE_17I_EXTERNAL_VERIFICATION_DEFERRED`, `PHASE_17I_FORMAL_ACCEPTANCE_PENDING` and `SUBSEQUENT_ENGINEERING_PERMITTED`. [Phase 17I completion and handoff](docs/evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md). The earlier Phase 17A–17H reference engineering and controlled Azure v11 technical evaluation remain complete; separate human review is `DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2), with `PHASE_17_FORMAL_CLOSURE_PENDING`.
+**Current milestone:** `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE` and
+`PHASE_18_3_DOCUMENTATION_PASS`; operator administrative acceptance pending.
+[Phase 18 completion and handoff](docs/evaluation/phase_18_engineering_completion_and_deferred_deployment.md).
+`AKS_NOT_REQUIRED`, `AZURE_DEPLOYMENT_NOT_PERFORMED` and
+`PRODUCTION_READINESS_NOT_ESTABLISHED`. Phase 17I retains
+`PHASE_17I_ENGINEERING_COMPLETE`, `PHASE_17I_DOCUMENTATION_COMPLETE`,
+`PHASE_17I_EXTERNAL_VERIFICATION_DEFERRED`, `PHASE_17I_FORMAL_ACCEPTANCE_PENDING`
+and `SUBSEQUENT_ENGINEERING_PERMITTED`. Phase 17 engineering/live technical
+evidence remains complete; separate human review stays
+`DEFERRED_PENDING_TWO_INDEPENDENT_REVIEWERS` (0/2), with
+`PHASE_17_FORMAL_CLOSURE_PENDING`. No actual external participants are recorded.
 
-The strongest current capabilities are provider-neutral multi-LLM inference, hybrid RAG, shared memory, Kubernetes/Helm operations, Azure target validation, durable document processing, evidence-grounded long-document synthesis, managed inference integration, and coherent document retrieval publication with canonical citations.
+The strongest current capabilities are provider-neutral multi-LLM inference,
+hybrid RAG, shared memory, Kubernetes/Helm operations, historical Azure target
+validation, durable document processing, evidence-grounded synthesis, authorized
+publication/canonical citations and the locally verified authenticated Documents
+interface with synthetic inference and bounded selected-document Q&A.
 
 If you find the project useful, consider starring the repository.

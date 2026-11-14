@@ -189,3 +189,43 @@ Before any B test: operator approves exact resource list/region/SKU/count, runti
 After an approved run: deny new admission, close output sessions, drain/cancel jobs, preserve unsettled/UNKNOWN and replay markers, capture authorized audit/cost inventory and coherent backup, stop/deallocate only named dedicated compute, then verify state and **remaining** disks/snapshots/Blob/DB/Redis/endpoints/IP/LB/registry/log charges. [AKS stop/start documentation](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) explains compute deallocation and restart capacity risk. Scaling application pods to zero does not stop nodes. Stopped database/cluster/VM does not establish zero associated-service charges. Deletion/retention changes require explicit scoped approval; no global prune or deletion of unrelated resources. Cost budgets/alerts are lagged warnings, not a hard spend cap.
 
 Separate approvals remain required for Stage 18.2 implementation, any cloud activation/provisioning/deployment, issuer/consent/role changes, paid inference/credential use/RSA execution authorization, non-synthetic source/provider transmission/retention, external-user participation and public exposure. Local engineering may proceed after its own review while Phase 17 semantic review and participant verification remain deferred. No deployment approval is requested or consumed by this assessment.
+
+## Implementation status — 14 November 2026
+
+The assessment/pricing observations above remain dated 13 November evidence;
+no current regional price or Azure inventory was obtained during closure.
+The [Stage 18.2 report](../codex/reports/phase_18_2_implementation_and_verification.md)
+now establishes local application implementation, synthetic frontend integration,
+native local authentication, durable processing and Docker validation. The
+implementation is committed as `f7d091ad16a458c4d4a7403e3fe3ad2b47fafc67`, with
+[successful CI run 43543837534](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/runs/43543837534).
+The [Stage 18 completion decision](phase_18_engineering_completion_and_deferred_deployment.md)
+records completed local engineering/documentation, with operator administrative
+acceptance pending. The [operator guide](../operations/phase_18_local_document_demo.md)
+documents the single-host dedicated Compose profile and path-sensitive authority
+initialization at `/runtime/state`.
+
+**AKS was previously validated during Phase 16, but is not required for the initial
+Phase 18 document application deployment.** Preserve `AKS_NOT_REQUIRED` and the
+selected small private Linux VM/Docker/persistent-storage candidate. No VM or
+other Azure service was provisioned or deployed in Phase 18.2/18.3:
+`AZURE_DEPLOYMENT_NOT_PERFORMED`. Historical Helm/AKS query-plane success is not
+an OIDC durable-document deployment. The Stage 18.2 image's approximately 3.04 GB
+size is historical local evidence, not a new VM memory/storage sizing result.
+
+| Completed local scope | Still not completed |
+| --- | --- |
+| Authenticated Streamlit/API with loopback synthetic issuer/TLS | Real Azure Entra browser authentication, approved production sessions/certificates and enrollment |
+| Durable one-host runner, authorities, objects and derived fixture index | Actual Azure VM, final aggregate memory/storage sizing, Azure networking/identity |
+| Local Docker/private mount/single-writer/restart checks | Current regional resource pricing, reviewed resource window/cost/authorization plan |
+| Quiesced coherent same-path local restore | Production backup/recovery, monitored availability and disaster recovery |
+| Existing bounded metrics/readiness and private synthetic operation | Production monitoring/alerts, public access and distributed document authorities |
+
+`PRODUCTION_READINESS_NOT_ESTABLISHED`. The current production settings still
+require OpenAI-compatible inference, Redis, Chroma HTTP, authentication, disabled
+docs and offline model artifacts; the synthetic development profile cannot
+bypass them. A future private VM is a candidate requiring its own reviewed
+resource, security, cost and authorization plan, measured sizing/locking,
+private access/TLS, persistence/restore, operations and residual-charge controls.
+No cloud service, paid validation requirement or new formal Phase 18 stage is
+introduced by documentation closure.

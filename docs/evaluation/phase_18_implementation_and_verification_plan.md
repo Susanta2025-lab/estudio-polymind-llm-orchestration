@@ -2,6 +2,9 @@
 
 13 November 2026. Proposed bounded implementation specification, not implementation authorization or a Codex execution prompt.
 
+Current disposition: see [14 November implementation reconciliation](#implementation-status--14-november-2026).
+The original assessment-era tables below remain historical requirements, not current unfinished-stage claims.
+
 ## Exactly three formal stages
 
 | Stage | Scope | Status at this handoff |
@@ -144,3 +147,46 @@ On publication failure retain the last consistent generation only if current doc
 ## Stage 18.3 handoff and closure scope
 
 After independently authorized Stage 18.2, Stage 18.3 should document actual implemented behavior/configuration/login setup, local fixture/TLS/run/recovery commands, API contracts, retention and threat limitations, exact tests and costs, operational stop/restore, screenshots/evidence without secrets, and unchanged Phase 17 deferred acceptance. Update README and relevant security/deployment runbooks to implemented capability only; preserve major prompt/report artifacts. Distinguish local completion, any separately approved Azure result and unestablished production readiness. Do not perform new implementation, external-user verification or paid probes to manufacture closure. No implementation prompt is produced in Stage 18.1.
+
+## Implementation status — 14 November 2026
+
+The historical plan above is reconciled against implementation commit
+`f7d091ad16a458c4d4a7403e3fe3ad2b47fafc67` and the unchanged
+[Stage 18.2 report](../codex/reports/phase_18_2_implementation_and_verification.md).
+The [Stage 18.3 report](../codex/reports/phase_18_3_documentation_and_closure.md)
+maps every acceptance gate and verification group. Current contracts are in the
+[implemented API reference](../operations/phase_18_operator_api.md); proposed
+DTO/error fields above must not override actual source behavior.
+
+| Formal stage / boundary | Current status |
+| --- | --- |
+| 18.1 Assessment | COMPLETE — `PHASE_18_1_ASSESSMENT_COMPLETE` |
+| 18.2 Implementation and Verification | ENGINEERING PASS; local integration and offline verification PASS |
+| 18.3 Documentation and Closure | `PHASE_18_3_DOCUMENTATION_PASS`; operator administrative acceptance pending |
+| Bounded engineering | `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE` |
+| Cloud / production | `AKS_NOT_REQUIRED`; `AZURE_DEPLOYMENT_NOT_PERFORMED`; `PRODUCTION_READINESS_NOT_ESTABLISHED` |
+
+Recorded final verification is **3,128 passed** (2,192 unit / 936 integration,
+76 new cases), zero failures/errors/skips/pytest warnings, **1,130.78 seconds**.
+Required local T01–T15 pass, including separate actual Chromium/browser and
+Docker evidence. Conditional live Kind was unavailable; historical Phase 16 AKS
+is not a Phase 18 deployment. Exact-commit
+[CI run 43543837534](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/runs/43543837534)
+succeeded. Stage 18.3 inspected preservation/source/documentation without
+rerunning regression, activating containers or executing inference.
+
+The required local integration now exists: native fixture login, strict enrolled
+operator API, shared authorities, independent local runner, durable actions,
+COMPLETE publication, canonical evidence/Q&A, actual-send revocation, closure
+and coherent same-path restore. The [local guide](../operations/phase_18_local_document_demo.md)
+documents its exact Python/Compose runtime, signed-cookie limitations,
+reauthorization, uncertainty, backup and residual retention.
+
+All conditional cloud/execution and deferred production/external requirements
+remain deferred at their original boundaries. The candidate remains a private
+Linux VM with Docker/persistent storage; no Azure deployment, current pricing,
+final VM sizing, real Entra browser authentication, distributed authorities or
+production acceptance is established. Human reviews remain 0/2 and actual
+external participants 0. The [completion decision](phase_18_engineering_completion_and_deferred_deployment.md)
+owns the current local engineering disposition. Exactly three formal stages
+remain; no new stage or execution/deployment authority is introduced.
