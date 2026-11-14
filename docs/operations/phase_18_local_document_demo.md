@@ -6,6 +6,53 @@ Reconciled 14 November 2026 against implementation commit `f7d091ad16a458c4d4a74
 
 The existing Chat/RAG/LangGraph plane remains available under its own legacy configuration. Documents is an explicit development profile, selected by `DOCUMENTS_PROFILE=synthetic`; `DOCUMENTS_API_URL` defaults to `http://127.0.0.1:8001`. Its lifecycle command supplies these settings and disables implicit dotenv loading. Merely choosing that UI setting does not compose an API runtime. Use the supported lifecycle below rather than `make dev` or the default `api.app:app` entrypoint for Documents.
 
+The frontend view is `ui/documents_view.py`. Keep that name distinct from the
+canonical backend `documents/` package: Streamlit prepends its script directory
+to Python's search path. The post-closure correction and regression evidence are
+recorded in the [compatibility report](../codex/reports/phase_18_postclosure_streamlit_compatibility_fix.md).
+
+### Isolated legacy local launch
+
+`DOCUMENTS_PROFILE=legacy` selects Chat; it does not override authentication,
+governance or inference settings inherited from `.env` or the shell. In particular,
+an OIDC configuration intentionally refuses the legacy query execution path.
+`Required security authority unavailable` means authority construction failed;
+an HTTP 200 from `/` is only liveness. Inspect `/ready` separately. A recorded
+pricing-catalog mismatch requires operator reconciliation, never editing an
+existing ledger or bypassing its checks.
+
+For a disposable, loopback-only legacy session with the historical local auth
+default, use a new working directory and an environment allowlist. From the
+repository root, keep the values below in the same terminal and run the two
+commands in separate terminals with those values set:
+
+```bash
+repo="$PWD"
+python_bin="$(command -v python)"
+legacy_root="$(mktemp -d /tmp/polymind-legacy-XXXXXX)"
+ln -s "$repo/ui" "$legacy_root/ui"
+
+# API (first terminal; stop with Ctrl-C)
+(cd "$legacy_root" && env -i PATH="$PATH" PYTHONPATH="$repo" \
+  DOCUMENTS_PROFILE=legacy DEPLOYMENT_ENV=local \
+  "$python_bin" -m uvicorn api.app:app --host 127.0.0.1 --port 8001)
+
+# Chat (second terminal, using the same repo/python_bin/legacy_root values)
+(cd "$legacy_root" && env -i PATH="$PATH" PYTHONPATH="$repo" \
+  DOCUMENTS_PROFILE=legacy DEPLOYMENT_ENV=local \
+  "$python_bin" -m streamlit run "$repo/ui/app.py" \
+  --server.address 127.0.0.1 --browser.gatherUsageStats false)
+```
+
+This uses local Ollama and a disposable local memory/index location. Models and
+a populated retrieval index must already be available for relevant queries and
+readiness; startup does not establish successful real-model execution. The clean
+directory prevents dotenv loading, and the UI symlink preserves its relative
+asset paths. This recipe does not configure production authentication or change
+the authenticated synthetic lifecycle below. Retain or dispose of that exact
+temporary directory according to the data actually used; do not apply it to
+historical authorities.
+
 ```mermaid
 flowchart TD
   B[Owning operator browser] --> G[Local HTTPS gateway :9443]

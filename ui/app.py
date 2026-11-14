@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 if settings.DOCUMENTS_PROFILE == "synthetic":
-    from ui.documents import render
+    from ui.documents_view import render
     render(settings.DOCUMENTS_API_URL)
     st.stop()
 
