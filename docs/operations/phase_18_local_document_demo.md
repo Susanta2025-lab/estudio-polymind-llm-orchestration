@@ -21,37 +21,11 @@ an HTTP 200 from `/` is only liveness. Inspect `/ready` separately. A recorded
 pricing-catalog mismatch requires operator reconciliation, never editing an
 existing ledger or bypassing its checks.
 
-For a disposable, loopback-only legacy session with the historical local auth
-default, use a new working directory and an environment allowlist. From the
-repository root, keep the values below in the same terminal and run the two
-commands in separate terminals with those values set:
-
-```bash
-repo="$PWD"
-python_bin="$(command -v python)"
-legacy_root="$(mktemp -d /tmp/polymind-legacy-XXXXXX)"
-ln -s "$repo/ui" "$legacy_root/ui"
-
-# API (first terminal; stop with Ctrl-C)
-(cd "$legacy_root" && env -i PATH="$PATH" PYTHONPATH="$repo" \
-  DOCUMENTS_PROFILE=legacy DEPLOYMENT_ENV=local \
-  "$python_bin" -m uvicorn api.app:app --host 127.0.0.1 --port 8001)
-
-# Chat (second terminal, using the same repo/python_bin/legacy_root values)
-(cd "$legacy_root" && env -i PATH="$PATH" PYTHONPATH="$repo" \
-  DOCUMENTS_PROFILE=legacy DEPLOYMENT_ENV=local \
-  "$python_bin" -m streamlit run "$repo/ui/app.py" \
-  --server.address 127.0.0.1 --browser.gatherUsageStats false)
-```
-
-This uses local Ollama and a disposable local memory/index location. Models and
-a populated retrieval index must already be available for relevant queries and
-readiness; startup does not establish successful real-model execution. The clean
-directory prevents dotenv loading, and the UI symlink preserves its relative
-asset paths. This recipe does not configure production authentication or change
-the authenticated synthetic lifecycle below. Retain or dispose of that exact
-temporary directory according to the data actually used; do not apply it to
-historical authorities.
+Use `make chat-api` and `make chat-ui` (or `make chat-dev`) for the isolated
+local Ollama workflow. The [local launch guide](local_applications.md) documents
+the interpreter-bound environment allowlist, private working directory, exact
+model names, local memory/index paths and readiness requirements. These targets
+do not change the authenticated synthetic lifecycle below.
 
 ```mermaid
 flowchart TD
@@ -91,11 +65,13 @@ The existing ML stack is substantial; reuse it when present. Authentication is p
 Choose a **new, nonexistent private runtime** outside the repository. `/tmp` is appropriate for disposable local tests, not durable archival custody:
 
 ```bash
-python -m development.document_demo initialize /tmp/polymind-documents
-python -m development.document_demo serve /tmp/polymind-documents
+make docs-init DOCS_RUNTIME=/tmp/polymind-documents-new
+make docs-serve DOCS_RUNTIME=/tmp/polymind-documents-new
 ```
 
-Initialize creates the directory with restrictive permissions, ephemeral signing/TLS material, native Streamlit auth configuration, approved synthetic text/PDF fixtures and all authorities. It refuses an existing directory. It is not a reset or migration command. Do not edit approvals, prices, paths or dates in an initialized runtime. `DEPLOYMENT_ENV=production` is rejected by the CLI and runtime; the synthetic UI profile is also rejected by production settings.
+These Make targets delegate to `python -m development.document_demo initialize/serve`
+with the selected project Python and an isolated environment. `DOCS_RUNTIME` is
+required. Initialize creates the directory with restrictive permissions, ephemeral signing/TLS material, native Streamlit auth configuration, approved synthetic text/PDF fixtures and all authorities. It refuses an existing directory. It is not a reset or migration command. Do not edit approvals, prices, paths or dates in an initialized runtime. `DEPLOYMENT_ENV=production` is rejected by the CLI and runtime; the synthetic UI profile is also rejected by production settings.
 
 Open **`https://localhost:9443`**. Use `localhost` exactly because host/origin and callback bindings are exact. Trust only the certificate generated for this disposable runtime, `tls.crt`, through a narrowly scoped browser testing exception or reviewed test trust. Verify its origin locally; never disable TLS verification globally or install an unknown CA system-wide. Internal requests explicitly verify this test certificate. Private keys, client/cookie secrets and identity configuration must remain private; do not print, paste, commit or share them.
 
@@ -248,3 +224,51 @@ Retain original test state/snapshots privately while audit or financial/reconcil
 ## Deployment handoff
 
 `AKS_NOT_REQUIRED`. The selected initial cloud candidate remains a small private Linux VM with Docker and persistent local storage, subject to a separately reviewed resource/security/cost/authorization plan. **AKS was previously validated during Phase 16, but is not required for the initial Phase 18 document application deployment.** Azure deployment has not been performed; sizing, pricing, real Entra browser authentication, network/identity, production backup/monitoring/availability and distributed authorities remain unestablished. See the [deployment reconciliation](../evaluation/phase_18_1_azure_deployment_readiness.md#implementation-status--14-november-2026).
+
+## Saved answers and reauthentication
+
+Accepted Q&A results appear under **Saved Questions and Answers**, below the
+complete digest. Every three-second processing poll reloads them from the
+server-authorized `GET /digest`. A normal page refresh reloads the selected
+session using the opaque `document_session` UUID in the page URL, then rechecks
+server authorization before displaying any saved answer. **Existing session ID**
+also supports manual reconnection. Polling never resubmits a question or
+invokes inference. Previously the UI displayed the POST response only during
+form submission, so the next fragment rerun removed it even though backend
+persistence had succeeded. The separate saved section now shows each accepted
+answer once, including its evidence status, canonical citation/source fields,
+semantic-support label and limitations. Provenance verification does not certify
+semantic entailment. Protected packets are not stored in frontend session state
+or browser local storage. The UUID URL hint is not a credential and grants no
+access; Clear frontend display and logout remove it. No token or protected
+content is placed in the URL.
+
+An API login token lasts **900 seconds**, while the native Streamlit identity
+cookie can last longer. An expired/invalid token therefore does not necessarily
+mean the document session has closed. On an authentication failure the UI removes
+protected output and stops API retries. Privately record the opaque session ID
+shown on the reauthentication screen, then select **Reauthenticate**. This uses
+native Streamlit logout to clear the identity cookie, without calling document
+Close or Withdraw. Select **Log in**, enter the recorded ID in **Existing session
+ID**, and select **Reconnect**. Native authentication redirects start a fresh
+frontend session; the ID is deliberately communicated for manual reconnection,
+not placed in a credential store. Native logout clears the URL reconnect hint.
+An ID alone grants no access.
+
+Reconnect rechecks the current identity, owning operator/tenant, session status,
+permissions and active publication generation on the server. Previously accepted
+answers are read again only if still authorized. Other API failures also remove
+protected output; **Retry authorization** requests fresh validation without
+repeating processing or publication. A refresh automatically revalidates the
+UUID hint; after native logout/login use the recorded ID to reconnect. Access loss is detected on the next server request/poll;
+already viewed content cannot be recalled from an operator's memory or copies.
+
+Reauthentication leaves the backend session open unless it has independently
+closed, expired, been withdrawn or lost authorization. It does **not** renew
+source approvals, the **59-minute** session approval, the **600-second** deadline
+from initial Start, consumed question slots, provider capacity or financial
+budgets. A new token cannot make an expired approval or exhausted allowance
+usable. Do not repeat Start, digestion or publication as a login remedy.
+**Log out** retains its explicit attempt to close the selected document session;
+**Close session** and **Withdraw session** retain their existing behavior. Use
+**Reauthenticate** when the intention is to sign in again without closing it.

@@ -1,4 +1,6 @@
 """Protected client confidentiality, lifecycle and strict operator schemas."""
+import os
+
 import pytest
 
 from api.operator import CloseSession, CreateSession, PublishSession, Question
@@ -25,6 +27,7 @@ def test_document_client_closes_and_sanitizes(status):
     else:
         with pytest.raises(DocumentClientError) as error:
             client.call("GET", "/context")
+        assert error.value.status_code == status
         assert "secret" not in str(error.value)
     assert closed == [True]
     assert calls[0][1]["headers"] == {"Authorization": "Bearer secret-test-token"}
@@ -51,7 +54,12 @@ def test_backup_cannot_recurse_into_its_runtime(tmp_path, monkeypatch):
     from development.document_demo.__main__ import main
     monkeypatch.setattr("sys.argv", ["document_demo", "backup", str(tmp_path),
                                     "--destination", str(tmp_path / "recursive-copy")])
-    with pytest.raises(SystemExit) as error:
-        main()
-    assert error.value.code == 2
-    assert not (tmp_path / "recursive-copy").exists()
+    # The CLI owns its process umask; an in-process test must restore ours.
+    original_umask = os.umask(0o077)
+    try:
+        with pytest.raises(SystemExit) as error:
+            main()
+        assert error.value.code == 2
+        assert not (tmp_path / "recursive-copy").exists()
+    finally:
+        os.umask(original_umask)

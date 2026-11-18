@@ -6,6 +6,7 @@ Run: python -m tests.browser.document_journey
 """
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -82,6 +83,15 @@ def run():
             page.get_by_text('"evidence_status":"available"', exact=False).first.wait_for(timeout=15000)
             assert "document_version_id" in page.inner_text("body")
             assert "not_evaluated" in page.inner_text("body")
+            page.get_by_text("Saved Questions and Answers", exact=True).wait_for()
+            session_text = page.get_by_text(re.compile(r"^Session [0-9a-f-]{36}$")).inner_text()
+            session_id = session_text.removeprefix("Session ")
+            page.wait_for_timeout(6500)  # At least two real three-second fragment polls.
+            assert '"answer_id"' in page.inner_text("body")
+            page.reload()
+            assert "document_session=" + session_id in page.url
+            page.get_by_text("Saved Questions and Answers", exact=True).wait_for()
+            assert '"answer_id"' in page.inner_text("body")
             page.get_by_role("button", name="Withdraw session", exact=True).click()
             page.get_by_text('"retention":"PURGE_PENDING"', exact=False).first.wait_for()
             evidence["complete_journey"] = True

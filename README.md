@@ -649,6 +649,12 @@ python -m development.document_demo initialize /tmp/polymind-documents
 python -m development.document_demo serve /tmp/polymind-documents
 ```
 
+Makefile equivalents are `make docs-init DOCS_RUNTIME=/tmp/polymind-documents-new`
+and `make docs-serve DOCS_RUNTIME=/tmp/polymind-documents-new`. For isolated local
+Ollama Chat, use `make chat-api` and `make chat-ui`, or `make chat-dev`. See the
+[local launch guide](docs/operations/local_applications.md) for interpreter
+selection, private runtime/index paths, readiness, shutdown and port conflicts.
+
 Choose a new private runtime; open `https://localhost:9443` using only its local
 test certificate. Initialize refuses existing state. Approval/token/certificate
 lifetimes and restart reauthorization are detailed in the guide. Do not substitute

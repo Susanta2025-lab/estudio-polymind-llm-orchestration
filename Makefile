@@ -3,6 +3,11 @@
 # Multi-LLM RAG & Agent Orchestration Platform
 # ==========================================
 
+PYTHON ?= python
+LOCAL_LAUNCHER := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))development/local_apps.py
+
+.PHONY: chat-api chat-ui chat-dev docs-init docs-serve
+
 .PHONY: \
 	install \
 	api \
@@ -46,26 +51,29 @@ install:
 
 # FastAPI backend
 api:
-	uvicorn api.app:app \
+	$(PYTHON) -m uvicorn api.app:app \
 	--reload \
 	--host 0.0.0.0 \
 	--port 8001
 
 # Streamlit UI
 ui:
-	streamlit run ui/app.py \
+	$(PYTHON) -m streamlit run ui/app.py \
 	--server.address 0.0.0.0 \
 	--server.port 8501
 
 # Run API + UI together
 dev:
-	uvicorn api.app:app \
-	--reload \
-	--host 0.0.0.0 \
-	--port 8001 & \
-	streamlit run ui/app.py \
-	--server.address 0.0.0.0 \
-	--server.port 8501
+	@exec "$(PYTHON)" "$(LOCAL_LAUNCHER)" dev
+
+# Explicit isolated local development; historical api/ui/dev keep their config.
+chat-api chat-ui chat-dev:
+	@exec "$(PYTHON)" "$(LOCAL_LAUNCHER)" $@
+
+# Export values as data, never interpolate operator paths into shell code.
+export DOCS_RUNTIME CHAT_RUNTIME CHAT_CHROMA_PATH CHAT_CORPUS_VERSION CHAT_HF_HOME CHAT_MODEL_ARTIFACT_DIR
+docs-init docs-serve:
+	@exec "$(PYTHON)" "$(LOCAL_LAUNCHER)" $@
 
 
 # ==========================================
@@ -204,9 +212,24 @@ help:
 	@echo "========================="
 	@echo ""
 	@echo "Applications:"
-	@echo "  make api              Start FastAPI backend"
-	@echo "  make ui               Start Streamlit UI"
-	@echo "  make dev              Run API + UI"
+	@echo "  make api              Historical configured API (including repository .env)"
+	@echo "  make ui               Historical configured Streamlit frontend"
+	@echo "  make dev              Supervise the historical configured API + UI"
+	@echo "  make chat-api         Isolated local Ollama API at 127.0.0.1:8001"
+	@echo "  make chat-ui          Matching Chat UI at http://127.0.0.1:8501"
+	@echo "  make chat-dev         Supervise both Chat services; Ctrl-C stops both"
+	@echo "  make docs-init DOCS_RUNTIME=/tmp/NEW-private-directory"
+	@echo "                        Initialize a NEW synthetic Documents runtime"
+	@echo "  make docs-serve DOCS_RUNTIME=/tmp/NEW-private-directory"
+	@echo "                        Serve authenticated Documents at https://localhost:9443"
+	@echo "  PYTHON=/path/to/python Select project interpreter (default: python)"
+	@echo "  CHAT_RUNTIME          Private directory outside repo (default: /tmp/polymind-chat-UID)"
+	@echo "  CHAT_CHROMA_PATH      Existing local index (default: CHAT_RUNTIME/chroma_db)"
+	@echo "  CHAT_CORPUS_VERSION   Published index version (default: development)"
+	@echo "  CHAT_HF_HOME          Existing offline HF cache (default: ~/.cache/huggingface)"
+	@echo "  CHAT_MODEL_ARTIFACT_DIR  Optional existing embedding/reranker artifact directory"
+	@echo "  Stop with Ctrl-C. Chat and Documents share 8001/8501; launch separately."
+	@echo "  Guide: docs/operations/local_applications.md"
 	@echo ""
 	@echo "Installation:"
 	@echo "  make install          Install dependencies"

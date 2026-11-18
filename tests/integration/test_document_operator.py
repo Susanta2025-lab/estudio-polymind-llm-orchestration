@@ -353,3 +353,65 @@ def test_publication_replay_conflict_is_409_without_republication(operator_env):
     response = client.post(f"/documents/operator/sessions/{session}/publish", json={"expected_job_id": job})
     assert response.status_code == 409
     assert transport.attempts == attempts
+
+
+def test_saved_answers_survive_token_expiry_and_authorized_reconnect(operator_env):
+    _, _, _, _, transport, _, client, token, clock, _ = operator_env
+    session, _ = finish(operator_env)
+    prefix = f"/documents/operator/sessions/{session}"
+    clock[0] += 61
+    answer = client.post(prefix + "/questions", json={"query": "What valve inspection is required?",
+                         "request_key": "reauth-question-0001"})
+    assert answer.status_code == 200
+    before = client.get(prefix).json()
+    attempts = transport.attempts
+    client.headers["Authorization"] = "Bearer " + token(exp=1)
+    assert client.get(prefix + "/digest").status_code == 401
+    client.headers["Authorization"] = "Bearer " + token(sub="foreign-operator")
+    assert client.get(prefix + "/digest").status_code == 403
+    client.headers["Authorization"] = "Bearer " + token()
+    assert client.get("/documents/operator/context").status_code == 200
+    after = client.get(prefix).json()
+    assert after["session_state"] == before["session_state"] == "OPEN"
+    assert after["questions_used"] == before["questions_used"] == 1
+    assert after["generation"] == before["generation"]
+    for _ in range(3):
+        assert client.get(prefix + "/digest").json()["answers"] == [answer.json()]
+    assert transport.attempts == attempts
+    client.post(prefix + "/close", json={"withdrawal": True})
+    client.headers["Authorization"] = "Bearer " + token()
+    assert client.get(prefix + "/digest").status_code == 403
+    assert transport.attempts == attempts
+
+
+@pytest.mark.parametrize("boundary", ["deadline", "approval", "revoked", "questions"])
+def test_reauthentication_does_not_renew_execution_authority(operator_env, boundary):
+    _, _, workflow, _, transport, principal, client, token, clock, _ = operator_env
+    session, _ = finish(operator_env)
+    prefix = f"/documents/operator/sessions/{session}"
+    before = client.get(prefix).json()
+    if boundary == "deadline":
+        clock[0] += 601
+    elif boundary == "approval":
+        clock[0] = max(a.expires_at.timestamp() for a in workflow.approvals) + 1
+    elif boundary == "revoked":
+        workflow.pilot.authority.tombstone(principal, workflow.pilot.sources["synthetic-1"].document_id)
+    else:
+        for i in range(3):
+            clock[0] += 61
+            response = client.post(prefix + "/questions", json={"query": "What valve inspection is required?",
+                                   "request_key": f"bounded-question-{i:04d}"})
+            assert response.status_code == 200, response.text
+    attempts = transport.attempts
+    client.headers["Authorization"] = "Bearer " + token()
+    response = client.post(prefix + "/questions", json={"query": "What valve inspection is required?",
+                           "request_key": "after-reauth-question-0001"})
+    expected = {"deadline": 429, "approval": 409, "revoked": 403, "questions": 429}[boundary]
+    assert response.status_code == expected, response.text
+    assert transport.attempts == attempts
+    if boundary in {"approval", "revoked"}:
+        assert client.get(prefix + "/digest").status_code == expected
+    else:
+        after = client.get(prefix).json()
+        assert after["generation"] == before["generation"]
+        assert after["questions_used"] == (3 if boundary == "questions" else 0)

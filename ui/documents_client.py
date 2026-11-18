@@ -3,7 +3,9 @@ import requests
 
 
 class DocumentClientError(RuntimeError):
-    pass
+    def __init__(self, message, *, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class DocumentsClient:
@@ -22,7 +24,7 @@ class DocumentsClient:
                 raise DocumentClientError({401: "Login expired. Log in again.", 403: "Access denied.",
                     409: "Action requires reconciliation or conflicts with recorded state.",
                     422: "Source or action is unsupported.", 429: "Execution limit or admission capacity reached.",
-                    503: "Document service unavailable."}.get(status, "Document request failed."))
+                    503: "Document service unavailable."}.get(status, "Document request failed."), status_code=status)
             return response.json()
         except (requests.RequestException, ValueError):
             raise DocumentClientError("Document service unavailable.") from None
