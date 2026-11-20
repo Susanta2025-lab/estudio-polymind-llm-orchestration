@@ -15,15 +15,26 @@ def stream_query(
     timeout: float,
     *,
     post: Callable = requests.post,
+    access_token: str | None = None,
+    request_key: str | None = None,
 ) -> Iterator[Dict]:
     """Issue exactly one API request and parse its NDJSON event stream."""
     response = None
     try:
+        payload = {"query": query, "session_id": session_id}
+        options = {}
+        if request_key is not None:
+            payload['request_key'] = request_key
+        if access_token is not None:
+            if not access_token or any(c.isspace() for c in access_token):
+                raise APIStreamError("Authentication required.")
+            options = {'headers': {'Authorization': 'Bearer ' + access_token}, 'allow_redirects': False}
         response = post(
             url,
-            json={"query": query, "session_id": session_id},
+            json=payload,
             stream=True,
             timeout=timeout,
+            **options,
         )
         response.raise_for_status()
         for line in response.iter_lines(decode_unicode=True):

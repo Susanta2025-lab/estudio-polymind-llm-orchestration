@@ -97,6 +97,10 @@ def operator_router():
     def publish(session_id: UUID, body: PublishSession, request: Request):
         return deliver(request, lambda w, p: w.publish(p, session_id, UUID(body.expected_job_id)), session_id, active=True)
 
+    @router.post("/sessions/{session_id}/reload")
+    def reload(session_id: UUID, request: Request, body: EmptyAction | None = None):
+        return deliver(request, lambda w, p: w.reload(p, session_id), session_id, active=True)
+
     @router.get("/sessions/{session_id}/digest")
     def digest(session_id: UUID, request: Request):
         return deliver(request, lambda w, p: w.digest(p, session_id), session_id, active=True)

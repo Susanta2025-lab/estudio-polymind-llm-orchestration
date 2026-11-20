@@ -33,7 +33,7 @@ from documents.pilot.models import (
     PilotError,
     PilotPolicy,
     ReviewFinding,
-    SessionApproval,
+    parse_session_approval,
     SourceApproval,
 )
 from documents.publication.analysis import AnalysisRequest, DocumentAnalysis
@@ -170,7 +170,7 @@ class SupervisedPilot:
 
     def create_session(self, principal, approval):
         self._operator(principal)
-        approval = SessionApproval.model_validate(approval.model_dump())
+        approval = parse_session_approval(approval.model_dump())
         source = self.sources.get(approval.source_approval)
         now = self.clock()
         if (

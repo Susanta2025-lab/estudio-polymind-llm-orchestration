@@ -9,8 +9,8 @@ from tools.calculator import calculate
 from tools.datetime_tool import current_time
 
 
-def conversation_history(session_id: str, memory_store: ConversationMemoryStore = None) -> str:
-    _legacy_only()
+def conversation_history(session_id: str, memory_store: ConversationMemoryStore = None, *, execution=None) -> str:
+    _legacy_only(execution)
     store = memory_store or get_memory_store()
     history = store.get_history(session_id)
     return "".join(
@@ -19,8 +19,8 @@ def conversation_history(session_id: str, memory_store: ConversationMemoryStore 
     )
 
 
-def direct_prompt(query: str, session_id: str, memory_store: ConversationMemoryStore = None) -> str:
-    return build_direct_prompt(conversation_history(session_id, memory_store), query)
+def direct_prompt(query: str, session_id: str, memory_store: ConversationMemoryStore = None, *, execution=None) -> str:
+    return build_direct_prompt(conversation_history(session_id, memory_store, **({} if execution is None else {"execution": execution})), query)
 
 
 def rag_prompt_and_sources(
@@ -29,8 +29,12 @@ def rag_prompt_and_sources(
     retrieve: Callable = None,
     rerank_documents: Callable = None,
     memory_store: ConversationMemoryStore = None,
+    execution=None,
 ) -> Tuple[str, str, List[Dict]]:
-    _legacy_only()
+    _legacy_only(execution)
+    if execution is not None:
+        retrieve = execution.retrieve
+        rerank_documents = lambda q, docs, top_k: docs[:top_k]
     if retrieve is None:
         from rag.hybrid_retriever import hybrid_retrieve
 
@@ -42,7 +46,7 @@ def rag_prompt_and_sources(
     documents = retrieve(query)
     documents = rerank_documents(query, documents, top_k=settings.RERANK_TOP_K)
     context = "\n\n".join(document["text"] for document in documents[:3])
-    prompt = build_rag_prompt(conversation_history(session_id, memory_store), context, query)
+    prompt = build_rag_prompt(conversation_history(session_id, memory_store, **({} if execution is None else {"execution": execution})), context, query)
     return prompt, context, documents
 
 
@@ -55,12 +59,19 @@ def tool_answer(query: str) -> str:
     return "Tool unavailable."
 
 
-def persist_exchange(query: str, answer: str, session_id: str, memory_store: ConversationMemoryStore = None) -> None:
-    _legacy_only()
+def persist_exchange(query: str, answer: str, session_id: str, memory_store: ConversationMemoryStore = None, *, execution=None) -> None:
+    _legacy_only(execution)
     (memory_store or get_memory_store()).append_exchange(session_id, query, answer)
 
 
-def _legacy_only():
+def _legacy_only(execution=None):
+    if execution is not None:
+        from security.chat import ChatContext
+        if type(execution) is not ChatContext:
+            from security.models import SecurityError
+            raise SecurityError()
+        execution.check()
+        return
     if settings.authentication_mode == 'oidc_jwt':
         from security.models import SecurityError
         raise SecurityError('unsupported_execution')

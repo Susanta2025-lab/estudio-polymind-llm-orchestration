@@ -26,32 +26,32 @@ def create_model_router_node(provider: InferenceProvider) -> Callable:
     return model_router_node
 
 
-def create_direct_llm_node(provider: InferenceProvider, memory_store: ConversationMemoryStore) -> Callable:
+def create_direct_llm_node(provider: InferenceProvider, memory_store: ConversationMemoryStore, *, execution=None) -> Callable:
     def direct_llm_node(state):
         role = ModelRole(state["model_role"])
-        answer = provider.generate(direct_prompt(state["query"], state["session_id"], memory_store), role)
-        persist_exchange(state["query"], answer, state["session_id"], memory_store)
+        answer = provider.generate(direct_prompt(state["query"], state["session_id"], memory_store, **({} if execution is None else {"execution": execution})), role)
+        persist_exchange(state["query"], answer, state["session_id"], memory_store, **({} if execution is None else {"execution": execution}))
         state.update(answer=answer, context="", sources=[])
         return state
 
     return direct_llm_node
 
 
-def create_rag_node(provider: InferenceProvider, memory_store: ConversationMemoryStore) -> Callable:
+def create_rag_node(provider: InferenceProvider, memory_store: ConversationMemoryStore, *, execution=None) -> Callable:
     def rag_node(state):
-        prompt, context, documents = rag_prompt_and_sources(state["query"], state["session_id"], memory_store=memory_store)
+        prompt, context, documents = rag_prompt_and_sources(state["query"], state["session_id"], memory_store=memory_store, **({} if execution is None else {"execution": execution}))
         answer = provider.generate(prompt, ModelRole(state["model_role"]))
-        persist_exchange(state["query"], answer, state["session_id"], memory_store)
+        persist_exchange(state["query"], answer, state["session_id"], memory_store, **({} if execution is None else {"execution": execution}))
         state.update(context=context, answer=answer, sources=documents)
         return state
 
     return rag_node
 
 
-def create_tool_node(memory_store: ConversationMemoryStore) -> Callable:
+def create_tool_node(memory_store: ConversationMemoryStore, *, execution=None) -> Callable:
     def tool_node(state):
         answer = tool_answer(state["query"])
-        persist_exchange(state["query"], answer, state["session_id"], memory_store)
+        persist_exchange(state["query"], answer, state["session_id"], memory_store, **({} if execution is None else {"execution": execution}))
         state.update(answer=answer, context="", sources=[])
         return state
     return tool_node

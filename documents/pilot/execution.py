@@ -107,7 +107,15 @@ class PilotExecution:
                 or job.cancel_requested
             ):
                 raise PilotError()
+        if not getattr(p.provider, 'pilot_fixture', False):
+            from security.execution import DocumentsExecutionPermission
+            if not isinstance(p.execution_permission, DocumentsExecutionPermission):
+                raise PilotError()
         p.execution_permission(principal, row["approval"], row["source"], request)
+        claim = getattr(p.execution_permission, 'claim', None)
+        if claim is not None:
+            claim(principal, row['approval'], row['source'], request, identity,
+                  'synthesis' if kind == 'synthesis' else 'question')
         # No financial reservation exists yet. This durable intent serializes
         # pilot calls, caps attempts and blocks ambiguous crash recovery.
         operation = identity.step
@@ -115,7 +123,11 @@ class PilotExecution:
 
         def active():
             p._session(principal, self.session, execution=True)
-            p.execution_permission(principal, row["approval"], row["source"], request)
+            authorize = getattr(p.execution_permission, 'authorize', None)
+            if authorize is not None:
+                authorize(principal, row['approval'], row['source'], 'documents_' + kind)
+            else:
+                p.execution_permission(principal, row["approval"], row["source"], request)
             check_active()
 
         uncertain = True

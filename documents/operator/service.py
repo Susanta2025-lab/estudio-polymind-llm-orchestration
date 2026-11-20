@@ -12,7 +12,13 @@ from security.services import AuthorizedJobs
 
 
 class OperatorWorkflow:
-    def __init__(self, pilot, actions, enrollment, catalog, approvals):
+    def __init__(self, pilot, actions, enrollment, catalog, approvals, *,
+                 synthetic=True, execution_enabled=True):
+        if not synthetic and execution_enabled:
+            from security.execution import DocumentsExecutionPermission
+            if not isinstance(getattr(pilot, 'execution_permission', None), DocumentsExecutionPermission):
+                raise ValueError("External execution permission integration required")
+        self.synthetic, self.execution_enabled = synthetic, execution_enabled
         self.pilot, self.actions = pilot, actions
         self.enrollment = tuple(enrollment)
         self.catalog, self.approvals = catalog, approvals
@@ -25,13 +31,30 @@ class OperatorWorkflow:
         self.pilot._operator(principal)
         return principal.scope.identity()
 
+    def execution_available(self, p, approval, source, kind):
+        if not self.execution_enabled:
+            return False
+        if self.synthetic:
+            return True
+        try:
+            claims = self.pilot.execution_permission.authorize(p, approval, source, kind)
+            return (self.pilot.execution_permission.permissions.remaining(claims) > 0
+                    and min(claims['exp'], p.expires, approval.expires_at.timestamp(), source.expires_at.timestamp()) - self.pilot.clock() >= self.pilot.policy.provider_seconds)
+        except (SecurityError, PilotError):
+            return False
+
     def context(self, p):
         self.operator(p)
         with self.pilot.control.transaction() as db:
             stopped = bool(self.pilot.control._config(db)["stopped"])
+        available = self.synthetic and self.execution_enabled or any(
+            self.execution_available(p, a, self.pilot.sources.get(a.source_approval), 'documents_synthesis')
+            for a in self.approvals)
         return dict(owner_id=str(p.scope.owner), tenant_id=str(p.scope.tenant), expires=p.expires,
-                    enrolled=True, mode="SYNTHETIC_FIXTURE", limits=self.pilot.policy.model_dump(mode="json"),
+                    enrolled=True, mode="SYNTHETIC_FIXTURE" if self.synthetic else "GOVERNED_EXTERNAL" if available else "EXTERNAL_EXECUTION_BLOCKED",
+                    execution_enabled=available, limits=self.pilot.policy.model_dump(mode="json"),
                     stopped=stopped, allowed_actions=["inspect", "close", "withdraw", "stop"] if stopped else
+                    ["select", "inspect", "publish", "cancel", "close", "withdraw", "stop"] if not available else
                     ["select", "start", "publish", "question", "cancel", "close", "withdraw", "stop"])
 
     def sources(self, p):
@@ -61,7 +84,12 @@ class OperatorWorkflow:
 
     def start(self, p, session):
         self.operator(p)
+        if not self.execution_enabled:
+            raise PilotError("pilot_not_ready")
         with self._mutation:
+            row = self.pilot._session(p, session)
+            if not self.execution_available(p, row['approval'], row['source'], 'documents_synthesis'):
+                raise SecurityError()
             self.pilot.start(p, session)
         row = self.pilot._session(p, session)
         return dict(job_id=row["data"]["job"], state=self.pilot.status(p, session)["job_state"])
@@ -84,7 +112,7 @@ class OperatorWorkflow:
         usage = self.pilot.governance.usage(p, self.pilot.authority)
         settled = [r for r in usage if r["state"] == "SETTLED"]
         unsettled = [r for r in usage if r["state"] not in {"SETTLED", "RELEASED"}]
-        state["usage"] = dict(synthetic=True, attempts=len(usage),
+        state["usage"] = dict(synthetic=self.synthetic, attempts=len(usage),
             currency=self.pilot.governance.catalog.currency, unsettled=len(unsettled),
             unknown=sum(r["state"] == "UNKNOWN" for r in usage),
             measured_input_tokens=sum(r["actual_input"] for r in settled),
@@ -94,6 +122,9 @@ class OperatorWorkflow:
             unsettled_reserved_cost=str(sum((Decimal(r["cost"]) for r in unsettled), Decimal(0))))
         state["outcome"] = state.get("digest_status") or state.get("job_state") or state["session_state"]
         state["retry_eligible"] = False
+        state['start_enabled'] = self.execution_available(p, row['approval'], row['source'], 'documents_synthesis')
+        state['question_enabled'] = self.execution_available(p, row['approval'], row['source'], 'documents_question')
+        state["execution_enabled"] = state['question_enabled'] if row['data'].get('generation') else state['start_enabled']
         state["allowed_actions"] = ["close", "withdraw"]
         if state["session_state"] == "OPEN":
             state["allowed_actions"] += ["start", "cancel"]
@@ -101,6 +132,20 @@ class OperatorWorkflow:
                 state["allowed_actions"].append("publish")
             if state.get("generation") and state["questions_used"] < self.pilot.policy.max_questions:
                 state["allowed_actions"].append("question")
+        if not self.synthetic and row['data'].get('generation'):
+            try:
+                self.pilot._quality(row)
+                state['review_state'] = 'REVIEW_ATTACHED'
+            except PilotError as exc:
+                if exc.category != 'pilot_not_ready':
+                    raise
+                state['review_state'] = 'EXPERT_REVIEW_REQUIRED'
+                state['question_enabled'] = False
+        state['start_enabled'] &= 'start' in state['allowed_actions']
+        state['question_enabled'] &= 'question' in state['allowed_actions']
+        state['execution_enabled'] = state['question_enabled'] if row['data'].get('generation') else state['start_enabled']
+        if not state["execution_enabled"]:
+            state["allowed_actions"] = [a for a in state["allowed_actions"] if a not in {"start", "question"}]
         return state
 
     def publish(self, p, session, expected):
@@ -127,23 +172,47 @@ class OperatorWorkflow:
         with self.actions.transaction() as db:
             records = list(db.execute("SELECT result FROM actions WHERE owner=? AND action=? AND result IS NOT NULL LIMIT 3",
                            (p.scope.identity(), "question/" + str(session))))
-        packet["answers"] = [json.loads(r[0]) for r in records]
+        packet['answers'], pending_answers = [], []
+        if not self.synthetic:
+            packet['pending_answers'] = pending_answers
+        for record in records:
+            answer = json.loads(record[0])
+            if answer.get('state') == 'EXPERT_REVIEW_REQUIRED':
+                try:
+                    accepted = self.pilot.present_answer(p, session, UUID(answer['answer_id']), lambda value: value)
+                    answer = dict(accepted, answer_id=answer['answer_id'])
+                except PilotError as exc:
+                    if exc.category != 'pilot_not_ready':
+                        raise
+                    pending_answers.append(answer)
+                    continue
+            packet['answers'].append(answer)
         if any(a["generation"] != packet["generation"] for a in packet["answers"]):
             raise PilotError("pilot_not_ready")
         return packet
 
     def question(self, p, session, query, key):
         owner = self.operator(p)
+        if not self.execution_enabled:
+            raise PilotError("pilot_not_ready")
         with self._mutation:
             self.pilot._session(p, session)
             def execute():
+                row = self.pilot._session(p, session)
+                if not self.execution_available(p, row['approval'], row['source'], 'documents_question'):
+                    raise SecurityError()
                 result = self.pilot.question(p, session, query, lambda packet: packet)
-                return dict(result, answer_id=str(uuid4()))
+                return result if result.get('state') == 'EXPERT_REVIEW_REQUIRED' else dict(result, answer_id=str(uuid4()))
             result, _ = self.actions.run(owner, "question/" + str(session), key, {"query": query}, execute)
             row = self.pilot._session(p, session)
-            if result["generation"] != row["data"].get("generation"):
+            if result.get('state') != 'EXPERT_REVIEW_REQUIRED' and result["generation"] != row["data"].get("generation"):
                 raise PilotError("pilot_not_ready")
             return result
+
+    def reload(self, p, session):
+        self.operator(p)
+        self.pilot.load_presentation(p, session)
+        return self.status(p, session)
 
     def cancel(self, p, session):
         self.operator(p)
@@ -265,10 +334,15 @@ class LocalRunner:
             while not self.stop_event.is_set():
                 self.once()
                 self.stop_event.wait(self.interval)
-        self.thread = threading.Thread(target=run, name="document-demo-runner", daemon=True)
-        self.thread.start()
+        with self.lock:
+            if self.thread is not None or self.stop_event.is_set():
+                raise RuntimeError("Document runner already started or stopped")
+            self.thread = threading.Thread(target=run, name="document-demo-runner", daemon=True)
+            self.thread.start()
 
     def close(self):
         self.stop_event.set()
         if self.thread:
             self.thread.join(timeout=65)
+            if self.thread.is_alive():
+                raise RuntimeError("Document runner requires shutdown reconciliation")

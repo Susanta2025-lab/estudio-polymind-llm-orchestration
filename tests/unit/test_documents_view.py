@@ -195,3 +195,22 @@ def test_expired_login_on_refresh_communicates_uuid_hint(frontend):
     assert "protected digest" not in packets(fresh)
     click(fresh, "Reauthenticate")
     assert "document_session" not in fresh.query_params and not state.closed
+
+
+def test_external_execution_controls_follow_selected_backend_authority(frontend,monkeypatch):
+    app,state,session=frontend
+    original=view.DocumentsClient
+    class RestrictedClient(original):
+        def call(self,method,path,body=None):
+            result=super().call(method,path,body)
+            if path=='/context':result['execution_enabled']=True
+            elif path.startswith('/sessions/') and not path.endswith('/digest'):
+                result.update(start_enabled=False,question_enabled=False,execution_enabled=False)
+            return result
+    monkeypatch.setattr(view,'DocumentsClient',RestrictedClient)
+    external=AppTest.from_string("from ui.documents_view import render\nrender('http://synthetic', synthetic=False)")
+    external.session_state.doc_scope=('owner','tenant');external.session_state.doc_session=session
+    external.run()
+    assert not external.exception
+    assert next(b for b in external.button if b.label=='Start durable job').disabled
+    assert next(b for b in external.button if b.label=='Ask bounded question').disabled

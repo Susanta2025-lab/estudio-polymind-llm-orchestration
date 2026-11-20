@@ -25,12 +25,13 @@ def stream_rag_response(
     provider: Optional[InferenceProvider] = None,
     route_query: Optional[Callable[[str], str]] = None,
     memory_store: Optional[ConversationMemoryStore] = None,
+    execution=None,
 ) -> Iterator[Dict]:
     """Run one request and yield structured events from that same execution."""
     route = "unknown"
     try:
         from graph.generation import _legacy_only
-        _legacy_only()
+        _legacy_only(execution)
         provider = provider or create_inference_provider()
         memory_store = memory_store or get_memory_store()
         if route_query is None:
@@ -54,10 +55,10 @@ def stream_rag_response(
             yield {"type": "chunk", "content": answer}
         else:
             if route == "rag":
-                prompt, _, documents = rag_prompt_and_sources(query, session_id, memory_store=memory_store)
+                prompt, _, documents = rag_prompt_and_sources(query, session_id, memory_store=memory_store, **({} if execution is None else {"execution": execution}))
                 sources = public_sources(documents)
             else:
-                prompt = direct_prompt(query, session_id, memory_store)
+                prompt = direct_prompt(query, session_id, memory_store, **({} if execution is None else {"execution": execution}))
 
             yield {
                 "type": "metadata",
@@ -73,7 +74,7 @@ def stream_rag_response(
                 yield {"type": "chunk", "content": chunk}
             answer = "".join(chunks)
 
-        persist_exchange(query, answer, session_id, memory_store)
+        persist_exchange(query, answer, session_id, memory_store, **({} if execution is None else {"execution": execution}))
         yield {"type": "done", "response": answer}
     except InferenceError as exc:
         logger.error(

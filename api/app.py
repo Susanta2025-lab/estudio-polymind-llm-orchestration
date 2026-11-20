@@ -101,6 +101,7 @@ async def bounded_validation_error(_request: Request, _exc: RequestValidationErr
 class QueryRequest(BaseModel):
     query: str
     session_id: str = Field(default="default", min_length=1, max_length=256)
+    request_key: str | None = None
 
 
 @app.exception_handler(SecurityError)
@@ -239,7 +240,10 @@ def application_metrics():
 
 
 @app.post("/query")
-def query(req: QueryRequest):
+def query(req: QueryRequest, request: Request = None):
+    if settings.authentication_mode == 'oidc_jwt':
+        from api.chat import query_response
+        return query_response(req, request)
     legacy_query_guard()
     started = time.perf_counter()
     route = "unknown"
@@ -266,7 +270,10 @@ def query(req: QueryRequest):
 
 
 @app.post("/query/stream")
-def query_stream(req: QueryRequest):
+def query_stream(req: QueryRequest, request: Request = None):
+    if settings.authentication_mode == 'oidc_jwt':
+        from api.chat import stream_response
+        return stream_response(req, request)
     legacy_query_guard()
     def encode_events():
         started = time.perf_counter()
@@ -292,6 +299,11 @@ def query_stream(req: QueryRequest):
 @app.get("/memory/{session_id}")
 def memory(session_id: str = Path(min_length=1, max_length=256), request: Request = None):
     if settings.authentication_mode == 'oidc_jwt':
+        if getattr(app.state, 'authorized_chat', None) is not None:
+            from api.chat import context
+            from security.chat import ChatMemory
+            _, ctx = context(request, QueryRequest(query='memory', session_id=session_id))
+            return {'session_id':session_id, 'history':ChatMemory(ctx).get_history(session_id)}
         from security.memory import ScopedMemory
         principal,runtime=principal_context(request)
         return {'session_id':session_id,'history':ScopedMemory(memory_store,runtime.authority,principal).get_history(session_id)}
@@ -349,6 +361,12 @@ def delete_document(document_id: UUID, request: Request):
 
 @app.delete('/memory/{session_id}')
 def delete_session(session_id: str, request: Request):
+    if getattr(app.state, 'authorized_chat', None) is not None:
+        from api.chat import context
+        from security.chat import ChatMemory
+        _, ctx = context(request, QueryRequest(query='memory', session_id=session_id))
+        ChatMemory(ctx).clear_session(session_id)
+        return {'session_id':session_id,'status':'deleted'}
     from security.memory import ScopedMemory
     principal,runtime=principal_context(request)
     ScopedMemory(memory_store,runtime.authority,principal).clear_session(session_id)

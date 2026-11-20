@@ -12,7 +12,7 @@ class GovernedExecution:
         self.provider, self.admission, self.ledger = provider, admission, ledger
         self.authority, self.snapshot = authority, snapshot
 
-    def execute(self, request, *, identity=None, check_active=lambda: None, workload='INTERACTIVE'):
+    def execute(self, request, *, identity=None, check_active=lambda: None, workload='INTERACTIVE', on_chunk=None):
         self.authority.revalidate(self.snapshot)
         check_active()
         model = self.provider.model_id(request.role)
@@ -42,7 +42,11 @@ class GovernedExecution:
             check_active()
             self.ledger.transition(ticket,'ADMITTING','STARTED')
             started = True
-            result = self.provider.execute(request)
+            def emit(token):
+                self.authority.revalidate(self.snapshot)
+                check_active()
+                on_chunk(token)
+            result = self.provider.execute(request, **({} if on_chunk is None else {'on_chunk': emit}))
             usage, outcome = result.usage, 'success'
             return result
         except InferenceError as exc:

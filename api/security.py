@@ -32,6 +32,8 @@ class AuthenticationResult:
 def endpoint_class(path: str) -> Optional[str]:
     if path in PROTECTED_EXACT_PATHS:
         return 'document' if path.startswith('/documents/') else 'query'
+    if path.startswith('/chat/'):
+        return 'query'
     if path.startswith('/memory/'):
         return "memory"
     if path.startswith('/documents/'):

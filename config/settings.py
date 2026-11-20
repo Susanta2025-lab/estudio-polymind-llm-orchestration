@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     )
     OPENAI_COMPATIBLE_BASE_URL: str = "http://localhost:8000/v1"
     OPENAI_COMPATIBLE_API_KEY: Optional[str] = None
+    OPENAI_COMPATIBLE_API_KEY_FILE: Optional[str] = None
+    OPENAI_COMPATIBLE_AUTHENTICATION_HEADER: Literal["Authorization", "api-key"] = "Authorization"
     OPENAI_COMPATIBLE_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
     OPENAI_COMPATIBLE_READ_TIMEOUT: float = Field(default=120.0, gt=0)
     OPENAI_COMPATIBLE_READINESS_MODEL_CHECK: bool = True
@@ -119,6 +121,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_inference_configuration(self):
         mode = self.authentication_mode
+        if self.OPENAI_COMPATIBLE_API_KEY_FILE and self.OPENAI_COMPATIBLE_API_KEY:
+            raise ValueError("Configure only one provider credential source")
         if self.DOCUMENTS_PROFILE == "synthetic" and self.DEPLOYMENT_ENV == "production":
             raise ValueError("Fixture document profile is forbidden in production")
         if (self.API_AUTH_MODE == 'disabled' and self.API_AUTH_ENABLED

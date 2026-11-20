@@ -121,6 +121,25 @@ class SessionApproval(FrozenModel):
         return self
 
 
+class ExecutionSessionApproval(SessionApproval):
+    """Distinct approval; historical pilot-session/1 always remains zero paid."""
+    version: Literal["pilot-execution-session/2"] = "pilot-execution-session/2"
+    zero_paid_execution: Literal[False] = False
+    execution_permission: UUID
+
+    @model_validator(mode="after")
+    def external_only(self):
+        if self.mode != 'external':
+            raise ValueError('Execution session requires explicit external consent/approvals')
+        return self
+
+
+def parse_session_approval(value):
+    record = value if isinstance(value, dict) else __import__('json').loads(value)
+    cls = ExecutionSessionApproval if record.get('version') == 'pilot-execution-session/2' else SessionApproval
+    return cls.model_validate(record)
+
+
 class Feedback(FrozenModel):
     version: Literal["pilot-feedback/1"] = "pilot-feedback/1"
     usefulness: int = Field(ge=1, le=5)

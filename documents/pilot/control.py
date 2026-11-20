@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from documents.jobs.models import canonical
 from documents.models import ObjectRef
-from documents.pilot.models import PilotError, SessionApproval, SourceApproval
+from documents.pilot.models import PilotError, SourceApproval, parse_session_approval
 from security.database import Database
 from security.models import SecurityError
 
@@ -97,7 +97,7 @@ class PilotControl(Database):
         result["approval"] = (
             None
             if row["approval"] == "REDACTED"
-            else SessionApproval.model_validate_json(row["approval"])
+            else parse_session_approval(row["approval"])
         )
         result["source"] = SourceApproval.model_validate_json(row["source"])
         result["data"] = json.loads(row["data"])

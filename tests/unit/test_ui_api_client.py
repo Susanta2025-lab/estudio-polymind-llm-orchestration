@@ -68,3 +68,23 @@ def test_stream_connection_failure_is_normalized():
     with pytest.raises(APIStreamError, match="Unable to connect to the PolyMind API") as error:
         list(stream_query("http://api/query/stream", "hello", "s", 10, post=unavailable))
     assert "private detail" not in str(error.value)
+
+
+def test_oidc_token_and_intent_forwarded_without_redirects():
+    calls = []
+    def post(*a, **k):
+        calls.append(k)
+        return FakeResponse()
+    list(stream_query('http://api/query/stream', 'hello', 'private', 70, post=post,
+                      access_token='offline-api-token', request_key='offline-intent-000001'))
+    assert len(calls) == 1
+    assert calls[0]['headers'] == {'Authorization':'Bearer offline-api-token'}
+    assert calls[0]['allow_redirects'] is False
+    assert calls[0]['json']['request_key'] == 'offline-intent-000001'
+
+
+@pytest.mark.parametrize('token', ['', 'invalid token', 'line\nbreak'])
+def test_invalid_ui_token_never_submits(token):
+    with pytest.raises(APIStreamError):
+        list(stream_query('http://api/query/stream', 'hello', 'private', 70,
+                          access_token=token, post=lambda *a, **k: pytest.fail('request submitted')))

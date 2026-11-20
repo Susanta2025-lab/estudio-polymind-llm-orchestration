@@ -1,0 +1,21 @@
+# Install only after operator review. No enable/start is performed by Phase 19B.
+[Unit]
+Description=PolyMind private Documents deployment
+Requires=docker.service
+After=docker.service
+RequiresMountsFor=/srv/polymind
+ConditionPathIsMountPoint=/srv/polymind
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/polymind
+EnvironmentFile=/etc/polymind/compose.env
+ExecStartPre=/usr/bin/mountpoint --quiet /srv/polymind
+ExecStart=/usr/bin/docker compose --env-file /etc/polymind/compose.env -p polymind19 -f docker-compose.phase19.yml up -d --wait --wait-timeout 240
+ExecStop=/usr/bin/docker compose --env-file /etc/polymind/compose.env -p polymind19 -f docker-compose.phase19.yml stop --timeout 90
+TimeoutStartSec=300
+TimeoutStopSec=150
+
+[Install]
+WantedBy=multi-user.target

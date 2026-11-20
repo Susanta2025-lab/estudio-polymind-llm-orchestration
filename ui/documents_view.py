@@ -44,9 +44,10 @@ def reauthenticate():
         st.stop()
 
 
-def render(api_url):
+def render(api_url, *, synthetic=True):
     st.title("Documents")
-    st.info("Private synthetic operator verification. No paid inference. No real participant consent.")
+    st.info("Private synthetic operator verification. No paid inference. No real participant consent."
+            if synthetic else "Private operator Documents. Execution requires current independent authorization.")
     if not st.user.is_logged_in:
         clear_display()
         if st.button("Log in", key="documents_login"):
@@ -95,7 +96,7 @@ def render(api_url):
         st.success("Verified enrolled operator")
         st.json(context)
         sources = client.call("GET", "/sources")
-        chosen = st.selectbox("Approved synthetic source", sources,
+        chosen = st.selectbox("Approved synthetic source" if synthetic else "Approved source", sources,
                               format_func=lambda s: s["name"] + " — " + s["classification"])
         st.json(chosen)
         if st.button("Create session", disabled=not chosen["eligible"]):
@@ -107,13 +108,21 @@ def render(api_url):
             recover = st.text_input("Existing session ID")
             if st.form_submit_button("Reconnect") and recover:
                 st.session_state.doc_session = str(UUID(recover))
+                if not synthetic:
+                    recovered = client.call("GET", "/sessions/" + st.session_state.doc_session)
+                    if recovered.get('generation'):
+                        client.call("POST", "/sessions/" + st.session_state.doc_session + "/reload")
         session = st.session_state.get("doc_session")
         if session:
             # UUID only. Server status/digest calls reauthorize every display.
             st.query_params["document_session"] = session
             st.text("Session " + session)
             prefix = "/sessions/" + session
-            if st.button("Start durable job"):
+            start_enabled = context.get('execution_enabled', True)
+            if not synthetic:
+                selected_status = client.call('GET', prefix)
+                start_enabled = selected_status.get('start_enabled', False)
+            if st.button("Start durable job", disabled=not start_enabled):
                 client.call("POST", prefix + "/start")
             if st.button("Cancel processing"):
                 st.json(client.call("POST", prefix + "/cancel"))
@@ -152,10 +161,13 @@ def _session_panel(api_url, token, session):
                 client.call("POST", prefix + "/publish", {"expected_job_id": status["job_id"]})
                 status = client.call("GET", prefix)
         if status.get("generation") and status["session_state"] == "OPEN":
+            if status.get('review_state') == 'EXPERT_REVIEW_REQUIRED':
+                st.info('The digest requires the existing independent expert reviews before presentation or questions.')
+                return
             packet = client.call("GET", prefix + "/digest")
             with st.form("document_question"):
                 question = st.text_input("Question about the selected document", max_chars=4096)
-                if st.form_submit_button("Ask bounded question"):
+                if st.form_submit_button("Ask bounded question", disabled=not status.get("question_enabled", status.get("execution_enabled", True))):
                     client.call("POST", prefix + "/questions", {"query": question,
                                 "request_key": key("question_" + sha256(question.encode()).hexdigest())})
                     # Display only a new authorized read, never the POST response.

@@ -9,34 +9,12 @@ import os
 from pathlib import Path
 import stat
 import time
-from typing import Literal
 from uuid import UUID
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 import jwt
-from pydantic import Field, model_validator
 
-from documents.models import FrozenModel
 from security.models import SecurityError
-
-
-class ApprovalTrust(FrozenModel):
-    version: Literal['polymind-approval-trust/1']
-    purpose: Literal['live', 'test']
-    key_id: str = Field(pattern=r'^[A-Za-z0-9_-]{1,128}$')
-    public_key_pem: str = Field(min_length=1, max_length=8192)
-    operator_issuer: str = Field(min_length=1, max_length=2048)
-    operator_subject: str = Field(min_length=1, max_length=2048)
-    operator_tenant: str = Field(min_length=1, max_length=2048)
-    replay_directory: Path
-
-    @model_validator(mode='after')
-    def public_key(self):
-        key = serialization.load_pem_public_key(self.public_key_pem.encode())
-        if not isinstance(key, rsa.RSAPublicKey) or not 2048 <= key.key_size <= 8192:
-            raise ValueError('Approval requires an RSA public key of 2048–8192 bits')
-        return self
+from security.execution import ApprovalTrust
 
 
 def private_path(path, *, directory=False, exists=True):
