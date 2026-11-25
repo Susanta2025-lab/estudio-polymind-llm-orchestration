@@ -22,7 +22,40 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Current engineering status — 14 November 2026
+## Phase 19 status — 24 November 2026
+
+The operator reports the private Spain Central Azure VM foundation, Tailscale/OpenSSH access,
+UUID-mounted ext4 data disk surviving reboot, Docker/Compose, reviewed application/vendor
+images and pinned Compose checks complete. Network-disabled embedding and reranking also
+passed on Azure. The VM was subsequently **reported deallocated**. Production configuration,
+seven SQLite authorities and the five-service application were not activated; real Entra,
+trusted private HTTPS, provider/governance inputs and independent live permission remain
+blocked. No new Azure session, inference or public exposure is authorized.
+
+The [post-Azure readiness report](docs/codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md)
+separates operator-reported cloud evidence from fresh offline verification; the
+[next-session gates](docs/operations/phase_19_vm.md#next-authorized-session--gates-ae)
+define the dependency order. Phase 19B remains WITH_CONDITIONS; Phase 19C has not started.
+
+### Historical Phase 19 status — 21 November 2026
+
+Phase 19A readiness is COMPLETE; the completed Phase 19B offline foundation is committed at
+`7bf82dc`; [CI run 44805275341](https://github.com/Susanta2025-lab/estudio-polymind-llm-orchestration/actions/runs/44805275341)
+succeeded for that exact commit. The separate recorded final local Phase 19B regression
+passed 3,278 tests with one non-fatal warning. The private five-service Compose profile now
+includes governed OIDC Chat/RAG and Documents, independent execution permissions and durable
+single-host recovery controls. See the [current VM guide](docs/operations/phase_19_vm.md) and
+[integration-resolution evidence](docs/codex/reports/phase_19b_offline_implementation_and_verification.md#integration-gap-resolution).
+
+Phase 19B is ACTIVE for offline implementation, Azure deployment, live integration and validation.
+The dated [Phase 19B continuation report](docs/codex/reports/phase_19b_live_deployment_readiness_continuation.md)
+contains the reclassified readiness evidence and operator decisions. Azure deployment, real Entra browser
+authentication, live inference and VM capacity/recovery acceptance remain unexecuted. A1–A5
+approvals are pending; both proposed VM families have zero West Europe quota. Phase 19C —
+Final Documentation and Engineering Closure is NOT STARTED. Public exposure is unauthorized.
+Historical Phase 17/18 evidence and deferred human/external acceptance obligations below retain their scope.
+
+## Historical engineering status — 14 November 2026
 
 Phase 18 local engineering and documentation are complete within the **private,
 synthetic, owning-operator** scope: `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE`
@@ -803,6 +836,9 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17H | 200–1000+ Page Reliability, Failure & Quality Validation | ENGINEERING_COMPLETE_REVIEW_DEFERRED — bounded offline/live evidence PASS; two human reviews and formal closure pending; representative production reliability unestablished |
 | 17I | External User Verification | Bounded engineering and all three development stages complete; actual external verification DEFERRED, formal acceptance PENDING; subsequent engineering permitted |
 | 18 | Secure Document Productization and Azure Deployment Readiness | 18.1 assessment COMPLETE; 18.2 local implementation/verification ENGINEERING PASS; 18.3 documentation/engineering closure COMPLETE in local synthetic scope, operator acceptance pending. `AKS_NOT_REQUIRED`; Azure deployment NOT PERFORMED; production readiness NOT ESTABLISHED |
+| 19A | Readiness Assessment | COMPLETE |
+| 19B | Offline Implementation, Azure Deployment, Live Integration and Validation | WITH_CONDITIONS — offline foundation verified; private Azure infrastructure reported complete/deallocated; production identity/configuration, startup and live acceptance blocked |
+| 19C | Final Documentation and Engineering Closure | NOT STARTED |
 
 Overall Phase 17 status: `ENGINEERING_COMPLETE_REVIEW_DEFERRED`. The
 [acceptance register](docs/evaluation/phase_17_deferred_human_semantic_review.md)
@@ -934,7 +970,13 @@ Focus areas:
 
 **Status:** Active development — production-style portfolio platform
 
-**Current milestone:** `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE` and
+**Current milestone:** Phase 19B WITH_CONDITIONS — private Azure infrastructure reported
+complete and deallocated; resolve production inputs and obtain fresh session authorization
+before application startup or separately approved live testing. Phase 19A
+COMPLETE; Phase 19C Final Documentation and Engineering Closure NOT STARTED.
+See the [post-Azure continuation](docs/codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md).
+
+**Retained Phase 18 milestone:** `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE` and
 `PHASE_18_3_DOCUMENTATION_PASS`; operator administrative acceptance pending.
 [Phase 18 completion and handoff](docs/evaluation/phase_18_engineering_completion_and_deferred_deployment.md).
 `AKS_NOT_REQUIRED`, `AZURE_DEPLOYMENT_NOT_PERFORMED` and

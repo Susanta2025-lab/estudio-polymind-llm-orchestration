@@ -1,5 +1,10 @@
 # Phase 19B bounded implementation plan
 
+Current stage boundary — 21 November 2026: **19A COMPLETE; 19B ACTIVE** for offline
+implementation, Azure deployment, live integration and validation; **19C NOT STARTED**
+for final documentation and engineering closure. Earlier dated plans below are historical;
+the final continuation addendum governs the current execution sequence and approvals.
+
 Prepared in Phase 19A, 18 November 2026, against `master` at `b48dde4`. **Not implemented or authorized to begin.** Phase 19 consists only of 19A readiness, 19B deployment/real-model integration, and 19C validation/documentation. This plan does not add a stage or authorize cloud/inference/public access.
 
 ## Proposed implementation boundary
@@ -155,3 +160,50 @@ Redis/Chroma/retrieval models. Remaining work is independent operator review and
 A1–A5 activation gates, real Entra/browser/model/capacity proof and applicable semantic acceptance.
 No infrastructure/model budget, live signature, deployment or public-access permission is granted
 by this implementation. Do not proceed automatically to Phase 19C.
+
+## 21 November 2026 — Phase 19B live-deployment readiness continuation
+
+The Phase 19B offline foundation is committed at `7bf82dc`; exact-commit CI run
+`44805275341` succeeded. Its live-deployment readiness preparation is reclassified as a
+dated Phase 19B continuation. The [continuation report](../codex/reports/phase_19b_live_deployment_readiness_continuation.md) records refreshed
+retail estimates, actual subscription SKU/quota observations, focused offline verification
+and the concrete operator approval packet. A1–A5 remain pending; cloud validation has not run.
+Both candidate VM families have zero West Europe quota. Select and authorize a quota remedy
+or a separately researched region before allocation; do not substitute another SKU automatically.
+The revised current boundaries are 19A Readiness Assessment COMPLETE; 19B Offline
+Implementation, Azure Deployment, Live Integration and Validation ACTIVE; 19C Final
+Documentation and Engineering Closure NOT STARTED. Earlier dated plans remain historical;
+their allocation of execution/validation to 19C is superseded for current work.
+
+The next 19B sequence is: resolve and obtain A1 approval of subscription/resource scope,
+region/SKU/quota, private access/egress and spending/window/owners; obtain applicable A2
+identity/network administration approval; deploy the approved private five-service VM;
+validate real browser/API identity and zero-paid synthetic workflows; measure capacity
+and persistence/recovery; obtain independent A3 provider/data, A4 finance/quota and A5
+fresh signed permission for an exact serial plan; execute authorized Foundry tests and
+reconcile uncertainty, shutdown/deallocation, cost and residual resources. Retain dated
+19B evidence throughout. Stop now at the A1 decisions; do not start 19C closure documentation.
+
+## 24 November 2026 — Post-Azure bounded continuation
+
+The later operator evidence establishes the Spain Central private VM/storage/Docker/image
+foundation and isolated Azure CPU retrieval-model execution, followed by reported VM
+deallocation. It supersedes earlier undeployed-state findings within that scope; no current
+West Europe allocation decision or new provisioning is needed. Preserve all historical
+reports, including the cloud-init failure and repair. Do not reuse their expired windows.
+
+Offline follow-up adds direct production-gateway TLS tests and per-authority missing/damaged/
+partial-state tests, reruns the signed-fixture topology and regression suite, and reconciles
+evidence. It changes no runtime or image input and initializes no production authority.
+The [continuation report](../codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md)
+records exact outcomes and unresolved limits. Repeated local passes grant no real identity,
+TLS, provider, semantic-review or Azure functional acceptance.
+
+Next follow [Gates A–E](../operations/phase_19_vm.md#next-authorized-session--gates-ae):
+operator-controlled identity/name/trust/source/provider/finance/permission decisions;
+fresh resource/cost/window approval and existing infrastructure revalidation; reviewed
+private files and deliberate new-authority initialization; data services then one API/runner
+and UI/gateway under controlled startup; authorized recovery, financial/cost reconciliation
+and verified deallocation. Never reformat the UUID-mounted disk or reset an existing database.
+Production startup, live inference and public exposure need their independent authorizations.
+Phase 19C remains NOT STARTED; this work prepares its eventual handoff only.

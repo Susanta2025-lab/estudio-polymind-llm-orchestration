@@ -1,5 +1,11 @@
 # Phase 19 deployment architecture — assessment decision
 
+Current stage boundary — 21 November 2026: **19A COMPLETE; 19B ACTIVE** for offline
+implementation, Azure deployment, live integration and validation; **19C NOT STARTED**
+for final documentation and engineering closure. The dated assessment and implementation
+sections below retain their historical stage assignments; the final continuation addendum
+governs current work. No independent authorization gate changes.
+
 Assessed 18 November 2026 against `master` at `b48dde4e4012f83c8fa2de99acbb54b8a59e0683`. This is a proposed deployment boundary, not an implemented profile or authorization to spend. Phase 19 has exactly three stages: 19A readiness, 19B deployment/integration, 19C validation/documentation. `AKS_NOT_REQUIRED` remains in force.
 
 ## Selected topology and capacity decision
@@ -147,3 +153,46 @@ and [current operator instructions](../operations/phase_19_vm.md#integration-gap
 The real Entra browser flow, current external model contract, independent live custody/reviews,
 shared-consumer reconciliation and Azure capacity/access/spend gates remain unverified. Phase 19C
 has not started; Azure provisioning, live inference and public exposure remain unauthorized.
+
+## 21 November 2026 — Phase 19B live-deployment readiness continuation
+
+The operator reclassified read-only discovery and offline verification against committed
+`7bf82dc` as a dated Phase 19B continuation. Its [readiness report](../codex/reports/phase_19b_live_deployment_readiness_continuation.md)
+owns current evidence and the A1–A5 approval packet. The five-service architecture and resolved
+Chat/Documents integrations are unchanged. No Azure deployment or paid inference occurred.
+West Europe subscription quota is currently **0 vCPUs for both Basv2 and DASv5 families**;
+neither candidate is presently allocatable under that quota. D2as_v5 also reports zonal
+restrictions in zones 1 and 3. These observations supersede unknown availability only, and
+do not qualify capacity, select a replacement SKU/region, or authorize a quota request.
+
+The revised current boundaries are 19A Readiness Assessment COMPLETE; 19B Offline
+Implementation, Azure Deployment, Live Integration and Validation ACTIVE; 19C Final
+Documentation and Engineering Closure NOT STARTED. Earlier dated stage assignments above
+remain historical. Next resolve A1 subscription/resource/region/quota/private-access/spend
+prerequisites, then perform only independently authorized deployment and validation in 19B.
+
+## 24 November 2026 — Post-Azure evidence reconciliation
+
+The operator's later executed evidence supersedes the undeployed/private-access/storage
+GAPs above for the **infrastructure foundation only**: Spain Central `Standard_D2s_v4`,
+2 vCPU/8 GiB, Ubuntu 24.04, no VM public IP, Tailscale/OpenSSH, two 64-GiB disks, persistent
+ext4 mount and service recovery across reboot, Docker/Compose and imported images. The
+original first-boot cloud-init FAIL remains historical; repaired SSH and later reboot
+success do not change it. The VM was subsequently reported deallocated, without a fresh
+Codex cloud query in this continuation.
+
+The stable data UUID is `c95e5fce-443b-4d90-9160-8b67758f12d9` at `/srv/polymind`.
+Device letters changed; never format or initialize that disk again. Application source
+remains `7bf82dc`; the reviewed image is
+`sha256:9f386acf8bddcb5d01bb028151caae24b5df604f8a56c00b7b39c7e0f8298c02`.
+Azure network-disabled embedding/reranker execution passes as operator-reported evidence.
+The root-owned `/opt/polymind/docker-compose.phase19.yml` is an Azure-staged digest-pinned
+copy; tracked Compose retains portable vendor tags and is not that pinned artifact.
+
+New local signed-fixture five-service integration and TLS/authority checks preserve the
+existing architecture. No runtime, dependency, Dockerfile or packaging input changed.
+Real Entra/browser, private certificate trust, provider/capabilities, approved pricing/shared
+quota, independent permission, production authorities and Azure application/recovery/capacity
+acceptance remain blocked. Compose isolation is not a verified outbound destination policy.
+See the [dated reconciliation report](../codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md)
+and [next-session runbook](../operations/phase_19_vm.md#next-authorized-session--gates-ae).

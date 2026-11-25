@@ -23,7 +23,8 @@ with `docker compose config`; the profile interpolates file paths, not secret co
 Use an actual mounted ext4/xfs/btrfs data disk. Never Azure Files/NFS/SMB or temporary storage.
 The production configuration validator also rejects overlay/tmpfs authority storage.
 The systemd template checks `/srv/polymind` is a mount point before Compose starts. Review
-that mount identity and fstab dependency before installation; do not enable the unit in 19B.
+that mount identity and fstab dependency before installation; do not enable the unit before
+the applicable A1/A2 approvals.
 A missing bind source is fatal (`create_host_path: false`); an empty disk is also fatal.
 
 ```text
@@ -78,14 +79,16 @@ TLS certificate and TLS key. They live outside the source/image. The provider su
 `Authorization: Bearer …` and `api-key`; default behavior for existing clients is unchanged.
 `OPENAI_COMPATIBLE_API_KEY_FILE` is mutually exclusive with inline credentials. No refresh,
 managed-identity acquisition, discovery or renewal is implemented. A missing/unsafe/empty
-file is fatal. Credentials may be supplied only after the corresponding operator gates;
-19B uses fake values exclusively in tests and never inspects existing real credentials.
+file is fatal. Credentials may be supplied only after the corresponding operator gates.
+The offline 19B verification used fake values exclusively in tests and did not inspect
+existing real credentials.
 
 The endpoint must be HTTPS with a v1 path, e.g. the **operator-approved** endpoint ending
 `/openai/v1/`. The deployment alias goes in all required logical role mappings; response-model
 aliases, token parameter, strict schema and usage capabilities are explicit manifest inputs.
 The composition never performs model readiness GETs or paid calls as a startup probe.
-Actual endpoint/authentication/model/streaming/schema compatibility needs separate 19C proof.
+Actual endpoint/authentication/model/streaming/schema compatibility needs separately
+authorized 19B validation.
 
 Streamlit secrets must contain real native auth registration, private callback URI,
 `expose_tokens=["access"]`, cookie/client secrets and delegated API scope. The API independently
@@ -185,7 +188,7 @@ revocations, consumed permissions, financial/provider truth and immutable object
 any serving/reconciliation. The tool deliberately cannot authorize stale financial rollback.
 Rollback to a compatible image uses the same current authorities, not an older finance DB.
 Cloud managed-disk snapshots, reboot, full-disk failure, independent recovery custody and
-RPO/RTO remain 19C acceptance requirements.
+RPO/RTO remain Phase 19B validation requirements before final 19C documentation.
 
 Before Azure: review the resolved integration and all remaining operator gates, subscription/RBAC/quota/access/egress, private
 TLS/real OIDC browser proof, shared financial/admission obligations, source/capability/tariff/
@@ -318,5 +321,226 @@ OpenAI HTTP transport, removes all published ports/egress, and exercises real Re
 baked retrieval models. Test-only routes advance the fixture clock and attach synthetic review
 records. They are never present in the production image or entrypoint. These tests prove offline
 integration; real browser Entra consent/callback/TLS, current model capabilities/tariffs/quota,
-independent live permission custody, semantic reviews and VM capacity remain operator/19C gates.
+independent live permission custody, semantic reviews and VM capacity remain independent
+operator gates for Phase 19B validation.
 No Azure provisioning, live inference or public exposure is authorized.
+
+## 21 November 2026 — Current Phase 19B live-deployment readiness gate
+
+Read-only preparation and local checks against `7bf82dc` are reclassified as a dated
+Phase 19B continuation; see the [readiness report and operator packet](../codex/reports/phase_19b_live_deployment_readiness_continuation.md).
+A1 resource/spending approval and A2 identity/network administration approval are still absent.
+Do not run the cloud lifecycle commands above on that basis. West Europe has zero Basv2/DASv5
+family quota in the observed subscription. Quota remediation, the private tunnel/egress route,
+billing owner and exact window need explicit decisions before deployment. The existing
+`127.0.0.1:9443` binding requires a tunnel that actually reaches host loopback; a VPN route to
+the VM's private address alone does not expose this listener. No listener change is authorized
+or implemented here. A3–A5 remain separate prerequisites for every later real-model plan.
+
+Phase 19A Readiness Assessment is COMPLETE. Phase 19B Offline Implementation, Azure
+Deployment, Live Integration and Validation is ACTIVE; real Entra/browser, synthetic cloud,
+live Foundry, capacity/recovery and cost validation belong to that stage. Phase 19C Final
+Documentation and Engineering Closure is NOT STARTED. Resolve A1 first and obtain each
+independent approval before its affected action; this correction authorizes no live changes.
+
+## 24 November 2026 — Post-provisioning verification finding
+
+The operator subsequently provisioned `vm-epolymind-dev` in `rg-epolymind`, Spain Central.
+The [post-provisioning report](../codex/reports/phase_19b_post_vm_creation_verification.md)
+records actual Azure and guest evidence separately from the earlier offline assessments.
+Verified: no VM public IP, Trusted Launch/Secure Boot/vTPM, two attached 64-GiB Standard
+SSD LRS disks with Detach policies, expected effective subnet NSG/NAT and AKS deny,
+stopped AKS, successful independent Azure Run Command recovery and installed Tailscale.
+
+Actual cloud-init **failed** at `sshd -t` because `/run/sshd` was absent, before the
+bootstrap's SSH enablement and completion marker. Ubuntu's `ssh.socket` is listening,
+but effective SSH validation and private key authentication remain unverified. Do not
+recreate the VM or rerun package installation blindly. A targeted service/runtime repair
+requires a separately reviewed action, retaining the original failure evidence. Tailscale
+is `NeedsLogin`; real enrollment is not authorized by its installation. Dummy protected
+parameters worked, but real secret-safe handoff and saved tailnet policy tests remain gaps.
+The data disk is unformatted/unmounted; `/srv/polymind` is absent. No storage initialization
+or application launch was performed or authorized by this assessment.
+
+The eight-hour window starts at **2026-11-24 01:26:38.7760141 UTC** and ends at
+**09:26:38.7760141 UTC the same day**. The VM remained running at the report's last live
+observation. The operator must cover the cutoff and verify `PowerState/deallocated`;
+this task schedules no future action. NAT and its public IP were created the previous
+day and continue charging independently; removal requires coordinated resource-specific
+review. Retained disks also bill. USD 30 is a target, not an enforced cap. Infrastructure
+readiness and application deployment readiness remain NO; real inference, public exposure
+and AKS changes remain unauthorized. Phase 19B stays active; this is not 19C closure.
+
+## 24 November 2026 — Dated post-boot SSH repair
+
+The [SSH repair report](../codex/reports/phase_19b_ssh_bootstrap_repair_and_revalidation.md)
+records the separately authorized single `systemctl enable --now ssh.service`, completed
+at 07:37:07 UTC after inspection of the installed runtime-directory and socket behavior.
+Current SSH readiness passes: root:root 0755 `/run/sshd`, active/enabled service and socket,
+`sshd -t` exit 0, effective password/keyboard-interactive/root-login denial and public-key
+authentication enabled. SSH public fingerprints and Azure Run Command recovery are preserved.
+No reboot acceptance is claimed. Azure network exposure and associations remain unchanged.
+
+The original cloud-init failure, absent completion marker and failed cloud-final.service
+remain preserved; recovery does not retroactively make first boot successful. The separate
+future candidate `/tmp/polymind-tailscale-cloud-init.corrected.yaml` starts the verified
+service before standalone validation. It passed local checks and was not executed on the VM.
+Tailscale remains NeedsLogin; real-key handoff, private Windows SSH, data filesystem and
+application deployment remain gaps. No credential, enrollment, disk preparation or inference
+was introduced. Full infrastructure/application deployment readiness remains NO.
+
+The VM was still running at 07:41:42 UTC. The fixed **09:26:38.7760141 UTC today** cutoff
+is unchanged. No deallocation or future scheduler was created by this repair; the operator
+must cover cutoff deallocation, verify PowerState/deallocated and coordinate NAT/PIP and
+disk-retention review. Retained resources may continue billing after compute deallocation.
+
+## 24 November 2026 — Post-Azure continuation and current state
+
+This dated continuation supersedes the earlier unmounted/unenrolled/undeployed findings
+only where the operator supplied later executed evidence. The historical first-boot FAIL,
+repair report and expired evaluation cutoffs above remain unchanged. **No command in this
+section was executed against Azure by this offline continuation.**
+
+The operator reports private Tailscale/OpenSSH access, ext4 data-disk preparation and reboot
+remount, Docker Engine 29.10.0/Compose v5.8.0, secure image transfer/import, pinned Compose
+validation and network-disabled CPU embedding/reranking PASS. SSH, tailscaled and Docker
+were active after reboot. The VM was subsequently **reported deallocated**. Its actual
+current Azure power state, full outbound controls and ongoing charges were not queried.
+
+The authoritative filesystem UUID is **`c95e5fce-443b-4d90-9160-8b67758f12d9`**, mounted at
+`/srv/polymind`. `/dev/sda` and `/dev/sdb` changed across lifecycle operations. **Do not format,
+partition or initialize this disk again.** Verify UUID/target/filesystem and numeric owners
+before future use. Reported directories: operator 10001:10001, Redis 999:999, Chroma
+10001:10001, all 0700; operator/private, objects and sources also restrictive.
+
+The transferred image is `polymind:phase19-reviewed`, identity
+`sha256:9f386acf8bddcb5d01bb028151caae24b5df604f8a56c00b7b39c7e0f8298c02`, revision label
+`7bf82dc2da4a9f29561a5f493b690502c0090eb0`. The local audit matches 135 runtime Python files
+byte for byte; this continuation changes tests/documentation only and requires no rebuild.
+A later runtime/dependency/Dockerfile/model-packaging change requires a newly verified image
+and separately authorized secure transfer. A local image ID is not automatically a registry
+manifest digest.
+
+Azure-staged vendor references are:
+
+```text
+redis@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+chromadb/chroma@sha256:1e0b73a187a28757c572acba508c46f48c9e8b0acaf5c20e6d95cdedce1acdf6
+```
+
+The root-owned `/opt/polymind/docker-compose.phase19.yml` and `compose.env.example` were
+staged/parsed on Azure. This pinned copy has **not** been copied into tracked Compose;
+the repository still uses Redis 7.4-alpine/Chroma 1.5.9 tags plus the selected application
+image input. Local cached Redis resolves to `sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf`,
+which differs from the operator's Azure reference. No equivalence or cross-platform manifest
+relationship is inferred. Verify the exact staged digests/architecture and reviewed file
+hash in the next session; do not overwrite the pinned copy with the tag-based source blindly.
+
+Production configuration was intentionally absent: `/etc/polymind/compose.env`, provider,
+Streamlit/TLS files, execution-authority directory and operator deployment/configuration/
+manifest records. The seven production authorities were **not initialized**, the five-service
+stack was **not started**, and the mount-aware systemd unit was **not installed/enabled**.
+The gateway's loopback/security preflight is configuration evidence, not browser TLS/login
+or runtime network enforcement. Full capacity, Azure backup/restore and application reboot
+acceptance remain pending. See the [post-Azure report](../codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md).
+
+### Operator-supplied non-secret configuration decisions
+
+Supply reviewed values/references through the private deployment process, without posting
+credentials or signed permissions in chat/Git. No value below is selected by this run.
+
+| Input | Exact contract / decision needed |
+|---|---|
+| Entra directory | Canonical public-cloud tenant UUID `T`; `OIDC_CONFIGURATION.token_profile=entra_v2`, `tenant_id=T`, `issuer=https://login.microsoftonline.com/T/v2.0`, `jwks_url=https://login.microsoftonline.com/T/discovery/v2.0/keys` |
+| API registration | Canonical API client UUID as scalar `audience`; v2 access tokens; exposed Application ID URI and delegated `access_as_user`; assigned user role exactly `PolyMind.L1Operator`, with no additional token roles |
+| Browser registration | Native Streamlit client UUID, tenant-specific discovery metadata URL, approved authorization-code registration/consent and exact redirect URI; requested scope `openid` plus `<API Application ID URI>/access_as_user` and any separately reviewed identity scopes |
+| Enrollment | Exact `[issuer, tenant UUID, access-token subject]` in `RuntimeManifest.enrollment`; subject must be the API access-token `sub`, not email/display name/`oid` or an assumed ID-token subject |
+| Native auth fields | `[auth] redirect_uri`, `server_metadata_url`, `client_id`, `expose_tokens=["access"]`; `[auth.client_kwargs] scope`; private `client_secret` and `cookie_secret` supplied only by custodian, never this table |
+| Private origin | Fixed `https://<approved private hostname>:<browser-visible port>` with no path/query/fragment/credentials; matching `PHASE19_ORIGIN`, exact Host and WebSocket Origin, native redirect `<origin>/oauth2callback` |
+| Certificate/trust | SAN covering that private hostname, valid server chain and private key, browser trust/distribution and renewal owner; all mounted TLS files 10001-owned, mode 0600, regular/non-symlink; do not treat test TLS material as production trust |
+| Tunnel | Approved Tailscale/OpenSSH endpoint and local **loopback** forwarding to VM `127.0.0.1:9443`; private browser hostname resolves to the local tunnel, port matches origin/callback; keep SSH host verification and TLS validation |
+| Source | Approved immutable bytes/SHA256, owner scope derived by `stable_id` from enrolled issuer/tenant/subject, rights/classification/transmission/retention, current SourceApproval and separate consent/exposure/privacy/quality/session approvals |
+| Provider | Approved HTTPS dispatch base (Foundry candidate `/openai/v1/`), model deployment/version/type/region and response aliases, all logical roles (`general`, `fast`, `coding`, `summarization`), `api-key` versus `Authorization`, credential-custody reference; no token refresh implemented |
+| Capabilities | Managed prompt 11 profiles, `azure-strict/1`, context/output/deadline/envelope limits and usage reporting; separate analysis and Chat streaming/usage capabilities. Metadata is not live compatibility proof |
+| Finance/admission | Approved applicable tariff/currency/catalog covering used aliases, tenant/owner budgets, shared provider key/RPM/TPM/concurrency/interactive policy, shared-consumer/exclusivity evidence and reconciled outstanding obligations |
+| Execution custody | Independently controlled read-only authority root, public trust/key ID and operator binding, revocation list; new live permission only after independent approval of frozen binding, exact scopes/resource/call bound/window. Signer key never enters the application |
+
+`configuration.json` is explicit: inherited dotenv/environment does not fill missing production
+values. Use the existing example as a field inventory, not a valid configuration. The adapter
+accepts generic HTTPS v1 paths; this is not enforcement or proof of a Foundry `/openai/v1/`
+endpoint. Supply the actual approved endpoint and verify compatibility only when authorized.
+The native browser flow and login/logout/reauthentication/cookie/expiry behavior still need
+real browser acceptance; offline signed JWT tests establish only the server contract.
+
+### Next authorized session — Gates A–E
+
+Each gate is a separately reviewable future step. These instructions grant no cloud, identity,
+production lifecycle, signing, model-spend or public-exposure permission.
+
+**Gate A — Freeze operator-controlled inputs.** Resolve the table above and record independent
+identity/TLS, source/provider/data, finance/quota and execution-custody approvals. Keep new
+model expenditure separate from infrastructure expenditure. For a no-inference startup,
+review an explicit execution-disabled manifest; never substitute fake production credentials
+or use the local synthetic harness as a production switch. Missing permission remains denied.
+Real semantic review must remain independent; synthetic attached reviews confer no acceptance.
+
+**Gate B — Authorize and revalidate existing infrastructure.** Obtain fresh subscription/resource,
+cost ceiling, allocated-time window, cutoff and named start/stop/deallocation/residual owners.
+The old four-hour session and older eight-hour cutoffs have ended. Under that authorization,
+confirm exact VM identity/current power state before any activation. Revalidate private SSH,
+Tailscale policy and host key; verify actual outbound destination controls separately from
+Compose and NSG HTTPS permits. Verify filesystem UUID, ext4 mount and owners without disk
+initialization. Verify reviewed image identity/label, architecture, staged Compose/vendor digests
+and file hashes. Preserve `/opt/polymind` and mount-aware systemd expectations.
+
+**Gate C — Provision configuration, then deliberately initialize a new authority set.**
+
+1. Privately provision reviewed `/etc/polymind/compose.env` and the required secret files,
+   with appropriate host traversal and UID 10001/0600 access. Keep signer custody separate;
+   execution-authority mounts read-only. Validate metadata/modes without printing contents.
+2. Confirm stable operator root `/state`. Supply `deployment.json` exactly
+   `{"version":"phase19-state/1","container_root":"/state"}`, explicit `configuration.json`,
+   and `manifest.json` matching `RuntimeManifest`. Preserve existing runtime.lock inode.
+3. Provision approved `sources/<sha256>` with restrictive modes; verify every source hash,
+   issuer/tenant/owner and approval window, model/capability/catalog/policy/path binding.
+   Decide current authority reuse versus a genuinely new approved set. Reconcile any existing
+   obligations; never create an empty ledger to hide them.
+4. Start **only Redis/Chroma** under the reviewed Compose inputs and verify health/persistence.
+   Actual initialization constructs retrieval adapters, so data service availability and
+   baked model artifacts precede it. The existing image and explicit init process need no
+   provider request or Entra login to create schemas.
+5. Only if all seven databases are absent in the approved new state, run the existing
+   `initialize /state` command above once. Actual construction order is security → governance
+   → admission → jobs/publication → pilot → actions (all version 1). Source/config checks precede
+   creation; models/vector construction may fail after the first authorities are created.
+6. Verify all seven files exist separately: `security.sqlite`, `governance.sqlite`,
+   `admission.sqlite`, `jobs.sqlite`, `pilot.sqlite`, `actions.sqlite`, `publication.sqlite`.
+   Check UID/modes, schema and SQLite integrity, canonical objects and bindings. The `check`
+   command validates preflight/configuration only; it does not verify all credentials,
+   manifest/permission/source semantics or end-to-end readiness. Constructors validate schemas
+   when the full runtime is opened. Never bypass a partial failure by deleting or resetting DBs.
+
+Initialization does not grant enrollment, consent or execution. API middleware registers a
+verified principal in the security authority, but workflow enrollment/owner/permission checks
+still independently restrict it. Independently managed trust/revocation structure is required
+before enabling governed execution; no signing or new live record is performed here.
+
+**Gate D — Controlled application startup.** After lifecycle authorization, start the single
+API/runner using `serve`, then UI and gateway through existing health ordering. Retain lock,
+read-only roots/capability drops and `127.0.0.1:9443` only. Missing state, unsafe modes, missing
+credentials, dependency/JWKS failure or unsettled obligations must remain unavailable. Check
+real private HTTPS/WebSockets and native Entra browser/API access only when authorized;
+exercise wrong-user/tenant/role and cross-owner denial. Login/refresh/restart do not grant
+execution. Paid workflow execution additionally requires A3–A5, exact serial plan/deadline/
+budget and independent live permission; absent that, execute no inference. Do not manufacture
+reviews to expose a digest or answer. Observe capacity on the actual 2-vCPU/8-GiB host.
+
+**Gate E — Recovery and closure.** Stop admission, wait for bounded work, preserve/reconcile
+unsettled reservations and UNKNOWN without replay, then stop all five writers. Verify stopped
+containers/AOF flush, quiesced full-tree backup and protected off-disk custody. Test an isolated
+restore and controlled restart only if approved; preserve newer security/financial/revocation/
+consumption truth and fixed container paths, never run a live clone. Record integrity, resource,
+shutdown/recovery time and costs. Deallocate within the new window and independently confirm
+actual deallocated power state. Inventory retained disks, NAT/PIP and other residual charges;
+name their owners and review dates. No automatic resource deletion is implied. Azure application
+reboot/restore/RPO/RTO acceptance remains distinct from the earlier infrastructure reboot.
