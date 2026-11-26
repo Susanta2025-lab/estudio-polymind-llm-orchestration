@@ -127,3 +127,22 @@ performed. Financial and other L1 gates in the
 ## Phase 17I operator reuse — 13 November 2026
 
 The [bounded Phase 17I workflow](../evaluation/phase_17i_operator_workflow.md) reuses an existing verified operator `Principal` and publication authority. A participant study code is a private approval-record identifier, not an Entra principal or login credential. Never share the `PolyMind.L1Operator` role, token, device-code session or host control with participants. [Engineering/documentation completion](../evaluation/phase_17i_engineering_completion_and_deferred_acceptance.md) grants no new identity enrollment, external participation or provider-execution authority; those remain separately gated. This task changes no issuer configuration or authentication contract.
+
+## 26 November 2026 — Phase 19B native browser OIDC preparation
+
+The operator reports the dedicated single-tenant Streamlit Web registration, exact private
+callback acceptance, enabled browser service principal, API delegated permission, persisted
+Principal-only consent and confidential credential metadata complete. API role assignment
+remains operator-reported PASS. Tenant-wide consent is not granted; no Graph scopes or consent
+expansion is required. Historical pending statements retain their original date/scope.
+
+The [current preparation report](../codex/reports/phase_19b_streamlit_oidc_configuration_preparation.md)
+contains exact non-secret browser/API identifiers and the operator-only private provisioning
+procedure. Native Streamlit's client ID is the browser application's; the verifier audience
+remains the API client UUID. Scope URI, object IDs, directory oid and ID-token subject cannot
+substitute for API audience or API access-token sub. Enrollment remains
+`[issuer, tenant UUID, API access-token sub]`; actual sub is UNKNOWN. No production enrollment
+was created. Actual credential custody/encryption/validity and real browser/token acceptance
+remain unverified; no secrets, operational cookies/configuration, login or Entra mutations
+were performed by Codex. Authentication continues to grant no independent execution or
+financial authority. The portable template and verifier contract are unchanged.

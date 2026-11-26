@@ -223,3 +223,22 @@ and [bounded verification report](../codex/reports/phase_19b_private_https_origi
 Provider neutrality, one API/runner, seven authorities, private persistence and independent
 execution permissions remain intact. Phase 19A COMPLETE, 19B ACTIVE, 19C NOT STARTED;
 VM operator-reported deallocated. No operational readiness or live authorization is implied.
+
+## 26 November 2026 — Native OIDC configuration preparation
+
+The dedicated browser application, exact selected Web redirect acceptance, enabled SP,
+delegated API permission, Principal-only consent and confidential credential metadata are
+now operator-reported verified, superseding earlier pending registration findings within that
+scope. No tenant-wide consent was granted. The [OIDC preparation report](../codex/reports/phase_19b_streamlit_oidc_configuration_preparation.md)
+records all identity distinctions, exact non-secret configuration and complete operator-only
+provisioning/encryption/future SSH handoff procedures with fresh synthetic offline verification.
+
+Installed Streamlit 1.58.0 supports the unnamed default provider used by Chat and Documents;
+access-token exposure and existing API/enrollment contracts match. No runtime code, topology,
+dependency or image change is necessary. The portable inventory remains generic and actual
+configuration stays external. Populated native secrets, cookie custody, Azure provisioning,
+real browser authentication and API access-token subject enrollment are not established;
+actual secret encryption/access restriction is unverified. Operational cross-file comparison,
+TLS/trust, all other authority/provider/finance gates and no-public-exposure boundaries remain.
+VM operator-reported deallocated; no activation or inference authorization. Phase 19A COMPLETE,
+19B ACTIVE, 19C NOT STARTED. Operator review and independent private preparation are next.

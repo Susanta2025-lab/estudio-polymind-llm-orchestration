@@ -22,7 +22,26 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Phase 19 status — 25 November 2026
+## Phase 19 status — 26 November 2026
+
+Phase 19A is COMPLETE; Phase 19B remains ACTIVE; Phase 19C is NOT STARTED.
+The operator reports the dedicated Streamlit Entra Web registration, exact
+`https://polymind.test:9443/oauth2callback` acceptance, enabled service principal,
+API delegated permission, principal-only consent and confidential credential metadata
+verified on 25–26 November. Tenant-wide consent was not granted. These are configuration
+observations, not real browser authentication or runtime enrollment evidence.
+
+The [OIDC preparation report](docs/codex/reports/phase_19b_streamlit_oidc_configuration_preparation.md)
+contains the exact non-secret reference, complete operator-only secure preparation procedure,
+optional encrypted staging and future Azure handoff. The portable template stays generic.
+No actual client secret was accessed, operational cookie/configuration created, or Azure
+file installed by Codex. Actual credential custody/encryption remains unverified. Operator
+review and independent private preparation are next; TLS/trust, API token subject/enrollment
+and live authentication remain outstanding. No runtime change or image rebuild is required.
+The VM remains operator-reported deallocated; this update authorizes no activation,
+Entra change, production startup or inference. Historical results below retain their scope.
+
+### Historical Phase 19 status — 25 November 2026
 
 Phase 19A is COMPLETE; Phase 19B remains ACTIVE; Phase 19C is NOT STARTED.
 The selected private verification origin is `https://polymind.test:9443`, with exact

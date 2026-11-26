@@ -238,3 +238,25 @@ behavior. The old Azure image does not contain these new examples. Update the Az
 origin template and provision reviewed external files only in a later authorized session;
 preserve the existing pinned Compose/vendor and application image identities. Phase 19A
 COMPLETE; 19B ACTIVE; 19C Final Documentation and Engineering Closure NOT STARTED.
+
+## 26 November 2026 — OIDC preparation and next operator action
+
+The operator's 25–26 November evidence resolves browser registration, exact redirect acceptance,
+SP creation/enabling, delegated API permission, persisted operator-specific consent and one
+client credential's metadata at OPERATOR_REPORTED_PASS level. No tenant-wide consent or new
+Graph permission is requested. Do not repeat the earlier registration plan. Historical
+findings above remain unchanged.
+
+The [current OIDC report](../codex/reports/phase_19b_streamlit_oidc_configuration_preparation.md)
+prepares exact non-secret native configuration, a complete operator-run hidden-prompt/exclusive
+private-file procedure, independent cookie generation, optional existing-GPG staging and future
+verified Tailscale/OpenSSH handoff. Synthetic local verification and focused regression cover
+the procedure and existing contracts. No reusable runtime utility, dependency or image rebuild
+is needed. Next action is operator review, then independent private preparation outside Codex.
+
+Actual secret custody/encryption, operational cookie/TOML, Azure installation, CA/leaf/trust,
+actual private browser identity and API token sub/enrollment remain unverified/pending/blocked
+as classified in the report. Do not invent subjects or initialize authorities. Separate
+resource/cost/VM, provider/data/finance/quota and fresh execution approvals remain mandatory;
+no VM activation, Entra mutation, real login or inference is authorized by this task.
+Phase 19A COMPLETE; 19B ACTIVE; 19C NOT STARTED. Stop at this handoff.

@@ -1,5 +1,9 @@
 # Phase 19 private VM foundation — offline operations
 
+Current evidence is reconciled in the [26 November OIDC addendum](#26-november-2026--streamlit-oidc-preparation-and-current-gate-a-evidence).
+Earlier dated registration procedures and pending findings below are historical; do not rerun
+registration/consent/credential creation from those sections on the newly supplied evidence.
+
 19 November 2026. This foundation is **not approved for Azure activation or inference**.
 Governed Chat and Documents are implemented, with execution denied unless a current,
 independently signed, configuration-bound permission and all existing authorities validate.
@@ -644,6 +648,9 @@ No new configuration framework or application change is needed for this origin s
 
 ### Proposed Entra browser registration — operator review only
 
+Historical procedure, 25 November. The [26 November addendum](#26-november-2026--streamlit-oidc-preparation-and-current-gate-a-evidence)
+records operator-reported completion; no repeat mutation is authorized.
+
 The following Bash/Azure CLI steps are **future individually reviewed actions**, not a script
 to run as a batch. Use an already authorized administrative session in the reviewed tenant;
 this task performs no login or cloud commands. Stop on any unexpected inventory, tenant,
@@ -912,3 +919,57 @@ clients before resuming. CA compromise requires removal of that exact root from 
 profiles and reissuance under new reviewed custody. On retirement stop the tunnel/deployment,
 remove only the dedicated hosts entry and CA trust, retire server keys securely under retention
 policy and preserve necessary issuance/revocation audit. No public PKI service is introduced.
+
+## 26 November 2026 — Streamlit OIDC preparation and current Gate A evidence
+
+This dated addendum supersedes earlier pending browser-registration findings at the
+**operator-reported configuration** level only. The operator reports API v2/scope/role and
+role assignment, dedicated browser Web registration, accepted exact redirect, enabled
+Application service principal, required delegated API permission, persisted Principal-only
+consent and one confidential credential's metadata verified on 25–26 November. Tenant-wide
+consent was NOT granted. Do not repeat the historical registration/credential steps above.
+
+The [current OIDC report](../codex/reports/phase_19b_streamlit_oidc_configuration_preparation.md)
+reconciles every supplied identifier and contains the single environment-specific non-secret
+reference, complete independently executable local preparation procedure, optional GPG staging
+and future direct SSH installation procedure. Preserve the portable template placeholders.
+Run the procedure independently after operator review, outside Codex, using the existing
+client-secret value at a secure hidden prompt. Proposed local path is
+`~/.config/polymind/phase19/streamlit.toml`, Linux directory 0700 and file 0600, exclusive/no-follow
+creation; independent CSPRNG cookie; metadata-only validation. A populated TOML contains two
+plaintext secrets. Preserve the cookie across ordinary restarts; protect encrypted staging
+while inactive and avoid redundant plaintext. Actual custody/encryption is not independently
+verified. No operational file or cookie was created during preparation.
+
+| Gate A identity item | Current evidence / limit |
+|---|---|
+| API configuration / role assignment | OPERATOR_REPORTED_PASS; actual token claims unverified |
+| Browser registration / accepted exact Web redirect | OPERATOR_REPORTED_PASS |
+| Enabled browser SP / delegated API permission | OPERATOR_REPORTED_PASS |
+| Operator-specific Principal consent | OPERATOR_REPORTED_PASS; no tenant-wide consent |
+| Confidential client credential metadata | OPERATOR_REPORTED_PASS; actual value unseen |
+| Native Streamlit configuration and secure procedure | Offline PASS; installed 1.58.0 contract and synthetic tests |
+| Actual credential custody / encryption / validity | GAP; not independently verified |
+| Operational cookie / populated TOML / Azure installation | PENDING; not created/provisioned by Codex |
+| Runtime enrollment | BLOCKED; actual API access-token sub UNKNOWN |
+| Real private browser authentication | BLOCKED; unexecuted and unauthorized |
+
+Actual external origin, native callback and Entra URI require operator comparison before
+installation: `https://polymind.test:9443` plus `/oauth2callback`. The report's validator checks
+exact native fields; runtime does not automatically compare separately mounted gateway/API/
+native files. Keep SAN `DNS:polymind.test`, Windows/tunnel loopback 9443 and no public exposure.
+
+Future secret source `/etc/polymind/secrets/streamlit.toml` must be a non-symlink regular
+single-link file, UID:GID 10001:10001, mode 0600; root:10001/0710 host secret-directory traversal
+is the proposed maintenance policy. Compose mounts it read-only at
+`/tmp/.streamlit/secrets.toml` with `create_host_path:false`, UI UID 10001:10001. Verify exact
+existing host directories and SSH alias/host key; never invent a target or weaken sudo/host-key
+checks. Direct SSH stdin avoids remote plaintext staging. Transfer remains a future authorized
+operator action, not a task performed now. Preserve pinned Compose/image identities.
+
+TLS issuance/trust/custody/revocation, Windows/browser/tunnel acceptance and all other Gate A
+source/provider/financial/quota/independent-permission requirements plus Gates B–E remain.
+The VM is operator-reported deallocated. No activation, Entra mutation, actual login,
+production authority initialization or inference is authorized. No application runtime or image
+change is needed. Phase 19A COMPLETE; 19B ACTIVE; 19C NOT STARTED. Next: operator review and
+independent secure preparation only.
