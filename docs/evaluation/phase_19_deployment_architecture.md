@@ -196,3 +196,30 @@ quota, independent permission, production authorities and Azure application/reco
 acceptance remain blocked. Compose isolation is not a verified outbound destination policy.
 See the [dated reconciliation report](../codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md)
 and [next-session runbook](../operations/phase_19_vm.md#next-authorized-session--gates-ae).
+
+## 25 November 2026 — Private HTTPS origin configuration
+
+The selected Phase 19B private verification origin is `https://polymind.test:9443`;
+callback `https://polymind.test:9443/oauth2callback`, Host `polymind.test:9443`,
+WebSocket Origin `https://polymind.test:9443`, certificate SAN `DNS:polymind.test`.
+Windows hosts mapping `127.0.0.1 polymind.test` preserves the browser-visible hostname;
+Windows-native OpenSSH over the existing Tailscale route forwards Windows loopback 9443
+to VM loopback 9443. Docker retains `127.0.0.1:9443:9443` and five services; no API,
+Redis, Chroma or UI host port is added. WSL-to-Windows localhost forwarding is unverified.
+
+Generic gateway/application logic is unchanged and configurable for another approved
+private hostname. The Compose example selects this origin; a new inert native OIDC
+field inventory supplies the matching callback and generic identifier/credential placeholders.
+Neither is operational configuration. The independent native secrets/Entra/Compose values
+must be compared before provisioning; template tests cannot validate private deployed files.
+Dedicated private CA issuance, lifetimes/custody/revocation and actual Windows/browser trust
+require operator review; only isolated temporary test certificates were used offline.
+
+The operator reports the enabled API user role assignment matches the signed-in operator
+and `PolyMind.L1Operator`; no real API token/browser authentication was verified. The dedicated
+browser registration, consent, credentials and runtime API access-token subject remain pending.
+See the [current Gate A runbook](../operations/phase_19_vm.md#25-november-2026--selected-private-https-origin-and-gate-a-update)
+and [bounded verification report](../codex/reports/phase_19b_private_https_origin_configuration_and_integration_verification.md).
+Provider neutrality, one API/runner, seven authorities, private persistence and independent
+execution permissions remain intact. Phase 19A COMPLETE, 19B ACTIVE, 19C NOT STARTED;
+VM operator-reported deallocated. No operational readiness or live authorization is implied.

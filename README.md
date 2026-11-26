@@ -22,7 +22,24 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Phase 19 status — 24 November 2026
+## Phase 19 status — 25 November 2026
+
+Phase 19A is COMPLETE; Phase 19B remains ACTIVE; Phase 19C is NOT STARTED.
+The selected private verification origin is `https://polymind.test:9443`, with exact
+OIDC callback `https://polymind.test:9443/oauth2callback`, certificate SAN
+`DNS:polymind.test` and Windows mapping `127.0.0.1 polymind.test`. The planned Windows-native
+OpenSSH tunnel forwards local loopback 9443 to VM loopback 9443 over the existing private route;
+the five-service gateway remains published only on `127.0.0.1:9443`.
+The [current Gate A record and operator procedures](docs/operations/phase_19_vm.md#25-november-2026--selected-private-https-origin-and-gate-a-update)
+and [verification report](docs/codex/reports/phase_19b_private_https_origin_configuration_and_integration_verification.md)
+distinguish offline configuration from operational acceptance. The API role assignment is
+operator-reported configuration evidence; dedicated Streamlit registration/consent,
+operational certificate issuance/trust, API access-token subject enrollment and real browser
+authentication remain pending. The VM is operator-reported deallocated. No Azure activation,
+Entra mutation, operational certificate provisioning, production startup or inference is
+authorized by this update.
+
+### Historical Phase 19 status — 24 November 2026
 
 The operator reports the private Spain Central Azure VM foundation, Tailscale/OpenSSH access,
 UUID-mounted ext4 data disk surviving reboot, Docker/Compose, reviewed application/vendor

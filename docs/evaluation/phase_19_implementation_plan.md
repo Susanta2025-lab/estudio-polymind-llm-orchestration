@@ -207,3 +207,34 @@ and UI/gateway under controlled startup; authorized recovery, financial/cost rec
 and verified deallocation. Never reformat the UUID-mounted disk or reset an existing database.
 Production startup, live inference and public exposure need their independent authorizations.
 Phase 19C remains NOT STARTED; this work prepares its eventual handoff only.
+
+## 25 November 2026 — Private HTTPS configuration task within Phase 19B
+
+Repository configuration now selects `PHASE19_ORIGIN=https://polymind.test:9443` and an
+inert Streamlit native OIDC template with exact callback
+`https://polymind.test:9443/oauth2callback`. Keep SAN `DNS:polymind.test`, Windows mapping
+`127.0.0.1 polymind.test`, browser Host/Origin and Windows-native SSH loopback forwarding on
+9443 consistent. No gateway/application logic, five-service topology, dependency or authority
+schema change is required. The [verification report](../codex/reports/phase_19b_private_https_origin_configuration_and_integration_verification.md)
+records fresh offline tests and provenance limitations; historical results above are retained.
+
+Gate A origin selection is resolved in repository templates; the API role assignment is
+operator-reported configuration PASS only. Dedicated `estudio-polymind-streamlit-dev`
+registration, exact redirect acceptance, browser UUID, delegated permission/consent and private
+credentials remain pending. After review, the next separately authorized action is that
+registration using the selected exact Web callback. Tenant UUID is still operator-supplied.
+No login/token acquisition, VM activation or certificate issuance is authorized now.
+
+The [operator procedures](../operations/phase_19_vm.md#25-november-2026--selected-private-https-origin-and-gate-a-update)
+cover duplicate-safe individually reviewed registration, Windows hostname/tunnel, private CA,
+server SAN/chain, restrictive file custody and trust removal. Operator must decide CA/leaf
+lifetimes, custodians and effective revocation. Actual hosts resolution, browser trust,
+API token subject enrollment and production private HTTPS remain unverified. Preserve all
+other Gate A source/provider/finance/quota/independent-permission blockers and Gates B–E.
+
+No runtime rebuild/transfer is required to adopt the externally mounted configuration;
+new example files change Docker build-context contents but do not alter executable image
+behavior. The old Azure image does not contain these new examples. Update the Azure-staged
+origin template and provision reviewed external files only in a later authorized session;
+preserve the existing pinned Compose/vendor and application image identities. Phase 19A
+COMPLETE; 19B ACTIVE; 19C Final Documentation and Engineering Closure NOT STARTED.

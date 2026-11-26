@@ -544,3 +544,371 @@ shutdown/recovery time and costs. Deallocate within the new window and independe
 actual deallocated power state. Inventory retained disks, NAT/PIP and other residual charges;
 name their owners and review dates. No automatic resource deletion is implied. Azure application
 reboot/restore/RPO/RTO acceptance remains distinct from the earlier infrastructure reboot.
+
+## 25 November 2026 — Selected private HTTPS origin and Gate A update
+
+This dated update selects repository configuration only. Phase 19A is COMPLETE;
+Phase 19B — Offline Implementation, Azure Deployment, Live Integration and Validation —
+remains ACTIVE; Phase 19C — Final Documentation and Engineering Closure — is NOT STARTED.
+The VM is **operator-reported deallocated**; no fresh Azure inspection was performed.
+No procedure below has been executed. Entra changes, VM activation/SSH, operational certificate
+creation, hosts/trust changes and production startup need separate authorization.
+
+| Contract | Selected Phase 19B private verification value |
+|---|---|
+| Origin / `PHASE19_ORIGIN` | `https://polymind.test:9443` |
+| Exact native OIDC and Entra Web callback | `https://polymind.test:9443/oauth2callback` |
+| HTTP Host / WebSocket Origin | `polymind.test:9443` / `https://polymind.test:9443` |
+| Windows hosts mapping | `127.0.0.1 polymind.test` |
+| Windows SSH bind / remote forwarding target | `127.0.0.1:9443` / `127.0.0.1:9443` |
+| VM published gateway / container TLS port | `127.0.0.1:9443:9443` / `9443` |
+| Server certificate SAN / minimum TLS | `DNS:polymind.test` / TLS 1.2 |
+| Certificate approach | Dedicated private CA-signed server certificate |
+
+`.test` is for this bounded private verification environment. No public DNS, public listener,
+public CA, new service or infrastructure is required. Another explicitly approved private
+hostname remains supported by the generic gateway; change the whole contract together.
+The container listens on its own interface; Docker publishes it only on VM loopback.
+
+### Gate A — Current identity and configuration evidence
+
+Operator-reported on 25 November: API `estudio-polymind-api-dev`, application/client UUID
+`5aa70f9d-9f9e-4b5b-972b-698d4d68105e`, Application ID URI
+`api://5aa70f9d-9f9e-4b5b-972b-698d4d68105e`, service principal object UUID
+`046ce5b0-897c-4289-ad86-e403ac6b6e20`, single tenant `AzureADMyOrg`, delegated
+`access_as_user`. Enabled user role `PolyMind.L1Operator` has UUID
+`e34bc374-42ff-4a6a-87e2-007b8cc788b3`. Exactly one role assignment was reported: principal
+type User, principal UUID matched the signed-in operator's directory object, role UUID matched
+that enabled role. This is **OPERATOR_REPORTED_PASS at configuration level only**.
+No real browser login or API access-token validation follows from it.
+
+Existing reported inventory contains API and `estudio-polymind-cli-dev`; the dedicated
+`estudio-polymind-streamlit-dev` is absent. Do not modify the API or CLI registrations.
+Tenant UUID and browser client UUID remain operator-supplied, not invented here.
+
+| Gate A item | Current state |
+|---|---|
+| Selected origin/callback/SAN/tunnel contract | Selected in repository; offline verified |
+| API role assignment | Operator-reported configuration PASS; runtime token claims unverified |
+| Browser registration / exact Entra redirect acceptance | PENDING / PENDING |
+| Browser identity / delegated permission / consent / client and cookie secrets | PENDING |
+| Operational CA/server issuance / Windows trust / custody and validity decisions | PENDING |
+| Windows hostname resolution / tunnel endpoint acceptance | PENDING |
+| Runtime enrollment `[issuer, tenant, API access-token sub]` | BLOCKED; never substitute directory `oid`, email, display name or ID-token `sub` |
+| Real private browser authentication / production runtime activation | BLOCKED / BLOCKED |
+| Other Gate A source, consent, semantic review, provider, financial/quota and independent permission inputs | Still required; unchanged |
+
+Gates B–E and all existing data/finance/recovery/capacity/outbound requirements remain in force.
+Origin selection and user app-role assignment do not authorize inference, initialize authorities,
+or satisfy independently signed execution permission.
+
+### Native Streamlit configuration and consistency review
+
+Use the inert [native OIDC field inventory](../../deployment/phase19/streamlit.secrets.example.toml).
+It is deliberately outside `.streamlit`, has an example-only name and is never automatically
+loaded, mounted or copied to the runtime secret location. Populate a **separate** private
+`/etc/polymind/secrets/streamlit.toml`; never mount the example. Replace every angle-bracket
+placeholder. Structural TOML parsing and Streamlit's key-presence checks do not validate
+identifiers, secrets, consent or operational readiness.
+
+The environment-specific delegated scope is
+`api://5aa70f9d-9f9e-4b5b-972b-698d4d68105e/access_as_user`.
+The API audience is the bare API UUID; the browser client UUID is a separate application.
+Tenant-specific discovery is
+`https://login.microsoftonline.com/<TENANT_UUID>/v2.0/.well-known/openid-configuration`.
+Native `[auth]` uses `redirect_uri`, `server_metadata_url`, `client_id`, private `client_secret`,
+private strong random `cookie_secret`, `expose_tokens=["access"]`; `[auth.client_kwargs]`
+uses `scope="openid api://<API_CLIENT_UUID>/access_as_user"`. No Graph permissions are needed.
+
+Streamlit 1.58.0 is pinned and locally installed. Its default provider accepts these fields;
+its Starlette auth routes use authorization code, state/nonce and S256 when advertised by
+provider metadata. Confidential-client credentials belong to Streamlit on the server.
+Both UI planes forward `st.user.tokens['access']` to FastAPI; the API independently verifies
+the tenant-specific Entra v2 token, API audience, delegated scope, exact role, enrollment,
+revocation and owner/tenant authorization. ID/Graph tokens do not substitute. Missing execution
+permission still denies model work. Token expiry/logout/reauthentication remain live acceptance.
+See [Streamlit 1.58 login](https://docs.streamlit.io/1.58.0/develop/api-reference/user/st.login)
+and [Microsoft authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
+
+Before provisioning, the operator/custodian must compare the three independently stored values:
+`PHASE19_ORIGIN + "/oauth2callback"`, native `auth.redirect_uri`, and registered Entra
+`web.redirectUris` must be exactly `https://polymind.test:9443/oauth2callback`, including port
+and case. Verify metadata tenant, client UUID, delegated scope and actual certificate SAN
+against the approved record without printing secrets. Reject placeholders or a mismatch;
+do not start services to test a guessed configuration. Existing runtime code does not perform
+an automatic cross-file comparison: the UI and gateway have separate read-only mounts and
+only the gateway receives `PHASE19_ORIGIN`. The new repository regression checks template
+consistency; this operational comparison is still mandatory for populated external files.
+Wrong callback configuration does not bypass API token or gateway checks; it breaks login.
+No new configuration framework or application change is needed for this origin selection.
+
+### Proposed Entra browser registration — operator review only
+
+The following Bash/Azure CLI steps are **future individually reviewed actions**, not a script
+to run as a batch. Use an already authorized administrative session in the reviewed tenant;
+this task performs no login or cloud commands. Stop on any unexpected inventory, tenant,
+permission, consent or redirect result. Review [CLI application commands](https://learn.microsoft.com/en-us/cli/azure/ad/app?view=azure-cli-latest)
+and [delegated permissions](https://learn.microsoft.com/en-us/cli/azure/ad/app/permission?view=azure-cli-latest).
+
+1. Verify the signed-in tenant and list applications/service principals before mutation.
+   Compare the tenant to the operator-supplied UUID. Require zero dedicated browser matches;
+   if one exists, inspect it rather than creating a duplicate; if multiple, stop and reconcile.
+
+   ```bash
+   az account show --query '{tenantId:tenantId}' -o json
+   az ad app list --filter "displayName eq 'estudio-polymind-streamlit-dev'" --query '[].{id:id,appId:appId,displayName:displayName}' -o json
+   az ad sp list --filter "displayName eq 'estudio-polymind-streamlit-dev'" --query '[].{id:id,appId:appId,displayName:displayName}' -o json
+   ```
+
+2. Discover the API scope UUID; it is **not** the app-role UUID. Verify exactly one enabled
+   `access_as_user` scope, consent type/descriptions, v2 token version and existing API identity.
+   Do not repair the API registration as part of browser registration without separate review.
+
+   ```bash
+   PHASE19_API_CLIENT='5aa70f9d-9f9e-4b5b-972b-698d4d68105e'
+   az ad app show --id "$PHASE19_API_CLIENT" --query '{appId:appId,audience:signInAudience,uris:identifierUris,tokenVersion:api.requestedAccessTokenVersion,scopes:api.oauth2PermissionScopes}' -o json
+   # Set only the discovered, reviewed enabled scope UUID:
+   PHASE19_API_SCOPE_UUID='<DISCOVERED_ACCESS_AS_USER_SCOPE_UUID>'
+   ```
+
+3. Only after authorization and zero-match inventory, register the dedicated confidential
+   **Web** application, single tenant, with the exact URI. No SPA/native platform, implicit
+   grants, public-client fallback or client-credentials API permission is required.
+
+   ```bash
+   az ad app create --display-name estudio-polymind-streamlit-dev --sign-in-audience AzureADMyOrg --web-redirect-uris 'https://polymind.test:9443/oauth2callback' --enable-access-token-issuance false --enable-id-token-issuance false --is-fallback-public-client false --query '{id:id,appId:appId,displayName:displayName}' -o json
+   # Copy the returned non-secret appId after review:
+   PHASE19_BROWSER_CLIENT='<RETURNED_BROWSER_APP_UUID>'
+   ```
+
+4. Read back the exact **Web** URI and flow settings. URI is configured on the application,
+   not the service principal. No wildcard or localhost substitution. `polymind.test` uses the
+   explicit port; Microsoft's localhost port-matching exception does not apply.
+
+   ```bash
+   az ad app show --id "$PHASE19_BROWSER_CLIENT" --query '{appId:appId,signInAudience:signInAudience,web:web,spa:spa,publicClient:publicClient,isFallbackPublicClient:isFallbackPublicClient}' -o json
+   ```
+
+   [Microsoft redirect restrictions](https://learn.microsoft.com/en-us/entra/identity-platform/reply-url)
+   support HTTPS and exact non-localhost port matching. No documented conflict was identified
+   for this selection; **actual tenant acceptance remains PENDING**. If rejected, preserve the
+   exact error without tokens and request review; do not silently change origin.
+
+5. Inspect service principals by the returned app UUID. Create only if absent, then read back.
+
+   ```bash
+   az ad sp list --filter "appId eq '$PHASE19_BROWSER_CLIENT'" --query '[].{id:id,appId:appId}' -o json
+   # Only if zero results, separately reviewed:
+   az ad sp create --id "$PHASE19_BROWSER_CLIENT" --query '{id:id,appId:appId}' -o json
+   ```
+
+6. Add only the discovered delegated API scope (`Scope`, not `Role`). Review pending requested
+   permissions before consent; adding a requested permission does not grant it.
+
+   ```bash
+   az ad app permission add --id "$PHASE19_BROWSER_CLIENT" --api "$PHASE19_API_CLIENT" --api-permissions "$PHASE19_API_SCOPE_UUID=Scope"
+   az ad app permission list --id "$PHASE19_BROWSER_CLIENT" -o json
+   ```
+
+7. Assess the scope's consent type, tenant user-consent policy and conditional access with
+   the authorized identity administrator. Obtain the narrow required delegated consent using
+   the organization's reviewed portal flow. No unconditional `admin-consent` command is
+   prescribed; it could consent every requested permission. No broad tenant-wide privilege,
+   Graph API scope or modification to the CLI/API application is requested. User app-role
+   assignment remains separate from browser delegated consent.
+
+8. The credential custodian reviews validity/rotation, creates the browser application's
+   confidential client secret in the authorized portal, and transfers the one-time value
+   directly to the approved secret vault and private Streamlit file using the secure custody
+   process. No terminal output, shell argument/history, clipboard transcript, logs, screenshot,
+   chat or repository secret. Do not use a default `az ad app credential reset` that prints
+   the secret or deletes other credentials. Generate the separate cookie secret privately.
+   Do not create/retrieve either during this task. Portal creation alone is not API acceptance.
+
+9. Perform read-only verification of application, service principal, required resource access,
+   grants and credential **metadata only**. Confirm no implicit/public flows, unexpected
+   redirects or Graph permissions. Record the browser UUID, scope UUID and consent status.
+
+   ```bash
+   az ad app show --id "$PHASE19_BROWSER_CLIENT" --query '{appId:appId,signInAudience:signInAudience,web:web,publicClient:publicClient,isFallbackPublicClient:isFallbackPublicClient,requiredResourceAccess:requiredResourceAccess}' -o json
+   az ad sp list --filter "appId eq '$PHASE19_BROWSER_CLIENT'" --query '[].{id:id,appId:appId}' -o json
+   az ad app permission list-grants --id "$PHASE19_BROWSER_CLIENT" -o json
+   az ad app credential list --id "$PHASE19_BROWSER_CLIENT" --query '[].{keyId:keyId,displayName:displayName,start:startDateTime,end:endDateTime}' -o json
+   ```
+
+No token acquisition is part of registration verification. Runtime enrollment waits for a
+separately authorized API access-token verification of exact issuer/tenant/`sub`; never
+infer it from the directory role assignment. Freeze new reviewed bindings where required.
+
+### Windows hostname resolution and private tunnel — future PowerShell procedure
+
+The intended path is Windows browser → `polymind.test:9443` → Windows loopback →
+Windows-native OpenSSH over the existing Tailscale route → VM loopback `127.0.0.1:9443` →
+Docker gateway → Streamlit → internal FastAPI. Hosts resolution changes the connection
+address only; URL hostname, TLS SNI/name verification, HTTP Host and WebSocket Origin stay
+`polymind.test` with the selected port. Do not browse to a loopback IP or VM IP URL.
+
+The standard hosts file is `%SystemRoot%\System32\drivers\etc\hosts`
+(normally `C:\Windows\System32\drivers\etc\hosts`). After separate approval, a Windows
+administrator adds exactly `127.0.0.1 polymind.test` without conflicting mappings, preserving
+other entries. Do not add an IPv6 mapping for this IPv4 tunnel. Then verify in PowerShell:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+[System.Net.Dns]::GetHostAddresses('polymind.test') | ForEach-Object { $_.IPAddressToString }
+$Phase19Listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object { $_.LocalPort -eq 9443 })
+if ($Phase19Listeners.Count -gt 0) { $Phase19Listeners; throw 'Port 9443 is already in use.' }
+```
+
+Require resolution only to `127.0.0.1` and the port to be free before forwarding. If occupied,
+identify the owner; do not kill an unrelated listener or change the selected port silently.
+`nslookup` queries DNS directly and is not proof of Windows hosts-file resolution.
+
+Historical repair records identify user `polymindadmin`, a Windows key
+`$env:USERPROFILE\.ssh\id_ed25519_polymind_azure`, and VM Ed25519 public host fingerprint
+`SHA256:tGW/X/urHlViBMqFsJtgeVgrnt2xZxup3Duw/jN6vHg`. The recorded `100.108.249.65` is
+**the Windows operator device**, not a VM target. No authoritative final VM tail IP/alias
+was located; keep the target placeholder until reconfirmed by the operator. Verify the
+existing known_hosts entry/fingerprint through the approved independent record before SSH;
+never trust a fresh `ssh-keyscan` alone or accept an unexpected key change. Check Windows
+known_hosts as well as any historical WSL entry: they are different files.
+
+```powershell
+$Phase19VmTarget = 'polymindadmin@<VERIFIED_VM_TAILSCALE_IP_OR_APPROVED_SSH_ALIAS>'
+# Foreground Windows ssh.exe; all placeholders must be resolved before execution.
+ssh.exe -N -T -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -i "$env:USERPROFILE\.ssh\id_ed25519_polymind_azure" -L 127.0.0.1:9443:127.0.0.1:9443 $Phase19VmTarget
+```
+
+Once later-authorized gateway startup, trusted TLS and tunnel are ready, open
+`https://polymind.test:9443` in the approved Windows browser. Verify the listener is Windows
+loopback only and inspect certificate name/chain without bypassing errors. Keep SSH in the
+foreground; close the browser session/log out as appropriate, then Ctrl+C in that window
+and confirm the listener disappears. Reuse existing verified Tailscale/OpenSSH, no new route.
+A WSL-bound forward is a different network endpoint: Windows-to-WSL localhost forwarding
+was **not verified** here. Do not assume it works or broaden the bind to `0.0.0.0` to compensate.
+
+### Dedicated private CA and server TLS — future reviewed procedure
+
+No operational keys/certificates/trust are created here. Before issuance the operator must
+approve the CA custodian, protected offline custody/backup, CA and leaf lifetimes, renewal
+lead time, revocation/distribution owner and Windows user/browser trust scope. The following
+Bash/OpenSSL recipe runs only in a new protected custody workspace after that approval;
+`PHASE19_CA_DAYS`, `PHASE19_LEAF_DAYS`, `PHASE19_CRL_DAYS` are reviewed positive integers,
+not values selected by this task. CA validity must cover the approved leaf validity.
+Use the organization's approved cryptographic policy; this recipe uses encrypted RSA-3072
+CA custody and RSA-2048 server key. Passphrases are entered interactively, never arguments.
+
+```bash
+set -eu
+umask 077
+# Select a new protected directory outside the repository; refuse an existing CA workspace.
+mkdir phase19-private-ca
+cd phase19-private-ca
+mkdir newcerts
+: > index.txt
+openssl rand -hex 16 > serial
+printf '01\n' > crlnumber
+cat > ca.cnf <<'EOF'
+[ca]
+default_ca = dedicated
+[dedicated]
+dir = .
+database = $dir/index.txt
+new_certs_dir = $dir/newcerts
+certificate = $dir/ca.crt
+private_key = $dir/ca.key
+serial = $dir/serial
+crlnumber = $dir/crlnumber
+default_md = sha256
+policy = server_policy
+unique_subject = no
+copy_extensions = none
+[server_policy]
+commonName = supplied
+[server]
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:polymind.test
+EOF
+# Supply approved durations through this protected shell before proceeding.
+: "${PHASE19_CA_DAYS:?Operator-approved CA validity required}"
+: "${PHASE19_LEAF_DAYS:?Operator-approved server validity required}"
+: "${PHASE19_CRL_DAYS:?Operator-approved CRL validity required}"
+openssl genpkey -algorithm RSA -aes-256-cbc -pkeyopt rsa_keygen_bits:3072 -out ca.key
+openssl req -new -x509 -sha256 -key ca.key -days "$PHASE19_CA_DAYS" -subj '/CN=PolyMind Phase19 Private Verification CA' -addext 'basicConstraints=critical,CA:true,pathlen:0' -addext 'keyUsage=critical,keyCertSign,cRLSign' -out ca.crt
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out tls.key
+openssl req -new -key tls.key -subj '/CN=polymind.test' -out server.csr
+openssl ca -config ca.cnf -extensions server -days "$PHASE19_LEAF_DAYS" -in server.csr -out server.crt -notext
+openssl verify -purpose sslserver -verify_hostname polymind.test -CAfile ca.crt server.crt
+openssl x509 -in server.crt -noout -subject -issuer -dates -ext 'subjectAltName,extendedKeyUsage'
+openssl x509 -in ca.crt -noout -fingerprint -sha256
+# This direct root-to-leaf recipe has no intermediate: tls.crt contains the leaf only.
+cp server.crt tls.crt
+chmod 600 tls.crt tls.key
+```
+
+The `openssl ca` database and serial files must be retained in protected CA custody for
+renewal/revocation; do not recreate them. Never deploy `ca.key` to the VM or image. If a
+separately reviewed CA hierarchy uses intermediates, `tls.crt` must contain leaf then all
+required intermediates; the trusted root is distributed separately. Inspect public leaf
+and CA fingerprints, validity, SAN, serverAuth, chain and public-key match before transfer.
+For key matching compare these public hashes only, never print the private key:
+
+```bash
+openssl x509 -in tls.crt -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256
+openssl pkey -in tls.key -pubout -outform DER | openssl dgst -sha256
+```
+
+After separate authorization, transfer only `tls.crt` and `tls.key` through the existing
+host-verified encrypted channel and protected staging (no email, logs, clipboard transcript
+or repository). On the VM, a trusted custodian installs only regular non-symlink single-link
+files at `/etc/polymind/secrets/tls.crt` and `/etc/polymind/secrets/tls.key`,
+**UID:GID 10001:10001, mode 0600**. Use dedicated root-controlled parent paths with traversal
+for UID 10001 (for example `/etc/polymind` root:10001 0750 and secrets root:10001 0710),
+no untrusted write access or symlink ancestors. Review existing directories before changing
+them. Verify with `namei -l` and `stat` without reading private contents. Docker requires
+readable source paths and mounts individual files read-only with `create_host_path:false`.
+Container UID 10001 must read the mounted file through `/run/secrets`; container paths and
+ownership must be verified after a separately authorized start. The gateway's `private_path`
+checks effective UID, regular file, one link, no symlink ancestors and no group/other mode
+bits; the operational contract also requires GID 10001 and exact 0600. Streamlit's secret
+mount is read-only/missing-source fail-closed, but its parser does not enforce those file
+ownership checks: custodian preflight is required for that file too.
+
+For Windows, distribute **only the CA public certificate**, validate its SHA256 fingerprint
+via the independent approved record, and import into the approved operator account's Trusted
+Root Certification Authorities store after separate approval. Example PowerShell commands:
+
+```powershell
+# Use the reviewed public certificate path and inspect thumbprint/identity first.
+certutil.exe -hashfile '<PUBLIC_CA_CERT_PATH>' SHA256
+certutil.exe -user -addstore Root '<PUBLIC_CA_CERT_PATH>'
+# Later remove only this CA after verifying its exact stored thumbprint:
+certutil.exe -user -delstore Root '<VERIFIED_DEDICATED_CA_THUMBPRINT>'
+```
+
+Use the organization's browser trust policy; managed Edge/Chrome may use Windows trust,
+while Firefox or managed profiles may require separately reviewed trust settings. Verify the
+actual approved browser chain/name/expiry, not just import success. No verification bypass,
+`curl -k`, browser exception or SSH host-check disabling is allowed. Protect server-key
+backups; application containers get no CA key and browsers get no private key.
+
+Renew before the reviewed deadline: issue a fresh leaf/key, validate SAN/chain/permissions,
+securely replace through controlled stop/start because the gateway loads TLS at startup,
+and recheck browser/Host/Origin behavior. Revoke compromised/superseded leaves using the
+retained CA database and generate a current CRL with reviewed validity:
+
+```bash
+openssl ca -config ca.cnf -revoke server.crt
+openssl ca -config ca.cnf -gencrl -crldays "$PHASE19_CRL_DAYS" -out ca.crl
+```
+
+No CRL distribution endpoint or automatic browser revocation enforcement is implemented by
+this recipe. A generated CRL alone does not protect an offline browser. The operator must
+review effective revocation distribution/enforcement before operational acceptance; on
+compromise stop use, withdraw affected trust as needed, replace keys/certificates and verify
+clients before resuming. CA compromise requires removal of that exact root from all affected
+profiles and reissuance under new reviewed custody. On retirement stop the tunnel/deployment,
+remove only the dedicated hosts entry and CA trust, retire server keys securely under retention
+policy and preserve necessary issuance/revocation audit. No public PKI service is introduced.
