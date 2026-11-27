@@ -224,9 +224,19 @@ print('SYNTHETIC_END_TO_END: PASS; FORBIDDEN_IMPORTS: 0; AUTHORITY_WRITES: 0; PR
     assert list(session.iterdir()) and len(list(evidence.iterdir())) == 1
 
 
-def test_native_worker_flags_and_real_loopback_start_stop(private_tree, monkeypatch):
+@pytest.mark.parametrize("pythonpath_present", [False, True], ids=["absent", "present"])
+def test_native_worker_flags_and_real_loopback_start_stop(
+    private_tree, monkeypatch, pythonpath_present
+):
     """No browser/auth request. Start pinned Streamlit, check health, terminate siblings."""
     session, evidence, _ = private_tree
+    if pythonpath_present:
+        configured_path = os.environ.get(
+            "PYTHONPATH", os.pathsep.join((str(launch.REPO), str(session)))
+        )
+        monkeypatch.setenv("PYTHONPATH", configured_path)
+    else:
+        monkeypatch.delenv("PYTHONPATH", raising=False)
     # child uses its actual native interfaces, not a fake HTTP server
     monkeypatch.setattr(launch, "WINDOW_SECONDS", 0.5)
     original = launch.environment
@@ -234,7 +244,11 @@ def test_native_worker_flags_and_real_loopback_start_stop(private_tree, monkeypa
     def env(root, destination):
         value = original(root, destination)
         # Synthetic guard only; launcher never inherits arbitrary PYTHONPATH operationally.
-        value["PYTHONPATH"] = os.environ["PYTHONPATH"]
+        if "PYTHONPATH" in os.environ:
+            value["PYTHONPATH"] = os.environ["PYTHONPATH"]
+        assert value["PYTHONPATH"] == (
+            configured_path if pythonpath_present else str(launch.REPO)
+        )
         return value
 
     monkeypatch.setattr(launch, "environment", env)
