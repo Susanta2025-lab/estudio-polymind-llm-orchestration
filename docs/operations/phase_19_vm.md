@@ -1036,3 +1036,22 @@ separately authorized. Keep endpoint/user/identity paths and private topology in
 operator record. Preserve the existing Azure-pinned Compose, image and filesystem UUID;
 do not replace them with portable tags or reformat/reset storage. VM remains reported
 deallocated. Phase 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. No new runtime/image work was done.
+
+
+## 27 November 2026 — Local identity bootstrap operator handoff
+
+The new [local runbook](phase_19_identity_bootstrap.md) prepares acquisition of the actual API
+subject before production initialization, using a dedicated native WSL Streamlit UI and reused
+loopback HTTPS gateway. It requires no VM activation, SSH tunnel, production Compose, source,
+provider or authority. Do not use production `up --no-deps`, placeholders or initialization
+workarounds. The [engineering report](../codex/reports/phase_19b_local_identity_bootstrap_utility.md)
+records offline tests and current networking limits. Actual authentication remains separately
+authorized future work. Preserve the original production cookie and encrypted operational custody.
+
+Windows and WSL callback listeners must both be checked before bootstrap and before the future
+Azure tunnel; they must not coexist on the browser endpoint. Export remains an unsigned candidate
+requiring protected operator provenance review and separately authorized enrollment/source-owner
+configuration. All existing Gate A source/privacy/review/provider/finance/quota/independent
+execution, backup/revocation/remote trust/transfer and live-acceptance conditions remain.
+Gates B–E and pinned staged application/Redis/Chroma artifacts are unchanged; no Azure rebuild
+or transfer is needed for this local utility. Operational Gate A BLOCKED; 19B ACTIVE; 19C NOT_STARTED.

@@ -177,3 +177,21 @@ execution gates remain separate. Manual private-PKI revocation risk and independ
 custody also remain open. No actual Entra login/token acquisition, registration mutation,
 Azure/SSH, provider request, production initialization or execution approval was performed.
 Gate A BLOCKED; 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. Next: offline operator review.
+
+
+## 27 November 2026 — Isolated local identity bootstrap implementation
+
+The [maintenance utility](../../deployment/phase19/identity_bootstrap/core.py) now reuses
+OIDCVerifier without production initialization and checks `azp` against the dedicated browser
+client only after the exact API token passes cryptographic production verification. Existing
+production verifier semantics are unchanged. It uses verified Principal.scope for the existing
+versioned canonical IDs and explicitly exports unsigned sensitive enrollment-candidate evidence,
+never tokens, enrollment or execution authority. There is no ID-token/directory-oid fallback.
+
+Follow the [operator-only runbook](../operations/phase_19_identity_bootstrap.md) for a separate
+ephemeral bootstrap cookie, private native configuration, exact origin/TLS, approved external
+evidence path and complete logout/browser-site/process/plaintext cleanup. Streamlit token
+cookies are signed, not encrypted; logout does not establish provider-token revocation.
+The [report](../codex/reports/phase_19b_local_identity_bootstrap_utility.md) distinguishes offline
+synthetic verification from still unauthorized actual Entra acceptance. Production cookie,
+credentials, registrations, authorities and execution gates remain unchanged. Gate A BLOCKED.

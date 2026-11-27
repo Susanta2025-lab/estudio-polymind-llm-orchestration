@@ -1050,3 +1050,17 @@ publication/canonical citations and the locally verified authenticated Documents
 interface with synthetic inference and bounded selected-document Q&A.
 
 If you find the project useful, consider starring the repository.
+
+
+## 27 November 2026 — Local identity bootstrap utility
+
+Phase 19B now includes an explicitly invoked native WSL maintenance utility, independent of
+production API/runtime, authorities, Redis/Chroma and inference. It reuses native Streamlit
+OIDC, the existing Entra API-token verifier and TLS gateway, adds exact browser-client binding,
+and exports a minimized protected enrollment candidate only after explicit fresh verification.
+See the [operator runbook](docs/operations/phase_19_identity_bootstrap.md) and
+[offline engineering report](docs/codex/reports/phase_19b_local_identity_bootstrap_utility.md).
+No operational credentials or actual token were accessed. Actual Entra/browser acceptance,
+enrollment and all other Gate A inputs remain pending; operational Gate A stays BLOCKED.
+The production cookie/staged Azure image and ordinary launchers are preserved. No image build
+is required for native bootstrap. Phase 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED.

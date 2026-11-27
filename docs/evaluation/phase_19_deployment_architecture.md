@@ -272,3 +272,23 @@ authorities, provider neutrality, private Tailscale/OpenSSH, loopback-only9443 a
 artifacts remain intact. Actual runtime acceptance needs separately authorized Gates B–E;
 no activation/production initialization/inference is authorized. VM reported deallocated.
 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. Next: offline operator review and decisions.
+
+
+## 27 November 2026 — Native local identity bootstrap boundary
+
+The [implemented maintenance architecture](../codex/reports/phase_19b_local_identity_bootstrap_utility.md)
+resolves the engineering startup cycle outside the five-service production topology: Windows
+browser → WSL 127.0.0.1:9443/reused private TLS gateway → 127.0.0.1:8503/native Streamlit →
+Entra API token → existing verifier plus bootstrap-only exact browser `azp` → verified
+Principal canonical scope → explicit protected enrollment candidate. No shared production source
+or gateway behavior changes, data services, authorities, providers, or automatic grants.
+
+Native WSL avoids a new image/network/mount deployment. Isolated Docker was assessed but is not
+implemented; no already-supported identity-only acquisition path existed. Child HOME/cwd and
+environment are isolated at application level, not by an OS filesystem/egress sandbox.
+Current NAT Windows-to-WSL synthetic TCP reachability passed; operational TLS/OIDC browser
+acceptance remains pending. The [runbook](../operations/phase_19_identity_bootstrap.md) requires
+private custody, ephemeral cookie/session/site cleanup and Windows/WSL port exclusivity.
+Existing staged Azure image does not include this utility and remains a production candidate
+under its prior provenance/acceptance limits. Native bootstrap needs no image build; no binary
+equivalence with a hypothetical new build is claimed. Gate A operational closure remains BLOCKED.

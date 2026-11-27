@@ -295,3 +295,22 @@ acceptance; bounded settlement/quiesced backup/recovery and verified deallocatio
 All commands are PREPARED_NOT_EXECUTED. Production state, real login, Azure and inference are
 NOT_AUTHORIZED here. No runtime change/image rebuild from this review. Phase 19A COMPLETE;
 19B ACTIVE; 19C NOT_STARTED. Do not start the next phase.
+
+
+## 27 November 2026 — Local identity bootstrap engineering implementation
+
+The previously missing identity-only path is implemented as explicit native WSL maintenance,
+with existing Streamlit OIDC, Entra verifier and TLS gateway, production-equivalent canonical
+identity, bootstrap-only browser-client binding, explicit private candidate export, bounded
+lifecycle and offline tests. See the [report](../codex/reports/phase_19b_local_identity_bootstrap_utility.md)
+and [future operator procedure](../operations/phase_19_identity_bootstrap.md). Historical reports
+and previous implementation/readiness findings above retain their original scope.
+
+Next is operator review, current prerequisite/custody/revocation/port/browser-session acceptance,
+and a separately authorized local authentication window. Only after protected candidate
+provenance review can separately authorized enrollment/source-owner preparation proceed. No real
+subject is yet acquired and no authority is initialized. Existing Gates A–E, source/privacy/
+semantic/session/provider/capability/finance/shared-quota/obligation/independent-permission inputs,
+Azure activation/cost/private access/recovery/closure and deployed browser acceptance remain.
+No new formal phase, production dependency change, image rebuild/transfer, inference or
+operational Gate A closure is authorized here. 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED.
