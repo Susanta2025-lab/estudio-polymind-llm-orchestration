@@ -1,8 +1,10 @@
 # Phase 19 private VM foundation — offline operations
 
-Current evidence is reconciled in the [26 November OIDC addendum](#26-november-2026--streamlit-oidc-preparation-and-current-gate-a-evidence).
-Earlier dated registration procedures and pending findings below are historical; do not rerun
-registration/consent/credential creation from those sections on the newly supplied evidence.
+Current evidence and procedure precedence are reconciled in the [27 November readiness addendum](#27-november-2026--operational-evidence-and-gate-a-readiness).
+Earlier dated registration, credential, PKI, Windows and transfer procedures/pending findings
+below are historical; do not repeat completed operator actions. The prior BatchMode=yes
+transfer is blocked for the reported locked Windows key and disabled agent. Read the current
+addendum and conditional replacement before planning a transfer.
 
 19 November 2026. This foundation is **not approved for Azure activation or inference**.
 Governed Chat and Documents are implemented, with execution denied unless a current,
@@ -973,3 +975,64 @@ The VM is operator-reported deallocated. No activation, Entra mutation, actual l
 production authority initialization or inference is authorized. No application runtime or image
 change is needed. Phase 19A COMPLETE; 19B ACTIVE; 19C NOT STARTED. Next: operator review and
 independent secure preparation only.
+
+
+## 27 November 2026 — Operational evidence and Gate A readiness
+
+This addendum and the [full operational review/runbook](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md)
+are the current evidence/next-action record. Historical sections above remain dated evidence,
+not instructions to repeat completed registration/credential/PKI/trust/hosts actions. The old
+noninteractive transfer in the OIDC report is **blocked** for the reported passphrase-protected
+Windows key with disabled agent and unconfirmed sudo -n maintenance. Do not run it unchanged.
+
+| Completed preparation | Current provenance and limitation |
+|---|---|
+| API/browser registrations, exact callback, role, delegated permission, principal-only consent, one client credential metadata | OPERATOR_REPORTED_PASS; no actual token/exchange validity |
+| Operational native TOML and independent cookie | OPERATOR_REPORTED_PASS; stable cookie must survive ordinary restarts |
+| GPG encrypted TOML and decrypt/byte comparison, redundant plaintext cleanup | OPERATOR_REPORTED_PASS; no Azure install/independent backup custody |
+| Approved direct-root PKI/root/leaf/key matching/chain/SAN | OPERATOR_REPORTED_PASS; no deployed/browser acceptance |
+| Initial CRL/signature/leaf revocation check | OPERATOR_REPORTED_PASS; no automatic distribution/browser enforcement |
+| Local encrypted CA backup and source comparison | OPERATOR_REPORTED_PASS; separate offline location/passphrase custody/disaster restore PENDING |
+| Current-user public CA trust, machine-wide trust absent | OPERATOR_REPORTED_PASS; trust is not inherently limited to polymind.test |
+| Windows loopback hosts mapping/cache flush/resolution | OPERATOR_REPORTED_PASS; hosts backup completion not evidenced |
+| Native OpenSSH/local port 9443/Tailscale and VM endpoint identification | OPERATOR_REPORTED_PASS at observation time; no fresh remote reachability |
+| Dedicated SSH pair/matching public derivation/configuration | OPERATOR_REPORTED_PASS; initial wrong passphrase resolved, no replacement needed |
+| Existing known_hosts | OPERATOR_REPORTED_PASS, historical TOFU only; independent VM host authenticity PENDING |
+
+Manual deadlines independently calculated from reported certificate dates: initial CRL refresh
+2026-12-02T12:49:29Z (expires 2026-12-03T12:49:29Z), leaf renewal 2027-01-25T12:43:03Z
+(expires 2027-02-24T12:43:03Z), root renewal 2031-05-29T12:23:59Z
+(expires 2031-11-25T12:23:59Z); client credential expires 2027-05-25T07:24:50.834Z.
+These are not scheduled tasks. Operator owns renewal/revocation; explicit acceptance of absent
+browser revocation protection, trust-withdrawal/compromise response and backup recovery custody
+is still required. Never transfer CA key/full archive/Windows private key/signer key to Azure.
+
+**Operational Gate A BLOCKED:** unknown API access-token sub/enrollment and owner-bound source,
+source/rights/privacy/consent/review/session, current provider/capabilities, finance/shared
+quota/outstanding obligations, independent execution custody, backups/risk/host authenticity
+and actual acceptance remain unresolved. See the report's complete matrix, not only this
+local-preparation table. Enrollment is [issuer,tenant UUID,API access-token sub]; never oid,
+ID-token subject, email or a fabricated value. Standard API-before-UI ordering requires that
+subject/source before first login; no supported identity-only acquisition command exists.
+Next is review of a narrow separately scoped bootstrap tool, not authority initialization.
+Existing execution_permissions=false/chat=null/approvals=[] can deny inference only after
+legitimate configuration/source/enrollment/provider-secret/finance inputs exist.
+
+The report contains the conditional operator-executable Gates B–E, including trusted-channel
+public host-key verification; strict interactive Windows SSH; encrypted-only TOML transfer
+and a fixed root maintenance receiver with no blanket sudo; exact 10001:10001/0600 private
+files and protected traversal; UUID/pinned artifacts/egress/capacity; deliberate seven-authority
+new-state/reuse and Redis/Chroma before initialization; private TLS/native login/negative tests;
+settlement/quiesced backup/separately authorized restore/deallocation and residual costs.
+Its proposed maintenance helper does not exist on Azure and is compile-reviewed only. Other
+secret-custodian transfer mechanisms also need review before execution. No command was run
+against Azure/Windows/SSH, no production authority initialized, no model call made.
+
+Before requesting activation, review bootstrap scope, actual approval inputs, independent
+backup custody and manual revocation risk; then seek a fresh bounded maintenance packet with
+subscription/resource, UTC window, infrastructure ceiling, activation cutoff, mandatory
+deallocation deadline and recovery/residual owners. Explicitly prohibit inference unless
+separately authorized. Keep endpoint/user/identity paths and private topology in a protected
+operator record. Preserve the existing Azure-pinned Compose, image and filesystem UUID;
+do not replace them with portable tags or reformat/reset storage. VM remains reported
+deallocated. Phase 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. No new runtime/image work was done.

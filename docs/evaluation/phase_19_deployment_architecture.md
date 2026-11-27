@@ -1,5 +1,8 @@
 # Phase 19 deployment architecture — assessment decision
 
+Current evidence: [27 November operational review](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md).
+Earlier dated findings below are historical; the final addendum governs current readiness.
+
 Current stage boundary — 21 November 2026: **19A COMPLETE; 19B ACTIVE** for offline
 implementation, Azure deployment, live integration and validation; **19C NOT STARTED**
 for final documentation and engineering closure. The dated assessment and implementation
@@ -242,3 +245,30 @@ actual secret encryption/access restriction is unverified. Operational cross-fil
 TLS/trust, all other authority/provider/finance gates and no-public-exposure boundaries remain.
 VM operator-reported deallocated; no activation or inference authorization. Phase 19A COMPLETE,
 19B ACTIVE, 19C NOT STARTED. Operator review and independent private preparation are next.
+
+
+## 27 November 2026 — Operational evidence and bootstrap dependency
+
+This is the current readiness record; earlier dated pending findings retain their historical
+scope. The [operational reconciliation report](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md)
+records OPERATOR_REPORTED_PASS for private native TOML/independent cookie creation, encrypted
+staging/comparison/plaintext cleanup, approved direct-root PKI/root/leaf/CRL, local encrypted
+CA backup, current-user Windows public-root trust, loopback hostname resolution and dedicated
+SSH-key readiness. These do not establish actual credential exchange, independent backup
+custody/recovery, browser revocation enforcement or deployed private HTTPS/authentication.
+
+Operational Gate A is BLOCKED across identity enrollment/bootstrap, source/privacy/semantic
+review, current provider/capabilities, finance/shared quota/obligations, independent execution
+custody and remaining trust/recovery decisions. Runtime requires API-token sub plus an owner-bound
+approved source before initialization; standard Compose gates UI on API readiness. No supported
+identity-only acquisition workflow exists. Review a narrow separate bootstrap tool before
+identity maintenance, preserving native OIDC/Entra checks and no production authority writes.
+Existing no-inference configuration is conditional on legitimate full inputs; it is not bootstrap.
+The prior BatchMode transfer is incompatible with a locked Windows identity/disabled agent;
+the report prepares an interactive encrypted-only maintenance alternative, not deployed acceptance.
+
+No runtime, topology, authority, dependency or image input changed. Five services, seven SQLite
+authorities, provider neutrality, private Tailscale/OpenSSH, loopback-only9443 and Azure-pinned
+artifacts remain intact. Actual runtime acceptance needs separately authorized Gates B–E;
+no activation/production initialization/inference is authorized. VM reported deallocated.
+19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. Next: offline operator review and decisions.

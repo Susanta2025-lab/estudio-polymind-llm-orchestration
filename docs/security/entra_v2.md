@@ -1,5 +1,8 @@
 # Microsoft Entra v2 access tokens — Phase 17H-L
 
+Current Phase 19B evidence: [27 November identity and operational review](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md).
+Earlier dated findings below retain their original scope; actual browser/API acceptance is pending.
+
 ## Phase 18 browser-authentication distinction — 14 November 2026
 
 The [Phase 18 local Documents application](../operations/phase_18_local_document_demo.md)
@@ -146,3 +149,31 @@ was created. Actual credential custody/encryption/validity and real browser/toke
 remain unverified; no secrets, operational cookies/configuration, login or Entra mutations
 were performed by Codex. Authentication continues to grant no independent execution or
 financial authority. The portable template and verifier contract are unchanged.
+
+
+## 27 November 2026 — Operational preparation and identity-bootstrap limitation
+
+The [current operational review](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md)
+records OPERATOR_REPORTED_PASS for native OIDC TOML preparation, independently generated
+cookie, GPG encryption/content comparison and redundant plaintext removal, in addition to the
+previous registration/permission/principal-consent/credential metadata. Private values were
+not accessed by Codex. Local encryption does not establish credential validity, independent
+recovery custody or an Entra token exchange. Preserve the cookie across ordinary restarts.
+Windows current-user trust/hostname resolution and PKI issuance are reported local configuration
+passes; actual private browser authentication/API-token claims remain PENDING/BLOCKED.
+
+Exact enrollment remains [issuer,tenant UUID,API access-token sub]. The production manifest
+requires it and an owner-bound source before initialization, while standard Compose starts UI
+only after API health. Middleware registers already verified principals after API construction;
+it cannot acquire the missing pre-initialization subject. OIDCVerifier can validate an acquired
+API token independently but does not acquire one. No supported native identity-only bootstrap
+workflow exists. Review a narrowly scoped maintenance implementation separately; do not use
+ID-token sub/oid, placeholder enrollment, fixture auth, debug claim dumps or production-state
+initialization as a workaround. No authentication/authority rule changes in this review.
+
+Execution-disabled startup is conditional on legitimate full inputs and does not solve this
+bootstrap. All source/privacy/review/provider/financial/shared-admission and independent live
+execution gates remain separate. Manual private-PKI revocation risk and independent recovery
+custody also remain open. No actual Entra login/token acquisition, registration mutation,
+Azure/SSH, provider request, production initialization or execution approval was performed.
+Gate A BLOCKED; 19A COMPLETE; 19B ACTIVE; 19C NOT_STARTED. Next: offline operator review.

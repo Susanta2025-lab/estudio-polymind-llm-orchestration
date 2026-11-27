@@ -1,5 +1,8 @@
 # Phase 19B bounded implementation plan
 
+Current evidence and conditional runbook: [27 November Gate A review](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md).
+Earlier dated plans below retain their historical scope; no operational authorization is granted.
+
 Current stage boundary — 21 November 2026: **19A COMPLETE; 19B ACTIVE** for offline
 implementation, Azure deployment, live integration and validation; **19C NOT STARTED**
 for final documentation and engineering closure. Earlier dated plans below are historical;
@@ -260,3 +263,35 @@ as classified in the report. Do not invent subjects or initialize authorities. S
 resource/cost/VM, provider/data/finance/quota and fresh execution approvals remain mandatory;
 no VM activation, Entra mutation, real login or inference is authorized by this task.
 Phase 19A COMPLETE; 19B ACTIVE; 19C NOT STARTED. Stop at this handoff.
+
+
+## 27 November 2026 — Complete Gate A reconciliation and conditional execution plan
+
+The [current operational review](../codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md)
+supersedes earlier pending descriptions only for the newly reported completed actions:
+operational native TOML/cookie generation, encrypted staging/integrity/plaintext cleanup,
+approved PKI/root/leaf/CRL and local encrypted CA backup, Windows current-user trust/hostname
+resolution, OpenSSH/Tailscale local readiness and dedicated authentication-key verification.
+All are OPERATOR_REPORTED_PASS; actual Entra credential validity, independent backup custody/
+restoration, manual revocation-risk acceptance and remote/browser acceptance remain pending.
+Do not repeat registration, generate another cookie or issue replacement certificates merely
+to complete documentation. Preserve the existing cookie and Azure-staged pinned artifacts.
+
+Gate A remains BLOCKED. Its full source/privacy/consent/independent semantic/session,
+provider/capability, tariff/budget/shared-admission/obligation and independent execution inputs
+are still required. No approved source/hash, token subject, tariff or current permission is
+invented. The production API requires enrolled subject/source before initialization, while
+standard UI startup depends on API health: review a separate narrow identity-only bootstrap
+implementation, not placeholder enrollment or a production initialization workaround.
+Execution-disabled Documents startup exists only after real complete inputs; it cannot bootstrap.
+
+Next action is offline operator review of that engineering scope, custody/recovery/revocation
+risk and actual approval inputs. The report's conditional Gates B–E prepare fresh resource/
+subscription/UTC/cost/cutoff/deallocation/owner authorization; trusted host-key/private network/
+UUID/image/staged-Compose/egress revalidation; protected file provisioning with interactive
+Windows SSH and a fixed encrypted-TOML receiver (old BatchMode recipe blocked); data service
+health before deliberately approved initialization/reuse; no-inference startup/private browser
+acceptance; bounded settlement/quiesced backup/recovery and verified deallocation/residual costs.
+All commands are PREPARED_NOT_EXECUTED. Production state, real login, Azure and inference are
+NOT_AUTHORIZED here. No runtime change/image rebuild from this review. Phase 19A COMPLETE;
+19B ACTIVE; 19C NOT_STARTED. Do not start the next phase.

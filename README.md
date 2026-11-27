@@ -22,7 +22,26 @@ Estudio PolyMind is a production-style AI engineering platform for **multi-LLM o
 
 The project is deliberately provider-neutral. Local development can use **Ollama**; external inference uses the existing **OpenAI-compatible adapter**, which can target services such as **Azure Foundry**, **OpenAI-style endpoints**, or a separately operated **vLLM** server.
 
-## Phase 19 status — 26 November 2026
+## Phase 19 status — 27 November 2026
+
+Phase 19A COMPLETE; Phase 19B ACTIVE; Phase 19C NOT STARTED. **Operational Gate A remains
+BLOCKED.** The operator reports private Streamlit TOML/cookie preparation, verified encrypted
+staging and redundant plaintext cleanup, approved PKI/root/leaf/CRL creation, local encrypted
+PKI backup, Windows current-user public-root trust/hostname resolution and dedicated SSH-key
+readiness complete. Actual credential validity, independent backup custody/recovery, manual
+revocation-risk acceptance, verified VM host authenticity, tunnel/TLS/browser authentication
+and API-token subject/enrollment remain pending. No operational secret was accessed by Codex.
+
+The [operational evidence and complete Gate A review](docs/codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md)
+reconciles exact-HEAD CI, all source/privacy/review/provider/finance/quota/execution blockers,
+the identity-bootstrap dependency and the prior noninteractive SSH transfer incompatibility.
+It prepares conditional Gates B–E without executing them. Focused offline verification passed
+320 tests. Next: operator review of bootstrap scope, custody/risk decisions and actual approval
+inputs. No runtime change or image rebuild is required for this documentation update.
+VM operator-reported deallocated; no Azure activation, remote SSH, production initialization,
+inference or Phase 19C is authorized. Dated entries below are historical evidence.
+
+### Historical Phase 19 status — 26 November 2026
 
 Phase 19A is COMPLETE; Phase 19B remains ACTIVE; Phase 19C is NOT STARTED.
 The operator reports the dedicated Streamlit Entra Web registration, exact
@@ -873,7 +892,7 @@ Phase 17H adds explicitly invoked [offline benchmarks and a quality rubric](docs
 | 17I | External User Verification | Bounded engineering and all three development stages complete; actual external verification DEFERRED, formal acceptance PENDING; subsequent engineering permitted |
 | 18 | Secure Document Productization and Azure Deployment Readiness | 18.1 assessment COMPLETE; 18.2 local implementation/verification ENGINEERING PASS; 18.3 documentation/engineering closure COMPLETE in local synthetic scope, operator acceptance pending. `AKS_NOT_REQUIRED`; Azure deployment NOT PERFORMED; production readiness NOT ESTABLISHED |
 | 19A | Readiness Assessment | COMPLETE |
-| 19B | Offline Implementation, Azure Deployment, Live Integration and Validation | WITH_CONDITIONS — offline foundation verified; private Azure infrastructure reported complete/deallocated; production identity/configuration, startup and live acceptance blocked |
+| 19B | Offline Implementation, Azure Deployment, Live Integration and Validation | ACTIVE / WITH_CONDITIONS — local credential/PKI/Windows/SSH preparation operator-reported complete; Gate A blocked by identity bootstrap/enrollment and remaining source/provider/finance/custody approvals; VM reported deallocated |
 | 19C | Final Documentation and Engineering Closure | NOT STARTED |
 
 Overall Phase 17 status: `ENGINEERING_COMPLETE_REVIEW_DEFERRED`. The
@@ -1006,11 +1025,11 @@ Focus areas:
 
 **Status:** Active development — production-style portfolio platform
 
-**Current milestone:** Phase 19B WITH_CONDITIONS — private Azure infrastructure reported
-complete and deallocated; resolve production inputs and obtain fresh session authorization
-before application startup or separately approved live testing. Phase 19A
+**Current milestone:** Phase 19B ACTIVE / WITH_CONDITIONS — local operational preparation
+reconciled; Gate A BLOCKED. Review identity bootstrap, custody/revocation risk and remaining
+approval inputs before seeking a separate maintenance session. VM reported deallocated. Phase 19A
 COMPLETE; Phase 19C Final Documentation and Engineering Closure NOT STARTED.
-See the [post-Azure continuation](docs/codex/reports/phase_19b_post_azure_readiness_offline_validation_evidence_reconciliation.md).
+See the [27 November operational readiness review](docs/codex/reports/phase_19b_operational_evidence_reconciliation_and_gate_a_readiness_review.md).
 
 **Retained Phase 18 milestone:** `PHASE_18_ENGINEERING_COMPLETE_LOCAL_SCOPE` and
 `PHASE_18_3_DOCUMENTATION_PASS`; operator administrative acceptance pending.
